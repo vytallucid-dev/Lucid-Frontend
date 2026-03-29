@@ -237,7 +237,7 @@ export default function CotPage() {
         {/* Bar Tooltip */}
         {hoveredBar && (
           <div
-            className="fixed z-50 glass-card px-3 py-2.5 text-xs space-y-1 pointer-events-none"
+            className="fixed z-50 bg-blue-950 px-3 py-2.5 text-xs space-y-1 pointer-events-none"
             style={{
               left: tooltipPos.x + 12,
               top: tooltipPos.y - 60,

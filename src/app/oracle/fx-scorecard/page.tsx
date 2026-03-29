@@ -16,6 +16,7 @@ import {
 } from "@/data/assets";
 import { ScoreHistoryChart } from "@/components/ScoreHistoryChart";
 import { ScoreGauge } from "@/components/ScoreGauge";
+import { Info } from "lucide-react";
 
 const pairOptions: { key: FxPairKey; label: string }[] = [
   { key: "EURUSD", label: "EUR/USD" },
@@ -69,9 +70,9 @@ function ResultBadge({ result }: { result: ResultTag }) {
   );
 }
 
-/* ─── Tooltip row ─── */
+/* ─── Indicator info tooltip (shown on info icon hover) ─── */
 
-function IndicatorTooltip({
+function IndicatorInfo({
   ind,
   currAName,
   currBName,
@@ -81,51 +82,59 @@ function IndicatorTooltip({
   currBName: string;
 }) {
   return (
-    <div
-      className="absolute z-50 left-0 right-0 top-full mt-1 p-3 rounded-lg text-xs shadow-xl"
-      style={{
-        background: "rgba(10, 22, 40, 0.97)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        backdropFilter: "blur(16px)",
-      }}
-    >
-      <p className="font-semibold mb-2" style={{ color: "#F1F5F9" }}>
-        {ind.name}
-      </p>
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currAName}</span>
-          <span style={{ color: "#64748B" }}>Actual: {ind.currA.actual}</span>
-          {ind.currA.forecast && <span style={{ color: "#64748B" }}>Forecast: {ind.currA.forecast}</span>}
-          {ind.currA.surprise && <span style={{ color: "#64748B" }}>Surprise: {ind.currA.surprise}</span>}
-          <span style={{ color: "#94A3B8" }}>→</span>
-          <ResultBadge result={ind.currA.result} />
+    <span className="relative group inline-flex items-center">
+      <Info
+        size={13}
+        className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help"
+        style={{ color: "#64748B" }}
+      />
+      <div
+        className="absolute z-50 left-5 top-1/2 -translate-y-1/2 p-3 rounded-lg text-xs shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{
+          background: "rgba(10, 22, 40, 0.97)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(16px)",
+          minWidth: 320,
+        }}
+      >
+        <p className="font-semibold mb-2" style={{ color: "#F1F5F9" }}>
+          {ind.name}
+        </p>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3">
+            <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currAName}</span>
+            <span style={{ color: "#64748B" }}>Actual: {ind.currA.actual}</span>
+            {ind.currA.forecast && <span style={{ color: "#64748B" }}>Forecast: {ind.currA.forecast}</span>}
+            {ind.currA.surprise && <span style={{ color: "#64748B" }}>Surprise: {ind.currA.surprise}</span>}
+            <span style={{ color: "#94A3B8" }}>→</span>
+            <ResultBadge result={ind.currA.result} />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currBName}</span>
+            <span style={{ color: "#64748B" }}>Actual: {ind.currB.actual}</span>
+            {ind.currB.forecast && <span style={{ color: "#64748B" }}>Forecast: {ind.currB.forecast}</span>}
+            {ind.currB.surprise && <span style={{ color: "#64748B" }}>Surprise: {ind.currB.surprise}</span>}
+            <span style={{ color: "#94A3B8" }}>→</span>
+            <ResultBadge result={ind.currB.result} />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currBName}</span>
-          <span style={{ color: "#64748B" }}>Actual: {ind.currB.actual}</span>
-          {ind.currB.forecast && <span style={{ color: "#64748B" }}>Forecast: {ind.currB.forecast}</span>}
-          {ind.currB.surprise && <span style={{ color: "#64748B" }}>Surprise: {ind.currB.surprise}</span>}
-          <span style={{ color: "#94A3B8" }}>→</span>
-          <ResultBadge result={ind.currB.result} />
-        </div>
-      </div>
-      <div className="mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <span style={{ color: "#64748B" }}>
-          {ind.currA.result} vs {ind.currB.result} → Pair Score:{" "}
-        </span>
-        {ind.pairScore !== null ? (
-          <span
-            className="font-semibold tabular-nums"
-            style={{ color: ind.pairScore > 0 ? "#10B981" : ind.pairScore < 0 ? "#EF4444" : "#64748B" }}
-          >
-            {ind.pairScore > 0 ? `+${ind.pairScore}` : ind.pairScore}
+        <div className="mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <span style={{ color: "#64748B" }}>
+            {ind.currA.result} vs {ind.currB.result} → Pair Score:{" "}
           </span>
-        ) : (
-          <span style={{ color: "#334155" }}>Excluded</span>
-        )}
+          {ind.pairScore !== null ? (
+            <span
+              className="font-semibold tabular-nums"
+              style={{ color: ind.pairScore > 0 ? "#10B981" : ind.pairScore < 0 ? "#EF4444" : "#64748B" }}
+            >
+              {ind.pairScore > 0 ? `+${ind.pairScore}` : ind.pairScore}
+            </span>
+          ) : (
+            <span style={{ color: "#334155" }}>Excluded</span>
+          )}
+        </div>
       </div>
-    </div>
+    </span>
   );
 }
 
@@ -144,8 +153,6 @@ function CategoryCard({
   currBName: string;
   currBFlag: string;
 }) {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
   const scoredRows = cat.indicators.filter((r) => r.pairScore !== null);
   const aBullish = scoredRows.filter((r) => r.pairScore! > 0).length;
   const aBearish = scoredRows.filter((r) => r.pairScore! < 0).length;
@@ -190,20 +197,18 @@ function CategoryCard({
           {cat.indicators.map((ind, idx) => (
             <tr
               key={ind.name}
-              className="relative transition-colors cursor-default"
+              className="relative transition-colors hover:bg-white/[0.02]"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() => setHoveredIdx(null)}
             >
-              <td className="py-2.5 px-3 relative">
-                <div className="text-[13px] font-medium" style={{ color: "#F1F5F9" }}>
-                  {ind.name}
+              <td className="py-2.5 px-3">
+                <div className="flex items-center gap-1.5">
+                  <IndicatorInfo ind={ind} currAName={currAName} currBName={currBName} />
+                  <span className="text-[13px] font-medium" style={{ color: "#F1F5F9" }}>
+                    {ind.name}
+                  </span>
                 </div>
                 {ind.frequency && (
-                  <div className="text-[9px] mt-0.5" style={{ color: "#334155" }}>{ind.frequency}</div>
-                )}
-                {hoveredIdx === idx && (
-                  <IndicatorTooltip ind={ind} currAName={currAName} currBName={currBName} />
+                  <div className="text-[9px] mt-0.5 ml-5" style={{ color: "#334155" }}>{ind.frequency}</div>
                 )}
               </td>
               <td className="py-2.5 px-3 text-center">
@@ -423,7 +428,7 @@ export default function FxScorecardPage() {
       {/* Two-column layout */}
       <div className="flex gap-6 items-start">
         {/* LEFT PANEL */}
-        <div className="w-[280px] shrink-0 sticky top-[112px] flex flex-col gap-4">
+        <div className="w-[280px] shrink-0  flex flex-col gap-4">
           {/* Score & Bias */}
           <div className="glass-card p-5 text-center">
             <ScoreGauge score={pair.totalScore} />

@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
+import { SidebarProvider } from "@/components/SidebarContext";
+import { MainContent } from "@/components/MainContent";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,11 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex">
-        <Sidebar />
-        <div className="flex-1 ml-[220px] flex flex-col min-h-screen">
-          <TopBar />
-          <main className="flex-1">{children}</main>
-        </div>
+        <SidebarProvider>
+          <Sidebar />
+          <MainContent>
+            <TopBar />
+            <main className="flex-1">{children}</main>
+          </MainContent>
+        </SidebarProvider>
       </body>
     </html>
   );

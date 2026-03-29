@@ -41,14 +41,20 @@ const columnGroups = [
 function IndicatorCell({ value }: { value: IndicatorValue }) {
   if (value === null) {
     return (
-      <td className="px-2 py-2.5 text-center text-xs" style={{ color: "#334155" }}>
+      <td
+        className="px-2 py-2.5 text-center text-xs"
+        style={{ color: "#334155" }}
+      >
         N/A
       </td>
     );
   }
   if (value === 0) {
     return (
-      <td className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums" style={{ color: "#334155" }}>
+      <td
+        className="px-2 py-2.5 text-center text-xs font-semibold tabular-nums"
+        style={{ color: "#334155" }}
+      >
         0
       </td>
     );
@@ -101,7 +107,9 @@ function BiasFilterButton({
       onClick={onClick}
       className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
       style={{
-        background: active ? "rgba(59, 130, 246, 0.15)" : "rgba(255,255,255,0.03)",
+        background: active
+          ? "rgba(59, 130, 246, 0.15)"
+          : "rgba(255,255,255,0.03)",
         color: active ? "#60A5FA" : "#64748B",
         border: active
           ? "1px solid rgba(59, 130, 246, 0.3)"
@@ -149,10 +157,10 @@ export default function TopSetupsPage() {
 
   const counts = useMemo(() => {
     const bullish = demoAssets.filter(
-      (a) => a.bias === "Bullish" || a.bias === "Strong Bullish"
+      (a) => a.bias === "Bullish" || a.bias === "Strong Bullish",
     ).length;
     const bearish = demoAssets.filter(
-      (a) => a.bias === "Bearish" || a.bias === "Strong Bearish"
+      (a) => a.bias === "Bearish" || a.bias === "Strong Bearish",
     ).length;
     const neutral = demoAssets.filter((a) => a.bias === "Neutral").length;
     return { total: demoAssets.length, bullish, bearish, neutral };
@@ -203,7 +211,7 @@ export default function TopSetupsPage() {
                 active={biasFilter === f}
                 onClick={() => setBiasFilter(f)}
               />
-            )
+            ),
           )}
         </div>
 
@@ -247,7 +255,10 @@ export default function TopSetupsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px]" style={{ color: "#64748B" }}>
+        <div
+          className="flex items-center gap-3 text-[11px]"
+          style={{ color: "#64748B" }}
+        >
           <span>🟢 Bullish</span>
           <span>🔴 Bearish</span>
           <span>⚪ Neutral</span>
@@ -257,7 +268,11 @@ export default function TopSetupsPage() {
       {/* Summary stat cards */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         {[
-          { label: "Total Assets Tracked", value: counts.total, color: "#F1F5F9" },
+          {
+            label: "Total Assets Tracked",
+            value: counts.total,
+            color: "#F1F5F9",
+          },
           { label: "Bullish", value: counts.bullish, color: "#10B981" },
           { label: "Bearish", value: counts.bearish, color: "#EF4444" },
           { label: "Neutral", value: counts.neutral, color: "#64748B" },
@@ -299,7 +314,10 @@ export default function TopSetupsPage() {
             </button>
           </div>
         ) : (
-          <table className="w-full text-xs" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+          <table
+            className="w-full text-xs"
+            style={{ borderCollapse: "separate", borderSpacing: 0 }}
+          >
             <thead>
               {/* Group header row */}
               <tr>
@@ -321,19 +339,25 @@ export default function TopSetupsPage() {
               </tr>
               {/* Column header row */}
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <th
-                  className="label text-left px-3 py-2.5 sticky left-0 z-10"
-                  style={{ color: "#64748B", background: "rgba(2,8,23,0.95)" }}
-                >
+                <th className="label text-center px-3 py-2.5 sticky left-0 z-10">
                   ASSET
                 </th>
-                <th className="label text-center px-2 py-2.5" style={{ color: "#64748B" }}>
+                <th
+                  className="label text-center px-2 py-2.5"
+                  style={{ color: "#64748B" }}
+                >
                   BIAS
                 </th>
-                <th className="label text-center px-2 py-2.5" style={{ color: "#64748B" }}>
+                <th
+                  className="label text-center px-2 py-2.5"
+                  style={{ color: "#64748B" }}
+                >
                   SCORE
                 </th>
-                <th className="label text-center px-2 py-2.5" style={{ color: "#64748B" }}>
+                <th
+                  className="label text-center px-2 py-2.5"
+                  style={{ color: "#64748B" }}
+                >
                   COT
                 </th>
                 {indicatorColumns.map((col) => (
@@ -355,25 +379,20 @@ export default function TopSetupsPage() {
                   onClick={() => setSelectedAsset(asset)}
                   style={{
                     borderLeft: getRowBorder(asset.bias),
-                    background:
-                      idx % 2 === 1 ? "rgba(255,255,255,0.01)" : "transparent",
+                    background: "transparent",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(59, 130, 246, 0.05)";
+                    e.currentTarget.style.background =
+                      "rgba(59, 130, 246, 0.05)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background =
-                      idx % 2 === 1 ? "rgba(255,255,255,0.01)" : "transparent";
+                    e.currentTarget.style.background = "transparent";
                   }}
                 >
                   {/* Asset */}
-                  <td
-                    className="px-3 py-2.5 sticky left-0 z-10"
-                    style={{ background: "rgba(2,8,23,0.95)" }}
-                  >
+                  <td className="px-3 py-2.5 sticky left-0 z-10">
                     <div className="flex items-center gap-2">
-                      <span className="text-base">{asset.flag}</span>
-                      <div>
+                      <div className="pl-2">
                         <p
                           className="font-semibold text-[13px]"
                           style={{ color: "#F1F5F9" }}
