@@ -1,24 +1,25 @@
-import { BarChart3 } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
-export default function PulsePage() {
+export default function LedgerPage() {
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-56px)]">
       <div className="glass-card p-10 max-w-[520px] w-full text-center">
         <div className="flex justify-center mb-5">
-          <BarChart3 size={48} style={{ color: "#3B82F6" }} />
+          <BookOpen size={48} style={{ color: "#3B82F6" }} />
         </div>
         <h2
           className="text-2xl font-bold mb-3"
           style={{ color: "#F1F5F9", letterSpacing: "-0.02em" }}
         >
-          Pulse Dashboard
+          Ledger
         </h2>
         <p
           className="text-sm leading-relaxed mb-6"
           style={{ color: "#64748B" }}
         >
-          Your complete trading command center. Account performance, active
-          trades, fundamental scores, and Lucid AI — all in one view.
+          Log trades, track performance, plan setups, and build a complete
+          record of your trading decisions — with AI-powered pre-trade analysis
+          and post-trade debriefs.
         </p>
 
         {/* Status badge */}
@@ -39,10 +40,10 @@ export default function PulsePage() {
         {/* Feature pills */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            "📈 Portfolio Overview",
-            "🎯 Active Trades",
-            "🌐 Fundamental Scores",
-            "🤖 Lucid AI",
+            "📝 Trade Journal",
+            "🗓️ Trade Planner",
+            "📊 Performance Analytics",
+            "🧠 AI Trade Memory",
           ].map((feature) => (
             <div
               key={feature}
