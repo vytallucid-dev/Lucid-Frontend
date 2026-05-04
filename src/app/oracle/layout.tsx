@@ -42,7 +42,7 @@ export default function OracleLayout({
               {tab.label}
               {active && (
                 <div
-                  className="absolute bottom-0 left-0 right-0 h-[2px]"
+                  className="absolute bottom-0 left-0 right-0 h-0.5"
                   style={{ background: "#3B82F6" }}
                 />
               )}

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, Telescope, Settings, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { BarChart3, NotebookPen, Telescope, MessageSquare, Settings, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
 const navItems = [
-  { label: "Pulse", sublabel: "Dashboard", href: "/", icon: BarChart3 },
-  { label: "Ledger", sublabel: "Journal", href: "/ledger", icon: BookOpen },
-  { label: "Oracle", sublabel: "Scanner", href: "/oracle", icon: Telescope },
+  { label: "Dashboard", sublabel: "Overview", href: "/dashboard", icon: BarChart3 },
+  { label: "Trading Hub", sublabel: "Journal & Accounts", href: "/trading/journal", icon: NotebookPen },
+  { label: "Scanner", sublabel: "Oracle", href: "/oracle", icon: Telescope },
+  { label: "Lucid", sublabel: "AI Chat", href: "/lucid", icon: MessageSquare },
   { label: "Settings", sublabel: "", href: "/settings", icon: Settings },
 ];
 
@@ -17,7 +18,9 @@ export function Sidebar() {
   const { collapsed, toggle } = useSidebar();
 
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    // Trading Hub: match any /trading/* route
+    if (href === "/trading/journal") return pathname.startsWith("/trading");
     return pathname.startsWith(href);
   };
 
