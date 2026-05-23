@@ -1,33 +1,35 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  economies,
-  heatmapData,
-  type EconomyKey,
-  type HeatmapIndicator,
-} from "@/data/heatmap";
+import { economies } from "@/data/heatmap";
+import { useHeatmap } from "@/hooks/useHeatmap";
+import type {
+  OracleEconomy,
+  PublicHeatmapIndicator,
+} from "@/lib/api/oracle";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
+import { EmptyState } from "@/components/state/EmptyState";
 
 const CATEGORIES = ["ECONOMIC GROWTH", "INFLATION", "JOBS MARKET"] as const;
-const TODAY = new Date(2026, 2, 29); // Mar 29, 2026
 
-function daysUntil(dateStr: string): number | null {
+function daysUntil(dateStr: string, today: Date): number | null {
   if (dateStr === "Daily" || dateStr === "—") return null;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
-  return Math.ceil((d.getTime() - TODAY.getTime()) / 86_400_000);
+  return Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
 }
 
-function nextReleaseDateStyle(dateStr: string): React.CSSProperties {
-  const days = daysUntil(dateStr);
+function nextReleaseDateStyle(dateStr: string, today: Date): React.CSSProperties {
+  const days = daysUntil(dateStr, today);
   if (days === null) return { color: "#94A3B8" };
   if (days <= 2) return { color: "#F59E0B", fontWeight: 500 };
   if (days <= 7) return { color: "#3B82F6", fontWeight: 500 };
   return { color: "#94A3B8" };
 }
 
-function surpriseStyle(surprise: string): React.CSSProperties {
-  if (surprise === "—") return { color: "#475569" };
+function surpriseStyle(surprise: string | null): React.CSSProperties {
+  if (surprise === null || surprise === "—") return { color: "#475569" };
   if (surprise === "Hawkish") return { background: "rgba(16,185,129,0.15)", color: "#10B981" };
   const num = parseFloat(surprise);
   if (isNaN(num)) return { color: "#475569" };
@@ -36,8 +38,8 @@ function surpriseStyle(surprise: string): React.CSSProperties {
   return { color: "#475569" };
 }
 
-function actualColor(surprise: string): string {
-  if (surprise === "—") return "#F1F5F9";
+function actualColor(surprise: string | null): string {
+  if (surprise === null || surprise === "—") return "#F1F5F9";
   if (surprise === "Hawkish") return "#10B981";
   const num = parseFloat(surprise);
   if (isNaN(num) || num === 0) return "#F1F5F9";
@@ -62,23 +64,34 @@ function biasLabel(pct: number): string {
   return "Neutral";
 }
 
-export default function HeatmapPage() {
-  const [economy, setEconomy] = useState<EconomyKey>("US");
+function formatToday(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
-  const indicators = heatmapData[economy];
+export default function HeatmapPage() {
+  const [economy, setEconomy] = useState<OracleEconomy>("US");
+  const { data: heatmap, isLoading, error, refetch } = useHeatmap();
+  const TODAY = useMemo(() => new Date(), []);
+
+  const indicators: PublicHeatmapIndicator[] = useMemo(
+    () => (heatmap ? heatmap[economy] ?? [] : []),
+    [heatmap, economy],
+  );
 
   const stats = useMemo(() => {
     const total = indicators.length;
-    const bullish = indicators.filter((i) => i.score === 1).length;
-    const bearish = indicators.filter((i) => i.score === -1).length;
-    const neutral = indicators.filter((i) => i.score === 0).length;
-    const denom = total - neutral;
+    const scored = indicators.filter((i) => i.outcome !== 'insufficient_data');
+    const bullish = scored.filter((i) => i.score === 1).length;
+    const bearish = scored.filter((i) => i.score === -1).length;
+    const neutral = scored.filter((i) => i.score === 0).length;
+    const denom = scored.length - neutral;
     const bullishPct = denom > 0 ? (bullish / denom) * 100 : 50;
-    return { total, bullish, bearish, neutral, bullishPct };
+    const allInsufficient = scored.length === 0 && total > 0;
+    return { total, bullish, bearish, neutral, bullishPct, allInsufficient };
   }, [indicators]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, HeatmapIndicator[]>();
+    const map = new Map<string, PublicHeatmapIndicator[]>();
     for (const cat of CATEGORIES) {
       map.set(
         cat,
@@ -87,6 +100,28 @@ export default function HeatmapPage() {
     }
     return map;
   }, [indicators]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <LoadingState message="Loading heatmap..." />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="p-6">
+        <ErrorState error={error} onRetry={() => refetch()} />
+      </div>
+    );
+  }
+  if (!heatmap) {
+    return (
+      <div className="p-6">
+        <EmptyState title="No heatmap data available" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -101,7 +136,7 @@ export default function HeatmapPage() {
           </p>
         </div>
         <p className="text-xs" style={{ color: "#475569" }}>
-          Last updated Mar 29, 2026
+          Viewed {formatToday(TODAY)}
         </p>
       </div>
 
@@ -143,8 +178,8 @@ export default function HeatmapPage() {
           { label: "Neutral", value: stats.neutral, color: "#64748B" },
           {
             label: "Bullish %",
-            value: `${stats.bullishPct.toFixed(1)}%`,
-            color: progressBarColor(stats.bullishPct),
+            value: stats.allInsufficient ? "—" : `${stats.bullishPct.toFixed(1)}%`,
+            color: stats.allInsufficient ? "#F59E0B" : progressBarColor(stats.bullishPct),
           },
         ].map((card) => (
           <div key={card.label} className="glass-card px-4 py-3">
@@ -163,39 +198,55 @@ export default function HeatmapPage() {
 
       {/* Main Table */}
       <div className="glass-card overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {[
-                "INDICATOR",
-                "LAST RELEASE",
-                "NEXT RELEASE",
-                "ACTUAL",
-                "FORECAST",
-                "PREVIOUS",
-                "SURPRISE",
-                "SCORE",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className="px-3 py-3 text-left label whitespace-nowrap"
-                  style={{ color: "#64748B" }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {CATEGORIES.map((cat) => {
-              const rows = grouped.get(cat);
-              if (!rows || rows.length === 0) return null;
-              return (
-                <CategoryGroup key={cat} category={cat} rows={rows} />
-              );
-            })}
-          </tbody>
-        </table>
+        {indicators.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              title="No indicators for this economy"
+              description="The backend returned an empty set for the selected economy."
+            />
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                {[
+                  "INDICATOR",
+                  "LAST RELEASE",
+                  "NEXT RELEASE",
+                  "ACTUAL",
+                  "FORECAST",
+                  "PREVIOUS",
+                  "SURPRISE",
+                  "SCORE",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-3 text-left label whitespace-nowrap"
+                    style={{ color: "#64748B" }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {CATEGORIES.map((cat) => {
+                const rows = grouped.get(cat);
+                if (!rows || rows.length === 0) return null;
+                return (
+                  <CategoryGroup key={cat} category={cat} rows={rows} today={TODAY} />
+                );
+              })}
+              {(() => {
+                const otherRows = indicators.filter(
+                  (i) => !CATEGORIES.includes(i.category as typeof CATEGORIES[number])
+                );
+                if (otherRows.length === 0) return null;
+                return <CategoryGroup key="OTHER" category="OTHER" rows={otherRows} today={TODAY} />;
+              })()}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Overall Economy Score */}
@@ -209,18 +260,26 @@ export default function HeatmapPage() {
               OVERALL BULLISH BIAS
             </p>
             <div className="flex items-baseline gap-3 mt-1">
-              <span
-                className="text-2xl font-bold tabular-nums"
-                style={{ color: progressBarColor(stats.bullishPct) }}
-              >
-                {stats.bullishPct.toFixed(1)}%
-              </span>
-              <span
-                className="text-sm font-medium"
-                style={{ color: "#94A3B8" }}
-              >
-                {biasLabel(stats.bullishPct)}
-              </span>
+              {stats.allInsufficient ? (
+                <span className="text-2xl font-bold" style={{ color: "#F59E0B" }}>
+                  No data
+                </span>
+              ) : (
+                <>
+                  <span
+                    className="text-2xl font-bold tabular-nums"
+                    style={{ color: progressBarColor(stats.bullishPct) }}
+                  >
+                    {stats.bullishPct.toFixed(1)}%
+                  </span>
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: "#94A3B8" }}
+                  >
+                    {biasLabel(stats.bullishPct)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -233,7 +292,7 @@ export default function HeatmapPage() {
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
-              width: `${stats.bullishPct}%`,
+              width: stats.allInsufficient ? "0%" : `${stats.bullishPct}%`,
               background: progressBarColor(stats.bullishPct),
             }}
           />
@@ -255,14 +314,17 @@ export default function HeatmapPage() {
 function CategoryGroup({
   category,
   rows,
+  today,
 }: {
   category: string;
-  rows: HeatmapIndicator[];
+  rows: PublicHeatmapIndicator[];
+  today: Date;
 }) {
   const catColors: Record<string, string> = {
     "ECONOMIC GROWTH": "#3B82F6",
     INFLATION: "#818CF8",
     "JOBS MARKET": "#F59E0B",
+    OTHER: "#64748B",
   };
 
   return (
@@ -284,79 +346,129 @@ function CategoryGroup({
           </div>
         </td>
       </tr>
-      {rows.map((ind) => (
-        <tr
-          key={ind.name}
-          className="transition-colors hover:bg-white/[0.03]"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        >
-          {/* Indicator */}
-          <td className="px-3 py-2.5">
-            <span className="font-semibold text-white">{ind.name}</span>
-            <br />
-            <span className="text-[10px]" style={{ color: "#475569" }}>
-              {ind.frequency}
-            </span>
-          </td>
-
-          {/* Last Release */}
-          <td
-            className="px-3 py-2.5 tabular-nums whitespace-nowrap"
-            style={{ color: ind.stale ? "#F59E0B" : "#94A3B8" }}
+      {rows.map((ind) => {
+        const isInsufficient = ind.outcome === 'insufficient_data';
+        const staleTooltip = ind.stale
+          ? ind.staleDate
+            ? `Data is more than 60 days old (last observation ${ind.staleDate})`
+            : "Data is more than 60 days old"
+          : undefined;
+        return (
+          <tr
+            key={ind.name}
+            className="transition-colors hover:bg-white/[0.03]"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
           >
-            {ind.lastRelease}
-          </td>
+            {/* Indicator */}
+            <td className="px-3 py-2.5">
+              <span className="font-semibold text-white">{ind.name}</span>
+              {ind.stale && (
+                <span
+                  title={staleTooltip}
+                  className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider align-middle"
+                  style={{
+                    background: "rgba(245,158,11,0.12)",
+                    color: "#F59E0B",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                  }}
+                >
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{ background: "#F59E0B" }}
+                    aria-hidden="true"
+                  />
+                  stale
+                </span>
+              )}
+              <br />
+              <span className="text-[10px]" style={{ color: "#475569" }}>
+                {ind.frequency}
+              </span>
+            </td>
 
-          {/* Next Release */}
-          <td
-            className="px-3 py-2.5 tabular-nums whitespace-nowrap"
-            style={nextReleaseDateStyle(ind.nextRelease)}
-          >
-            {ind.nextRelease}
-          </td>
-
-          {/* Actual */}
-          <td
-            className="px-3 py-2.5 font-medium tabular-nums"
-            style={{ color: actualColor(ind.surprise) }}
-          >
-            {ind.actual}
-          </td>
-
-          {/* Forecast */}
-          <td className="px-3 py-2.5 tabular-nums text-white">
-            {ind.forecast}
-          </td>
-
-          {/* Previous */}
-          <td
-            className="px-3 py-2.5 tabular-nums"
-            style={{ color: "#64748B" }}
-          >
-            {ind.previous}
-          </td>
-
-          {/* Surprise */}
-          <td className="px-3 py-2.5">
-            <span
-              className="inline-block px-2 py-0.5 rounded font-bold tabular-nums"
-              style={surpriseStyle(ind.surprise)}
+            {/* Last Release */}
+            <td
+              className="px-3 py-2.5 tabular-nums whitespace-nowrap"
+              style={{ color: ind.stale ? "#F59E0B" : "#94A3B8" }}
+              title={ind.stale ? staleTooltip : undefined}
             >
-              {ind.surprise}
-            </span>
-          </td>
+              {ind.lastRelease}
+            </td>
 
-          {/* Score */}
-          <td className="px-3 py-2.5">
-            <span
-              className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${scorePillClass(ind.score)}`}
+            {/* Next Release */}
+            <td
+              className="px-3 py-2.5 tabular-nums whitespace-nowrap"
+              style={nextReleaseDateStyle(ind.nextRelease, today)}
             >
-              {ind.score > 0 ? "+" : ""}
-              {ind.score}
-            </span>
-          </td>
-        </tr>
-      ))}
+              {ind.nextRelease}
+            </td>
+
+            {/* Actual */}
+            <td
+              className="px-3 py-2.5 font-medium tabular-nums"
+              style={{ color: isInsufficient || ind.actual === null ? "#94A3B8" : actualColor(ind.surprise) }}
+            >
+              {isInsufficient || ind.actual === null ? "—" : ind.actual}
+            </td>
+
+            {/* Forecast */}
+            <td className="px-3 py-2.5 tabular-nums text-white">
+              {isInsufficient || ind.forecast === null ? "—" : ind.forecast}
+            </td>
+
+            {/* Previous */}
+            <td
+              className="px-3 py-2.5 tabular-nums"
+              style={{ color: "#64748B" }}
+            >
+              {isInsufficient || ind.previous === null ? "—" : ind.previous}
+            </td>
+
+            {/* Surprise */}
+            <td className="px-3 py-2.5">
+              {isInsufficient || ind.surprise === null ? (
+                <span
+                  className="inline-block px-2 py-0.5 rounded font-bold tabular-nums"
+                  style={{ color: "#475569" }}
+                >
+                  —
+                </span>
+              ) : (
+                <span
+                  className="inline-block px-2 py-0.5 rounded font-bold tabular-nums"
+                  style={surpriseStyle(ind.surprise)}
+                >
+                  {ind.surprise}
+                </span>
+              )}
+            </td>
+
+            {/* Score */}
+            <td className="px-3 py-2.5">
+              {isInsufficient || ind.score === null ? (
+                <span
+                  className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold"
+                  style={{
+                    background: "rgba(245,158,11,0.12)",
+                    color: "#F59E0B",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                  }}
+                  title={ind.reason ?? undefined}
+                >
+                  No data
+                </span>
+              ) : (
+                <span
+                  className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${scorePillClass(ind.score)}`}
+                >
+                  {ind.score > 0 ? "+" : ""}
+                  {ind.score}
+                </span>
+              )}
+            </td>
+          </tr>
+        );
+      })}
     </>
   );
 }

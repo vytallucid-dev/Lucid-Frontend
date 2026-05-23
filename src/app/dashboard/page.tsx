@@ -444,7 +444,7 @@ export default function DashboardPage() {
   const activeAccounts = allAccounts.filter((a) => a.status === "Active");
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-page)", color: "var(--text-primary)" }}>
+    <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
       {/* Toast */}
       {showChatToast && (
         <div
@@ -455,11 +455,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-8 px-8 py-8 max-w-[1400px] mx-auto">
+      <div className="flex flex-col gap-8 px-8 py-8 max-w-350 mx-auto">
 
         {/* ── Section 1: Hero ────────────────────────────────────────────────── */}
         <div
-          className="glass-card p-8"
+          className="glass-card p-8 -z-1"
           style={{ padding: 32 }}
         >
           {/* Greeting + status */}

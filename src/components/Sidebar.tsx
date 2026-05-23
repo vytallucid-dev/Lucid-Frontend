@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, NotebookPen, Telescope, MessageSquare, Settings, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { BarChart3, NotebookPen, Telescope, MessageSquare, Settings, ChevronsLeft, ChevronsRight, Activity, Database } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
+import { useAuth } from "@/lib/auth/auth-context";
 
 const navItems = [
   { label: "Dashboard", sublabel: "Overview", href: "/dashboard", icon: BarChart3 },
   { label: "Trading Hub", sublabel: "Journal & Accounts", href: "/trading/journal", icon: NotebookPen },
+  { label: "NIFTY", sublabel: "Fundamental Bias", href: "/nifty/pulse", icon: Activity },
   { label: "Scanner", sublabel: "Oracle", href: "/oracle", icon: Telescope },
   { label: "Lucid", sublabel: "AI Chat", href: "/lucid", icon: MessageSquare },
   { label: "Settings", sublabel: "", href: "/settings", icon: Settings },
@@ -16,13 +18,21 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
+  const { isAdmin } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-    // Trading Hub: match any /trading/* route
     if (href === "/trading/journal") return pathname.startsWith("/trading");
+    if (href === "/nifty/pulse") return pathname.startsWith("/nifty");
     return pathname.startsWith(href);
   };
+
+  const visibleNavItems = [
+    ...navItems,
+    ...(isAdmin
+      ? [{ label: "Data", sublabel: "Admin Pipelines", href: "/data", icon: Database }]
+      : []),
+  ];
 
   return (
     <aside
@@ -70,7 +80,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-1 px-2">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = isActive(item.href);
           return (
             <Link

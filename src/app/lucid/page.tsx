@@ -1,6 +1,12 @@
 "use client";
 
-import { Sparkles, MessageSquare, Brain, TrendingUp, Shield } from "lucide-react";
+import {
+  Sparkles,
+  MessageSquare,
+  Brain,
+  TrendingUp,
+  Shield,
+} from "lucide-react";
 
 const features = [
   {
@@ -27,10 +33,7 @@ const features = [
 
 export default function LucidPage() {
   return (
-    <div
-      className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6 py-16"
-      style={{ background: "var(--bg-page)" }}
-    >
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6 py-16">
       {/* Glow orb backdrop */}
       <div
         aria-hidden="true"
@@ -50,7 +53,6 @@ export default function LucidPage() {
       />
 
       <div className="relative z-10 flex flex-col items-center max-w-2xl w-full text-center">
-
         {/* Phase badge */}
         <span
           className="pill mb-8"
@@ -174,7 +176,14 @@ export default function LucidPage() {
             }}
           >
             <Sparkles size={15} style={{ color: "#334155" }} />
-            <span style={{ fontSize: 13, color: "#334155", flex: 1, textAlign: "left" }}>
+            <span
+              style={{
+                fontSize: 13,
+                color: "#334155",
+                flex: 1,
+                textAlign: "left",
+              }}
+            >
               Ask Lucid anything about your trading...
             </span>
             <div

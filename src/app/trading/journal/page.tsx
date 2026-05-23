@@ -163,7 +163,6 @@ export default function JournalPage() {
   return (
     <div
       className="flex flex-col min-h-full"
-      style={{ background: "var(--bg-page)" }}
       onClick={() => filterOpen && setFilterOpen(false)}
     >
       {/* Page header */}
@@ -190,7 +189,6 @@ export default function JournalPage() {
       <div
         className="px-6 py-3 flex items-center justify-between gap-4 sticky top-0 z-30"
         style={{
-          background: "rgba(10, 14, 20, 0.9)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(148, 163, 184, 0.08)",
         }}

@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { cotData, type CotAsset } from "@/data/cot";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCot } from "@/hooks/useCot";
+import { type PublicCotAsset } from "@/lib/api/oracle";
 import { Sparkline } from "@/components/Sparkline";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
+import { EmptyState } from "@/components/state/EmptyState";
 
 type SortKey =
   | "asset"
@@ -47,6 +52,40 @@ function rowBorderColor(score: number): string | undefined {
   return undefined;
 }
 
+/**
+ * Null-safe numeric comparator. Nulls sort to the end regardless of direction.
+ */
+function compareNullableNum(a: number | null, b: number | null, dir: SortDir): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return dir === "asc" ? a - b : b - a;
+}
+
+/** Type predicate — narrows to a scored row with all numeric fields non-null. */
+type ScoredCotAsset = PublicCotAsset & {
+  longContracts: number;
+  shortContracts: number;
+  deltaLong: number;
+  deltaShort: number;
+  longPct: number;
+  shortPct: number;
+  netPctChange: number;
+  netPosition: number;
+  cotScore: number;
+  trend: number[];
+};
+
+function isScored(row: PublicCotAsset): row is ScoredCotAsset {
+  return row.outcome === "scored";
+}
+
+function InsufficientCell() {
+  return (
+    <td className="px-3 py-3 tabular-nums" style={{ color: "#334155" }}>—</td>
+  );
+}
+
 export default function CotPage() {
   const [sortKey, setSortKey] = useState<SortKey>("longPct");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -54,29 +93,31 @@ export default function CotPage() {
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoveredScore, setHoveredScore] = useState<string | null>(null);
 
-  // Chart data — always sorted by Long % descending
-  const chartSorted = useMemo(
-    () => [...cotData].sort((a, b) => b.longPct - a.longPct),
-    []
-  );
+  // Portal-mount gate — body isn't available during SSR.
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
-  // Table data — sorted by selected column
-  const tableSorted = useMemo(() => {
-    const arr = [...cotData];
+  const { data: assets, isLoading, error, refetch } = useCot();
+
+  // Bar chart only renders scored rows — long%/short% bars are meaningless without data.
+  const chartSorted = useMemo<ScoredCotAsset[]>(() => {
+    if (!assets) return [];
+    return assets.filter(isScored).sort((a, b) => b.longPct - a.longPct);
+  }, [assets]);
+
+  const tableSorted = useMemo<PublicCotAsset[]>(() => {
+    if (!assets) return [];
+    const arr = [...assets];
     arr.sort((a, b) => {
-      const aVal = a[sortKey] as number | string;
-      const bVal = b[sortKey] as number | string;
       if (sortKey === "asset") {
         return sortDir === "asc"
-          ? (aVal as string).localeCompare(bVal as string)
-          : (bVal as string).localeCompare(aVal as string);
+          ? a.asset.localeCompare(b.asset)
+          : b.asset.localeCompare(a.asset);
       }
-      return sortDir === "asc"
-        ? (aVal as number) - (bVal as number)
-        : (bVal as number) - (aVal as number);
+      return compareNullableNum(a[sortKey], b[sortKey], sortDir);
     });
     return arr;
-  }, [sortKey, sortDir]);
+  }, [assets, sortKey, sortDir]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -91,6 +132,10 @@ export default function CotPage() {
     if (sortKey !== key) return "";
     return sortDir === "asc" ? " ↑" : " ↓";
   }
+
+  if (isLoading) return <LoadingState message="Loading COT report..." />;
+  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (!assets || assets.length === 0) return <EmptyState title="No COT data available" />;
 
   const barHeight = 36;
   const barGap = 10;
@@ -125,165 +170,179 @@ export default function CotPage() {
         <h2 className="label mb-4" style={{ color: "#64748B" }}>
           Positioning Overview
         </h2>
-        <div className="relative">
-          {chartSorted.map((asset, i) => {
-            const isHovered = hoveredBar === asset.asset;
-            return (
-              <div
-                key={asset.asset}
-                className="flex items-center"
-                style={{
-                  height: barHeight,
-                  marginBottom: i < chartSorted.length - 1 ? barGap : 0,
-                }}
-                onMouseEnter={(e) => {
-                  setHoveredBar(asset.asset);
-                  setTooltipPos({ x: e.clientX, y: e.clientY });
-                }}
-                onMouseMove={(e) => {
-                  setTooltipPos({ x: e.clientX, y: e.clientY });
-                }}
-                onMouseLeave={() => setHoveredBar(null)}
-              >
-                {/* Label */}
+        {chartSorted.length === 0 ? (
+          <div className="flex items-center justify-center py-10">
+            <span
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
+              style={{
+                background: "rgba(245, 158, 11, 0.15)",
+                color: "#F59E0B",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+              }}
+            >
+              Pending CFTC ingestion
+            </span>
+          </div>
+        ) : (
+          <div className="relative">
+            {chartSorted.map((asset, i) => {
+              const isHovered = hoveredBar === asset.asset;
+              return (
                 <div
-                  className="shrink-0 text-xs font-medium tabular-nums"
-                  style={{ width: labelWidth, color: "#CBD5E1" }}
-                >
-                  <span className="mr-1">{asset.flag}</span>
-                  {asset.asset}
-                </div>
-
-                {/* Bar container */}
-                <div
-                  className="flex-1 relative rounded overflow-hidden"
+                  key={asset.asset}
+                  className="flex items-center"
                   style={{
                     height: barHeight,
-                    background: "rgba(255,255,255,0.03)",
+                    marginBottom: i < chartSorted.length - 1 ? barGap : 0,
                   }}
+                  onMouseEnter={(e) => {
+                    setHoveredBar(asset.asset);
+                    setTooltipPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseMove={(e) => {
+                    setTooltipPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseLeave={() => setHoveredBar(null)}
                 >
-                  {/* Long portion */}
+                  {/* Label */}
                   <div
-                    className="absolute inset-y-0 left-0 flex items-center justify-end pr-2 transition-opacity"
+                    className="shrink-0 text-xs font-medium tabular-nums"
+                    style={{ width: labelWidth, color: "#CBD5E1" }}
+                  >
+                    <span className="mr-1">{asset.flag}</span>
+                    {asset.asset}
+                  </div>
+
+                  {/* Bar container */}
+                  <div
+                    className="flex-1 relative rounded overflow-hidden"
                     style={{
-                      width: `${asset.longPct}%`,
-                      background: "linear-gradient(90deg, rgba(59,130,246,0.6), rgba(59,130,246,0.85))",
-                      opacity: isHovered ? 1 : 0.85,
+                      height: barHeight,
+                      background: "rgba(255,255,255,0.03)",
                     }}
                   >
-                    {asset.longPct >= 20 && (
-                      <span className="text-xs font-medium text-white tabular-nums">
+                    {/* Long portion */}
+                    <div
+                      className="absolute inset-y-0 left-0 flex items-center justify-end pr-2 transition-opacity"
+                      style={{
+                        width: `${asset.longPct}%`,
+                        background: "linear-gradient(90deg, rgba(59,130,246,0.6), rgba(59,130,246,0.85))",
+                        opacity: isHovered ? 1 : 0.85,
+                      }}
+                    >
+                      {asset.longPct >= 20 && (
+                        <span className="text-xs font-medium text-white tabular-nums">
+                          {asset.longPct.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                    {/* Short portion */}
+                    <div
+                      className="absolute inset-y-0 right-0 flex items-center justify-start pl-2 transition-opacity"
+                      style={{
+                        width: `${asset.shortPct}%`,
+                        background: "linear-gradient(90deg, rgba(239,68,68,0.7), rgba(239,68,68,0.5))",
+                        opacity: isHovered ? 1 : 0.85,
+                      }}
+                    >
+                      {asset.shortPct >= 20 && (
+                        <span className="text-xs font-medium text-white tabular-nums">
+                          {asset.shortPct.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                    {/* 50% center line */}
+                    <div
+                      className="absolute inset-y-0"
+                      style={{
+                        left: "50%",
+                        width: 1,
+                        borderLeft: "1px dashed rgba(255,255,255,0.15)",
+                      }}
+                    />
+                    {/* Long % beside bar if too narrow */}
+                    {asset.longPct < 20 && (
+                      <span
+                        className="absolute text-xs tabular-nums font-medium"
+                        style={{ left: `${asset.longPct + 1}%`, top: "50%", transform: "translateY(-50%)", color: "#3B82F6" }}
+                      >
                         {asset.longPct.toFixed(1)}%
                       </span>
                     )}
                   </div>
-                  {/* Short portion */}
-                  <div
-                    className="absolute inset-y-0 right-0 flex items-center justify-start pl-2 transition-opacity"
-                    style={{
-                      width: `${asset.shortPct}%`,
-                      background: "linear-gradient(90deg, rgba(239,68,68,0.7), rgba(239,68,68,0.5))",
-                      opacity: isHovered ? 1 : 0.85,
-                    }}
-                  >
-                    {asset.shortPct >= 20 && (
-                      <span className="text-xs font-medium text-white tabular-nums">
-                        {asset.shortPct.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                  {/* 50% center line */}
-                  <div
-                    className="absolute inset-y-0"
-                    style={{
-                      left: "50%",
-                      width: 1,
-                      borderLeft: "1px dashed rgba(255,255,255,0.15)",
-                    }}
-                  />
-                  {/* Long % beside bar if too narrow */}
-                  {asset.longPct < 20 && (
-                    <span
-                      className="absolute text-xs tabular-nums font-medium"
-                      style={{ left: `${asset.longPct + 1}%`, top: "50%", transform: "translateY(-50%)", color: "#3B82F6" }}
-                    >
-                      {asset.longPct.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
 
-                {/* Net change badge */}
-                <div className="shrink-0 flex justify-end" style={{ width: badgeWidth }}>
-                  <span
-                    className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 tabular-nums"
-                    style={{
-                      background:
-                        asset.netPctChange >= 0
-                          ? "rgba(16,185,129,0.15)"
-                          : "rgba(239,68,68,0.15)",
-                      color: asset.netPctChange >= 0 ? "#10B981" : "#EF4444",
-                    }}
-                  >
-                    {asset.netPctChange >= 0 ? "↑" : "↓"}
-                    {asset.netPctChange >= 0 ? "+" : ""}
-                    {asset.netPctChange.toFixed(2)}%
-                  </span>
+                  {/* Net change badge */}
+                  <div className="shrink-0 flex justify-end" style={{ width: badgeWidth }}>
+                    <span
+                      className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 tabular-nums"
+                      style={{
+                        background:
+                          asset.netPctChange >= 0
+                            ? "rgba(16,185,129,0.15)"
+                            : "rgba(239,68,68,0.15)",
+                        color: asset.netPctChange >= 0 ? "#10B981" : "#EF4444",
+                      }}
+                    >
+                      {asset.netPctChange >= 0 ? "↑" : "↓"}
+                      {asset.netPctChange >= 0 ? "+" : ""}
+                      {asset.netPctChange.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bar Tooltip */}
-        {hoveredBar && (
-          <div
-            className="fixed z-50 bg-blue-950 px-3 py-2.5 text-xs space-y-1 pointer-events-none"
-            style={{
-              left: tooltipPos.x + 12,
-              top: tooltipPos.y - 60,
-              minWidth: 200,
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            {(() => {
-              const a = cotData.find((d) => d.asset === hoveredBar)!;
-              return (
-                <>
-                  <div className="font-semibold text-white mb-1">
-                    {a.flag} {a.asset}
-                  </div>
-                  <div style={{ color: "#94A3B8" }}>
-                    Long Contracts:{" "}
-                    <span className="text-white tabular-nums">{a.longContracts.toLocaleString()}</span>
-                  </div>
-                  <div style={{ color: "#94A3B8" }}>
-                    Short Contracts:{" "}
-                    <span className="text-white tabular-nums">{a.shortContracts.toLocaleString()}</span>
-                  </div>
-                  <div style={{ color: "#94A3B8" }}>
-                    Net Position:{" "}
-                    <span
-                      className="tabular-nums font-medium"
-                      style={{ color: a.netPosition >= 0 ? "#10B981" : "#EF4444" }}
-                    >
-                      {signed(a.netPosition)}
-                    </span>
-                  </div>
-                  <div style={{ color: "#94A3B8" }}>
-                    Net Change:{" "}
-                    <span
-                      className="tabular-nums font-medium"
-                      style={{ color: a.netPctChange >= 0 ? "#10B981" : "#EF4444" }}
-                    >
-                      {a.netPctChange >= 0 ? "+" : ""}
-                      {a.netPctChange.toFixed(2)}%
-                    </span>
-                  </div>
-                </>
               );
-            })()}
+            })}
           </div>
         )}
+
+        {/* Bar Tooltip — portaled to body so it escapes the glass-card's backdrop-filter
+            containing block (which would otherwise trap position:fixed below sibling cards). */}
+        {hoveredBar && portalReady && (() => {
+          const a = chartSorted.find((d) => d.asset === hoveredBar);
+          if (!a) return null;
+          return createPortal(
+            <div
+              className="fixed z-100 bg-blue-950 px-3 py-2.5 text-xs space-y-1 pointer-events-none rounded-md"
+              style={{
+                left: tooltipPos.x + 12,
+                top: tooltipPos.y - 60,
+                minWidth: 200,
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <div className="font-semibold text-white mb-1">
+                {a.flag} {a.asset}
+              </div>
+              <div style={{ color: "#94A3B8" }}>
+                Long Contracts:{" "}
+                <span className="text-white tabular-nums">{a.longContracts.toLocaleString()}</span>
+              </div>
+              <div style={{ color: "#94A3B8" }}>
+                Short Contracts:{" "}
+                <span className="text-white tabular-nums">{a.shortContracts.toLocaleString()}</span>
+              </div>
+              <div style={{ color: "#94A3B8" }}>
+                Net Position:{" "}
+                <span
+                  className="tabular-nums font-medium"
+                  style={{ color: a.netPosition >= 0 ? "#10B981" : "#EF4444" }}
+                >
+                  {signed(a.netPosition)}
+                </span>
+              </div>
+              <div style={{ color: "#94A3B8" }}>
+                Net Change:{" "}
+                <span
+                  className="tabular-nums font-medium"
+                  style={{ color: a.netPctChange >= 0 ? "#10B981" : "#EF4444" }}
+                >
+                  {a.netPctChange >= 0 ? "+" : ""}
+                  {a.netPctChange.toFixed(2)}%
+                </span>
+              </div>
+            </div>,
+            document.body,
+          );
+        })()}
       </div>
 
       {/* SECTION 2 + 3: Data Table */}
@@ -323,11 +382,72 @@ export default function CotPage() {
           </thead>
           <tbody>
             {tableSorted.map((a) => {
+              if (!isScored(a)) {
+                // Insufficient data row — amber badge in COT SCORE column, em-dashes elsewhere.
+                return (
+                  <tr
+                    key={a.asset}
+                    className="transition-colors hover:bg-white/3"
+                    style={{
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderLeft: "2px solid transparent",
+                    }}
+                  >
+                    {/* Asset */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span>{a.flag}</span>
+                        <div>
+                          <span className="font-semibold text-white">{a.asset}</span>
+                          <span
+                            className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded"
+                            style={{
+                              background: "rgba(255,255,255,0.05)",
+                              color: "#64748B",
+                            }}
+                          >
+                            {a.type}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* 8 numeric columns → em-dash */}
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+                    <InsufficientCell />
+
+                    {/* COT Score → amber "No data yet" badge */}
+                    <td className="px-3 py-3">
+                      <span
+                        title={a.reason ?? undefined}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                        style={{
+                          background: "rgba(245, 158, 11, 0.15)",
+                          color: "#F59E0B",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                        }}
+                      >
+                        No data yet
+                      </span>
+                    </td>
+
+                    {/* Trend → em-dash */}
+                    <td className="px-3 py-3 tabular-nums" style={{ color: "#334155" }}>—</td>
+                  </tr>
+                );
+              }
+
               const borderColor = rowBorderColor(a.cotScore);
               return (
                 <tr
                   key={a.asset}
-                  className="transition-colors hover:bg-white/[0.03]"
+                  className="transition-colors hover:bg-white/3"
                   style={{
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     borderLeft: borderColor ? `2px solid ${borderColor}` : "2px solid transparent",
@@ -419,7 +539,7 @@ export default function CotPage() {
                       {a.cotScore > 0 ? "+" : ""}
                       {a.cotScore}
                     </span>
-                    {hoveredScore === a.asset && (
+                    {hoveredScore === a.asset && a.scoreTooltip && (
                       <div
                         className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 glass-card px-3 py-2 text-[11px] whitespace-nowrap pointer-events-none"
                         style={{

@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Search, X } from "lucide-react";
 import {
-  demoAssets,
-  getBiasColor,
   getScoreColor,
   getBiasPillClass,
-  type AssetData,
-  type IndicatorValue,
   type BiasType,
 } from "@/data/assets";
+import { useAssets } from "@/hooks/useAssets";
+import { type PublicAssetData } from "@/lib/api/oracle";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
+import { EmptyState } from "@/components/state/EmptyState";
 
 type BiasFilter = "All" | "Bullish" | "Bearish" | "Neutral";
 type SortOption = "score-desc" | "score-asc" | "alpha";
 
-const indicatorColumns: { key: keyof AssetData; label: string }[] = [
+type IndicatorKey =
+  | "gdp" | "pmiM" | "pmiS" | "retail" | "consConf"
+  | "cpi" | "ppi" | "pce" | "yield"
+  | "nfp" | "unemp" | "claims" | "adp" | "jolts";
+
+const indicatorColumns: { key: IndicatorKey; label: string }[] = [
   { key: "gdp", label: "GDP" },
   { key: "pmiM", label: "PMI(M)" },
   { key: "pmiS", label: "PMI(S)" },
@@ -38,14 +45,60 @@ const columnGroups = [
   { label: "JOBS MARKET", span: 5, color: "#F59E0B" },
 ];
 
-function IndicatorCell({ value }: { value: IndicatorValue }) {
+// Indicator → group mapping for drawer subtotals. Mirrors columnGroups spans.
+const INDICATOR_GROUPS: { label: string; color: string; keys: IndicatorKey[] }[] = [
+  { label: "Economic Growth", color: "#3B82F6", keys: ["gdp", "pmiM", "pmiS", "retail", "consConf"] },
+  { label: "Inflation", color: "#818CF8", keys: ["cpi", "ppi", "pce", "yield"] },
+  { label: "Jobs Market", color: "#F59E0B", keys: ["nfp", "unemp", "claims", "adp", "jolts"] },
+];
+
+const INDICATOR_LABELS: Record<IndicatorKey, string> = {
+  gdp: "GDP", pmiM: "Manufacturing PMI", pmiS: "Services PMI",
+  retail: "Retail Sales", consConf: "Consumer Confidence",
+  cpi: "CPI", ppi: "PPI", pce: "PCE", yield: "Yield",
+  nfp: "NFP", unemp: "Unemployment", claims: "Jobless Claims",
+  adp: "ADP", jolts: "JOLTS",
+};
+
+// Compute per-group subtotals from a row's per-indicator scores.
+function computeGroupSubtotals(row: PublicAssetData) {
+  return INDICATOR_GROUPS.map((g) => {
+    let subtotal = 0;
+    let scoredCount = 0;
+    for (const k of g.keys) {
+      const v = row[k];
+      if (v !== null) {
+        subtotal += v;
+        scoredCount += 1;
+      }
+    }
+    return { label: g.label, color: g.color, subtotal, scoredCount, total: g.keys.length };
+  });
+}
+
+// Top contributing indicators sorted by absolute score, ties broken by label.
+function topContributors(row: PublicAssetData, n: number): { key: IndicatorKey; label: string; value: number }[] {
+  const contributors: { key: IndicatorKey; label: string; value: number }[] = [];
+  for (const g of INDICATOR_GROUPS) {
+    for (const k of g.keys) {
+      const v = row[k];
+      if (v !== null && v !== 0) {
+        contributors.push({ key: k, label: INDICATOR_LABELS[k], value: v });
+      }
+    }
+  }
+  contributors.sort((a, b) => Math.abs(b.value) - Math.abs(a.value) || a.label.localeCompare(b.label));
+  return contributors.slice(0, n);
+}
+
+function IndicatorCell({ value }: { value: number | null }) {
   if (value === null) {
     return (
       <td
         className="px-2 py-2.5 text-center text-xs"
         style={{ color: "#334155" }}
       >
-        N/A
+        —
       </td>
     );
   }
@@ -75,7 +128,17 @@ function IndicatorCell({ value }: { value: IndicatorValue }) {
   );
 }
 
-function CotCell({ value }: { value: number }) {
+function CotCell({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <td
+        className="px-2 py-2.5 text-center text-xs"
+        style={{ color: "#334155" }}
+      >
+        —
+      </td>
+    );
+  }
   const color = value > 0 ? "#10B981" : value < 0 ? "#EF4444" : "#334155";
   const bg =
     value > 0
@@ -121,22 +184,29 @@ function BiasFilterButton({
   );
 }
 
+function getRowBorder(bias: BiasType | null) {
+  if (bias === "Strong Bullish") return "2px solid rgba(16, 185, 129, 0.5)";
+  if (bias === "Strong Bearish") return "2px solid rgba(239, 68, 68, 0.5)";
+  return "2px solid transparent";
+}
+
 export default function TopSetupsPage() {
   const [biasFilter, setBiasFilter] = useState<BiasFilter>("All");
   const [sortBy, setSortBy] = useState<SortOption>("score-desc");
   const [search, setSearch] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<AssetData | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<PublicAssetData | null>(null);
+
+  const { data: assets, isLoading, error, refetch } = useAssets();
 
   const filtered = useMemo(() => {
-    let result = [...demoAssets];
+    const list = assets ?? [];
+    let result = [...list];
 
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((a) => a.asset.toLowerCase().includes(q));
     }
 
-    // Bias filter
     if (biasFilter !== "All") {
       result = result.filter((a) => {
         if (biasFilter === "Bullish")
@@ -147,30 +217,42 @@ export default function TopSetupsPage() {
       });
     }
 
-    // Sort
-    if (sortBy === "score-desc") result.sort((a, b) => b.score - a.score);
-    else if (sortBy === "score-asc") result.sort((a, b) => a.score - b.score);
-    else result.sort((a, b) => a.asset.localeCompare(b.asset));
+    if (sortBy === "score-desc") {
+      result.sort((a, b) => {
+        if (a.score === null && b.score === null) return 0;
+        if (a.score === null) return 1;
+        if (b.score === null) return -1;
+        return b.score - a.score;
+      });
+    } else if (sortBy === "score-asc") {
+      result.sort((a, b) => {
+        if (a.score === null && b.score === null) return 0;
+        if (a.score === null) return 1;
+        if (b.score === null) return -1;
+        return a.score - b.score;
+      });
+    } else {
+      result.sort((a, b) => a.asset.localeCompare(b.asset));
+    }
 
     return result;
-  }, [biasFilter, sortBy, search]);
+  }, [assets, biasFilter, sortBy, search]);
 
   const counts = useMemo(() => {
-    const bullish = demoAssets.filter(
+    const list = assets ?? [];
+    const bullish = list.filter(
       (a) => a.bias === "Bullish" || a.bias === "Strong Bullish",
     ).length;
-    const bearish = demoAssets.filter(
+    const bearish = list.filter(
       (a) => a.bias === "Bearish" || a.bias === "Strong Bearish",
     ).length;
-    const neutral = demoAssets.filter((a) => a.bias === "Neutral").length;
-    return { total: demoAssets.length, bullish, bearish, neutral };
-  }, []);
+    const neutral = list.filter((a) => a.bias === "Neutral").length;
+    return { total: list.length, bullish, bearish, neutral };
+  }, [assets]);
 
-  function getRowBorder(bias: BiasType) {
-    if (bias === "Strong Bullish") return "2px solid rgba(16, 185, 129, 0.5)";
-    if (bias === "Strong Bearish") return "2px solid rgba(239, 68, 68, 0.5)";
-    return "2px solid transparent";
-  }
+  if (isLoading) return <LoadingState message="Loading top setups..." />;
+  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (!assets || assets.length === 0) return <EmptyState title="No assets available" />;
 
   return (
     <div className="p-6 relative">
@@ -372,71 +454,199 @@ export default function TopSetupsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((asset, idx) => (
-                <tr
-                  key={asset.asset}
-                  className="cursor-pointer transition-colors"
-                  onClick={() => setSelectedAsset(asset)}
-                  style={{
-                    borderLeft: getRowBorder(asset.bias),
-                    background: "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background =
-                      "rgba(59, 130, 246, 0.05)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  {/* Asset */}
-                  <td className="px-3 py-2.5 sticky left-0 z-10">
-                    <div className="flex items-center gap-2">
-                      <div className="pl-2">
-                        <p
-                          className="font-semibold text-[13px]"
-                          style={{ color: "#F1F5F9" }}
+              {filtered.map((row) => {
+                if (row.outcome === "scored") {
+                  return (
+                    <tr
+                      key={row.asset}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => setSelectedAsset(row)}
+                      style={{
+                        borderLeft: getRowBorder(row.bias as BiasType),
+                        background: "transparent",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(59, 130, 246, 0.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <td className="px-3 py-2.5 sticky left-0 z-10">
+                        <div className="flex items-center gap-2">
+                          <div className="pl-2">
+                            <p
+                              className="font-semibold text-[13px]"
+                              style={{ color: "#F1F5F9" }}
+                            >
+                              {row.asset}
+                            </p>
+                            <p className="text-[10px]" style={{ color: "#64748B" }}>
+                              {row.type}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-2.5 text-center">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${getBiasPillClass(row.bias as BiasType)}`}
                         >
-                          {asset.asset}
-                        </p>
-                        <p className="text-[10px]" style={{ color: "#64748B" }}>
-                          {asset.type}
-                        </p>
+                          {row.bias}
+                        </span>
+                      </td>
+
+                      <td className="px-2 py-2.5 text-center">
+                        <span
+                          className="text-base font-bold tabular-nums"
+                          style={{ color: getScoreColor(row.score!) }}
+                        >
+                          {row.score! > 0 ? `+${row.score}` : row.score}
+                        </span>
+                      </td>
+
+                      <CotCell value={row.cot} />
+
+                      {indicatorColumns.map((col) => (
+                        <IndicatorCell
+                          key={col.key}
+                          value={row[col.key]}
+                        />
+                      ))}
+                    </tr>
+                  );
+                }
+
+                if (row.outcome === "insufficient_data") {
+                  return (
+                    <tr
+                      key={row.asset}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => setSelectedAsset(row)}
+                      style={{
+                        borderLeft: "2px solid transparent",
+                        background: "transparent",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(59, 130, 246, 0.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <td className="px-3 py-2.5 sticky left-0 z-10">
+                        <div className="flex items-center gap-2">
+                          <div className="pl-2">
+                            <p
+                              className="font-semibold text-[13px]"
+                              style={{ color: "#F1F5F9" }}
+                            >
+                              {row.asset}
+                            </p>
+                            <p className="text-[10px]" style={{ color: "#64748B" }}>
+                              {row.type}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-2.5 text-center">
+                        <span
+                          title={row.reason ?? undefined}
+                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                          style={{
+                            background: "rgba(245, 158, 11, 0.15)",
+                            color: "#F59E0B",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                          }}
+                        >
+                          No data yet
+                        </span>
+                      </td>
+
+                      <td className="px-2 py-2.5 text-center text-xs" style={{ color: "#334155" }}>—</td>
+                      <td className="px-2 py-2.5 text-center text-xs" style={{ color: "#334155" }}>—</td>
+
+                      {indicatorColumns.map((col) => (
+                        <td
+                          key={col.key}
+                          className="px-2 py-2.5 text-center text-xs"
+                          style={{ color: "#334155" }}
+                        >
+                          —
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                }
+
+                // outcome === "deferred"
+                return (
+                  <tr
+                    key={row.asset}
+                    className="cursor-pointer transition-colors"
+                    onClick={() => setSelectedAsset(row)}
+                    style={{
+                      borderLeft: "2px solid transparent",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(59, 130, 246, 0.05)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    {/* Asset name at full opacity */}
+                    <td className="px-3 py-2.5 sticky left-0 z-10">
+                      <div className="flex items-center gap-2">
+                        <div className="pl-2">
+                          <p
+                            className="font-semibold text-[13px]"
+                            style={{ color: "#F1F5F9" }}
+                          >
+                            {row.asset}
+                          </p>
+                          <p className="text-[10px]" style={{ color: "#64748B" }}>
+                            {row.type}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Bias pill */}
-                  <td className="px-2 py-2.5 text-center">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${getBiasPillClass(asset.bias)}`}
-                    >
-                      {asset.bias}
-                    </span>
-                  </td>
+                    {/* Grey "Deferred" badge — dimmed */}
+                    <td className="px-2 py-2.5 text-center" style={{ opacity: 0.5 }}>
+                      <span
+                        title={row.reason ?? undefined}
+                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                        style={{
+                          background: "rgba(100, 116, 139, 0.15)",
+                          color: "#64748B",
+                          border: "1px solid rgba(100, 116, 139, 0.3)",
+                        }}
+                      >
+                        Deferred
+                      </span>
+                    </td>
 
-                  {/* Score */}
-                  <td className="px-2 py-2.5 text-center">
-                    <span
-                      className="text-base font-bold tabular-nums"
-                      style={{ color: getScoreColor(asset.score) }}
-                    >
-                      {asset.score > 0 ? `+${asset.score}` : asset.score}
-                    </span>
-                  </td>
+                    <td className="px-2 py-2.5 text-center text-xs" style={{ color: "#334155", opacity: 0.5 }}>—</td>
+                    <td className="px-2 py-2.5 text-center text-xs" style={{ color: "#334155", opacity: 0.5 }}>—</td>
 
-                  {/* COT */}
-                  <CotCell value={asset.cot} />
-
-                  {/* Indicator columns */}
-                  {indicatorColumns.map((col) => (
-                    <IndicatorCell
-                      key={col.key}
-                      value={asset[col.key] as IndicatorValue}
-                    />
-                  ))}
-                </tr>
-              ))}
+                    {indicatorColumns.map((col) => (
+                      <td
+                        key={col.key}
+                        className="px-2 py-2.5 text-center text-xs"
+                        style={{ color: "#334155", opacity: 0.5 }}
+                      >
+                        —
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -469,7 +679,7 @@ export default function TopSetupsPage() {
           />
           {/* Panel */}
           <div
-            className="fixed top-0 right-0 h-full w-[380px] z-50 p-6 flex flex-col"
+            className="fixed top-0 right-0 h-full w-95 z-50 p-6 flex flex-col"
             style={{
               background: "rgba(10, 22, 40, 0.95)",
               backdropFilter: "blur(16px)",
@@ -477,11 +687,19 @@ export default function TopSetupsPage() {
             }}
           >
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{selectedAsset.flag}</span>
-                <div>
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className="text-2xl shrink-0 leading-none"
+                  style={{
+                    fontFamily:
+                      "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', 'Android Emoji', sans-serif",
+                  }}
+                >
+                  {selectedAsset.flag}
+                </span>
+                <div className="min-w-0">
                   <h2
-                    className="text-lg font-bold"
+                    className="text-lg font-bold truncate"
                     style={{ color: "#F1F5F9", letterSpacing: "-0.02em" }}
                   >
                     {selectedAsset.asset}
@@ -500,35 +718,159 @@ export default function TopSetupsPage() {
               </button>
             </div>
 
-            <div className="glass-card p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="label" style={{ color: "#64748B" }}>
-                  Overall Score
-                </span>
-                <span
-                  className="text-2xl font-bold tabular-nums"
-                  style={{ color: getScoreColor(selectedAsset.score) }}
-                >
-                  {selectedAsset.score > 0
-                    ? `+${selectedAsset.score}`
-                    : selectedAsset.score}
-                </span>
-              </div>
-              <span
-                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getBiasPillClass(selectedAsset.bias)}`}
-              >
-                {selectedAsset.bias}
-              </span>
+            <DrawerBody asset={selectedAsset} />
             </div>
-
-            <div className="glass-card p-4 flex-1 flex items-center justify-center">
-              <p className="text-sm text-center" style={{ color: "#64748B" }}>
-                Full scorecard coming in Asset Scorecard tab
-              </p>
-            </div>
-          </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ─── Drawer body ─── */
+
+function DrawerBody({ asset }: { asset: PublicAssetData }) {
+  if (asset.outcome !== "scored") {
+    return (
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
+        <div
+          className="glass-card p-4 flex flex-col items-center justify-center gap-3"
+          style={
+            asset.outcome === "insufficient_data"
+              ? { borderColor: "rgba(245, 158, 11, 0.25)", background: "rgba(245, 158, 11, 0.03)" }
+              : { borderColor: "rgba(100, 116, 139, 0.25)" }
+          }
+        >
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+            style={
+              asset.outcome === "insufficient_data"
+                ? {
+                    background: "rgba(245, 158, 11, 0.15)",
+                    color: "#F59E0B",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                  }
+                : {
+                    background: "rgba(100, 116, 139, 0.15)",
+                    color: "#64748B",
+                    border: "1px solid rgba(100, 116, 139, 0.3)",
+                  }
+            }
+          >
+            {asset.outcome === "insufficient_data" ? "Data unavailable" : "Scoring deferred"}
+          </span>
+          {asset.reason && (
+            <p className="text-xs text-center leading-relaxed" style={{ color: "#64748B" }}>
+              {asset.reason}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Scored — compute breakdown from row data.
+  const subtotals = computeGroupSubtotals(asset);
+  const top = topContributors(asset, 3);
+  const cotScore = asset.cot;
+  const overall = asset.score ?? 0;
+
+  return (
+    <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
+      {/* Overall score + bias */}
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="label" style={{ color: "#64748B" }}>Overall Score</span>
+          <span className="text-2xl font-bold tabular-nums" style={{ color: getScoreColor(overall) }}>
+            {overall > 0 ? `+${overall}` : overall}
+          </span>
+        </div>
+        {asset.bias && (
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getBiasPillClass(asset.bias as BiasType)}`}
+          >
+            {asset.bias}
+          </span>
+        )}
+      </div>
+
+      {/* Category subtotals */}
+      <div className="glass-card p-4">
+        <span className="label block mb-3" style={{ color: "#64748B" }}>By Category</span>
+        <div className="flex flex-col gap-2">
+          {subtotals.map((s) => {
+            const v = s.subtotal;
+            const color = v > 0 ? "#10B981" : v < 0 ? "#EF4444" : "#64748B";
+            return (
+              <div key={s.label} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: s.color }}>{s.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] tabular-nums" style={{ color: "#475569" }}>
+                    {s.scoredCount}/{s.total}
+                  </span>
+                  <span
+                    className="text-sm font-semibold tabular-nums w-8 text-right"
+                    style={{ color }}
+                  >
+                    {v > 0 ? `+${v}` : v}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Top contributors */}
+      {top.length > 0 && (
+        <div className="glass-card p-4">
+          <span className="label block mb-3" style={{ color: "#64748B" }}>
+            Top Contributors
+          </span>
+          <div className="flex flex-col gap-1.5">
+            {top.map((c) => {
+              const color = c.value > 0 ? "#10B981" : "#EF4444";
+              const bg = c.value > 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.10)";
+              return (
+                <div key={c.key} className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "#94A3B8" }}>{c.label}</span>
+                  <span
+                    className="text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
+                    style={{ background: bg, color }}
+                  >
+                    {c.value > 0 ? `+${c.value}` : c.value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* COT */}
+      {cotScore !== null && (
+        <div className="glass-card p-4 flex items-center justify-between">
+          <span className="label" style={{ color: "#64748B" }}>COT Score</span>
+          <span
+            className="text-sm font-semibold tabular-nums px-2 py-0.5 rounded"
+            style={{
+              background:
+                cotScore > 0 ? "rgba(16, 185, 129, 0.15)" : cotScore < 0 ? "rgba(239, 68, 68, 0.10)" : "transparent",
+              color: cotScore > 0 ? "#10B981" : cotScore < 0 ? "#EF4444" : "#64748B",
+            }}
+          >
+            {cotScore > 0 ? `+${cotScore}` : cotScore}
+          </span>
+        </div>
+      )}
+
+      {/* Link to full scorecard */}
+      <Link
+        href={`/oracle/scorecard?asset=${encodeURIComponent(asset.asset)}`}
+        className="text-xs font-medium mt-1 self-end flex items-center gap-1"
+        style={{ color: "#3B82F6" }}
+      >
+        View full scorecard →
+      </Link>
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { LandingPageContent } from "./landing/page-content";
 
 export default function RootPage() {
-  redirect("/dashboard");
+  return <LandingPageContent />;
 }
