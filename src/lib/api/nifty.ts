@@ -345,3 +345,71 @@ export async function getIndicatorDataPoints(
   );
   return { indicator: res.indicator, dataPoints: res.dataPoints };
 }
+
+// ─── Indicator Detail Endpoint ─────────────────────────────────────────────
+
+export interface NiftyIndicatorDetailEntry {
+  observationDate: string;
+  dataPoint: {
+    id: string;
+    value: number;
+    forecastValue: number | null;
+    previousValue: number | null;
+    dataQualityFlag: string | null;
+    source: string;
+    sourceMetadata: Record<string, unknown> | null;
+    notes: string | null;
+    enteredBy: string | null;
+    vintageDate: string;
+  };
+  score: {
+    id: string;
+    value: PublicIndicatorScore;
+    flag: string | null;
+    computedAt: string;
+    outcome: 'scored' | 'carry_forward' | 'insufficient_data';
+    flags: string[];
+    computationDetail: Record<string, unknown> | null;
+    rule: {
+      version: number;
+      ruleType: string;
+      ruleDefinition: Record<string, unknown>;
+    };
+  } | null;
+}
+
+export interface NiftyIndicatorDetailResponse {
+  indicator: {
+    code: string;
+    name: string;
+    frequency: string;
+    dataSource: string;
+    unit: string | null;
+    displayOrder: number;
+    compositeGroup: string | null;
+    country: string | null;
+    uiGroup: string | null;
+  };
+  activeRule: {
+    version: number;
+    ruleType: string;
+    ruleDefinition: Record<string, unknown>;
+  } | null;
+  count: number;
+  entries: NiftyIndicatorDetailEntry[];
+}
+
+export async function getIndicatorDetail(
+  code: string,
+  opts?: { limit?: number; from?: string; to?: string },
+): Promise<NiftyIndicatorDetailResponse> {
+  const params = new URLSearchParams();
+  if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
+  if (opts?.from) params.set('from', opts.from);
+  if (opts?.to) params.set('to', opts.to);
+  const qs = params.toString();
+  const res = await apiFetch<{ success: boolean } & NiftyIndicatorDetailResponse>(
+    `/api/nifty/indicators/${encodeURIComponent(code)}/detail${qs ? `?${qs}` : ''}`,
+  );
+  return res;
+}

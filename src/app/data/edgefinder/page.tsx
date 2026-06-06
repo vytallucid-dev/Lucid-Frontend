@@ -2,16 +2,20 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { ChevronRight, AlertCircle, Loader2, BarChart2, Play, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronRight, AlertCircle, Loader2, BarChart2, Play, CheckCircle2, XCircle, Clock, Info, Pencil, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   getAdminIndicators,
   getAdminLogs,
   triggerCronJob,
+  getCycleStances,
+  updateCycleStance,
   type AdminIndicator,
   type CronJobName,
   type FetchLog,
+  type CycleStance,
+  type CycleStanceRow,
   TRIGGER_TO_LOG_JOB_NAME,
 } from "@/lib/api/admin";
 import {
@@ -152,6 +156,295 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         <span style={{ color: "#64748B" }}>{PIPELINE_LABELS[pipeline]}</span>
       </p>
     </Link>
+  );
+}
+
+// ─── Cycle Stance Manager ─────────────────────────────────────────────────────
+
+const CURRENCY_FLAGS: Record<string, string> = {
+  USD: "🇺🇸",
+  EUR: "🇪🇺",
+  GBP: "🇬🇧",
+  JPY: "🇯🇵",
+};
+
+const STANCE_CONFIG: Record<CycleStance, { label: string; color: string; bg: string; border: string }> = {
+  CUTTING: { label: "Cutting", color: "#F97316", bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.3)" },
+  NEUTRAL: { label: "Neutral", color: "#94A3B8", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.2)" },
+  HIKING:  { label: "Hiking",  color: "#10B981", bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.3)"  },
+};
+
+function StanceBadge({ stance }: { stance: CycleStance }) {
+  const cfg = STANCE_CONFIG[stance];
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [stance, setStance] = useState<CycleStance>(row.stance);
+  const [effectiveFrom, setEffectiveFrom] = useState(row.effectiveFrom);
+  const [notes, setNotes] = useState(row.notes ?? "");
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      updateCycleStance(row.currencyCode, {
+        stance,
+        effectiveFrom: effectiveFrom || undefined,
+        notes: notes || undefined,
+      }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "cycle-stances"] });
+      const actionLabel =
+        res.action === "updated" ? "Stance updated" :
+        res.action === "created" ? "Stance created" :
+        "No change";
+      onSaved(`${row.currencyCode}: ${actionLabel}`);
+      setEditing(false);
+    },
+  });
+
+  // Sync form fields when the row is refreshed after a save
+  useEffect(() => {
+    setStance(row.stance);
+    setEffectiveFrom(row.effectiveFrom);
+    setNotes(row.notes ?? "");
+  }, [row.stance, row.effectiveFrom, row.notes]);
+
+  const inputStyle = {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#F1F5F9",
+  } as const;
+
+  const selectStyle = {
+    background: "#0f172a",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#F1F5F9",
+    colorScheme: "dark",
+  } as const;
+
+  return (
+    <div
+      className="rounded-xl p-4 flex flex-col gap-3"
+      style={{ background: "rgba(10,22,40,0.6)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xl leading-none">{CURRENCY_FLAGS[row.currencyCode] ?? "🏦"}</span>
+          <span className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+            {row.currencyCode}
+          </span>
+        </div>
+        {!editing ? (
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors"
+            style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", border: "1px solid rgba(255,255,255,0.08)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#94A3B8"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#64748B"; }}
+          >
+            <Pencil size={11} /> Edit
+          </button>
+        ) : (
+          <button
+            onClick={() => setEditing(false)}
+            className="rounded-lg p-1 transition-colors"
+            style={{ color: "#64748B" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#94A3B8"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#64748B"; }}
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Current stance display */}
+      {!editing && (
+        <>
+          <StanceBadge stance={row.stance} />
+          <p className="text-[10px]" style={{ color: "#475569" }}>
+            Since {row.effectiveFrom}
+          </p>
+          {row.notes && (
+            <p className="text-[10px]" style={{ color: "#64748B" }}>
+              {row.notes}
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Edit form */}
+      {editing && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
+              Stance <span style={{ color: "#EF4444" }}>*</span>
+            </label>
+            <select
+              value={stance}
+              onChange={(e) => setStance(e.target.value as CycleStance)}
+              className="rounded-lg px-3 py-2 text-sm outline-none"
+              style={selectStyle}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            >
+              <option value="CUTTING" style={{ background: "#0f172a", color: "#F1F5F9" }}>Cutting</option>
+              <option value="NEUTRAL" style={{ background: "#0f172a", color: "#F1F5F9" }}>Neutral</option>
+              <option value="HIKING" style={{ background: "#0f172a", color: "#F1F5F9" }}>Hiking</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
+              Effective From (optional)
+            </label>
+            <input
+              type="date"
+              value={effectiveFrom}
+              onChange={(e) => setEffectiveFrom(e.target.value)}
+              className="rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ ...inputStyle, colorScheme: "dark" }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
+              Notes (optional)
+            </label>
+            <input
+              type="text"
+              maxLength={500}
+              placeholder="e.g. Fed data-dependent stance"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="rounded-lg px-3 py-2 text-sm outline-none"
+              style={inputStyle}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            />
+          </div>
+
+          {mutation.error && (
+            <p className="text-xs" style={{ color: "#EF4444" }}>
+              {(mutation.error as Error).message}
+            </p>
+          )}
+
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all disabled:opacity-50"
+            style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
+          >
+            {mutation.isPending ? (
+              <><Loader2 size={13} className="animate-spin" /> Saving...</>
+            ) : (
+              "Save"
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CycleStanceManager() {
+  const [toast, setToast] = useState<string | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "cycle-stances"],
+    queryFn: getCycleStances,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  return (
+    <div
+      className="mb-6 rounded-2xl p-5"
+      style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+            Central Bank Cycle Stances
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+            Controls how CPI releases are scored per currency region.
+          </p>
+        </div>
+        <div className="group relative shrink-0">
+          <Info size={14} style={{ color: "#475569", cursor: "pointer" }} />
+          <div
+            className="absolute right-0 top-5 z-10 hidden group-hover:block w-72 rounded-xl p-3 text-[11px] leading-relaxed shadow-xl"
+            style={{
+              background: "rgba(15,23,42,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#94A3B8",
+            }}
+          >
+            During <span style={{ color: "#10B981" }}>HIKING</span> cycles, a CPI miss scores 0 (not &minus;1) because high
+            inflation supports the hiking narrative. During{" "}
+            <span style={{ color: "#F97316" }}>CUTTING</span> cycles, both beats and meets score +1 because lower
+            inflation supports further cuts.
+          </div>
+        </div>
+      </div>
+
+      {toast && (
+        <div
+          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+          style={{
+            background: "rgba(16,185,129,0.08)",
+            border: "1px solid rgba(16,185,129,0.25)",
+            color: "#6EE7B7",
+          }}
+        >
+          <CheckCircle2 size={14} style={{ color: "#10B981" }} />
+          {toast}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex items-center gap-2 py-6 justify-center" style={{ color: "#475569" }}>
+          <Loader2 size={16} className="animate-spin" />
+          <span className="text-sm">Loading stances…</span>
+        </div>
+      )}
+
+      {error && (
+        <div
+          className="mt-4 rounded-xl p-3 flex items-center gap-2"
+          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}
+        >
+          <AlertCircle size={14} />
+          <span className="text-xs">Failed to load cycle stances</span>
+        </div>
+      )}
+
+      {data && (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {data.stances.map((row) => (
+            <CycleStanceCard key={row.currencyCode} row={row} onSaved={setToast} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -371,6 +664,9 @@ export default function EdgefinderDataPage() {
           ))}
         </div>
       </div>
+
+      {/* Cycle Stance Manager */}
+      <CycleStanceManager />
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-20 justify-center" style={{ color: "#475569" }}>

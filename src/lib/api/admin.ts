@@ -215,6 +215,7 @@ export async function submitNiftyManualInput(params: {
   value: number;
   notes?: string;
   allow_overwrite?: boolean;
+  source_metadata?: Record<string, unknown>;
 }): Promise<{
   success: boolean;
   result: {
@@ -304,3 +305,51 @@ export const TRIGGER_TO_LOG_JOB_NAME: Record<CronJobName, string> = {
   pair_score_assembly: "edgefinder_pair_score_assembly",
   nifty_ind9_bridge: "nifty_ind9_bridge",
 };
+
+// ─── Cycle Stances ────────────────────────────────────────────────────────────
+
+export type CycleStance = "CUTTING" | "NEUTRAL" | "HIKING";
+
+export interface CycleStanceRow {
+  id: string;
+  currencyCode: string;
+  stance: CycleStance;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  notes: string | null;
+}
+
+export interface CycleStancesResponse {
+  success: boolean;
+  stances: CycleStanceRow[];
+  validCurrencies: string[];
+  validStances: CycleStance[];
+}
+
+export interface UpdateCycleStanceResponse {
+  success: boolean;
+  action: "updated" | "created" | "unchanged";
+  triggeredBy: string;
+  stance: CycleStanceRow;
+}
+
+export async function getCycleStances(): Promise<CycleStancesResponse> {
+  return apiFetch<CycleStancesResponse>("/api/admin/cycle-stances");
+}
+
+export async function updateCycleStance(
+  currencyCode: string,
+  params: {
+    stance: CycleStance;
+    effectiveFrom?: string;
+    notes?: string;
+  },
+): Promise<UpdateCycleStanceResponse> {
+  return apiFetch<UpdateCycleStanceResponse>(
+    `/api/admin/cycle-stances/${encodeURIComponent(currencyCode)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(params),
+    },
+  );
+}

@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink, ChevronRight, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { patterns } from "@/lib/nifty-demo-data";
-import { useScorecardHistory } from "@/hooks/useScorecardHistory";
-import type { PublicScorecard, PublicIndicator } from "@/lib/api/nifty";
+import {
+  getScorecardHistory,
+  getScorecardByDate,
+  getIndicatorDetail,
+  type PublicScorecard,
+  type PublicIndicator,
+} from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -48,15 +54,7 @@ function getRelatedPatterns(indId: number) {
   ).slice(0, 3);
 }
 
-function getIndicatorHistory(scorecards: PublicScorecard[], indId: number) {
-  return scorecards
-    .slice(0, 8)
-    .map((sc) => {
-      const ind = sc.indicators.find((i) => i.id === indId);
-      return ind ? { date: sc.date, score: ind.score, value: ind.value, magnitude: ind.magnitude } : null;
-    })
-    .filter((row): row is { date: string; score: PublicIndicator["score"]; value: string; magnitude: string } => row !== null);
-}
+
 
 export default function ScorecardPage() {
   // Suspense-wrap because the inner uses useSearchParams, which forces a
@@ -71,29 +69,61 @@ export default function ScorecardPage() {
 function ScorecardPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: history, isLoading, error, refetch } = useScorecardHistory();
 
   const [selectedScId, setSelectedScId] = useState<string | null>(null);
   const [drawerIndId, setDrawerIndId] = useState<number | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [drawerLimit, setDrawerLimit] = useState(30);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // Honor `?date=YYYY-MM-DD` on mount — preselect the matching scorecard if it
-  // falls within the fetched history window. Out-of-window dates fall back to
-  // the default (most-recent) and log so callers can see the miss.
+  // 1. Lite history for the date selector (no per-indicator breakdown)
+  const { data: historyLite, isLoading: historyLoading, error: historyError, refetch } = useQuery({
+    queryKey: ["nifty", "scorecard", "history-lite"],
+    queryFn: () => getScorecardHistory({ includeBreakdown: false, limit: 100 }),
+    staleTime: 60_000,
+  });
+
+  // Resolve selected date from lite history
+  const selectedLite = historyLite?.find((s) => s.id === selectedScId) ?? historyLite?.[0];
+  const selectedDate = selectedLite?.date;
+
+  // 2. Full scorecard for the selected date (lazy per-date fetch)
+  const { data: sc, isLoading: scLoading } = useQuery({
+    queryKey: ["nifty", "scorecard", "by-date", selectedDate],
+    queryFn: () => getScorecardByDate(selectedDate!),
+    enabled: !!selectedDate,
+    staleTime: 60_000,
+  });
+
+  // 3. Per-indicator detail — fetched lazily only when the drawer opens
+  const drawerInd = drawerIndId !== null ? sc?.indicators.find((i) => i.id === drawerIndId) : null;
+  const drawerCode = drawerInd?.code ?? null;
+
+  const { data: indicatorDetail, isLoading: detailLoading } = useQuery({
+    queryKey: ["nifty", "indicator-detail", drawerCode, drawerLimit],
+    queryFn: () => getIndicatorDetail(drawerCode!, { limit: drawerLimit }),
+    enabled: !!drawerCode,
+    staleTime: 30_000,
+  });
+
+  // URL param: preselect date on mount
   const dateParam = searchParams.get("date");
   useEffect(() => {
-    if (!dateParam || !history || history.length === 0) return;
-    const match = history.find((s) => s.date === dateParam);
+    if (!dateParam || !historyLite || historyLite.length === 0) return;
+    const match = historyLite.find((s) => s.date === dateParam);
     if (match) {
       setSelectedScId(match.id);
     } else {
-      console.warn(
-        `[scorecard] ?date=${dateParam} not found in fetched history; using latest`,
-      );
+      console.warn(`[scorecard] ?date=${dateParam} not found in fetched history; using latest`);
     }
-  }, [dateParam, history]);
+  }, [dateParam, historyLite]);
 
-  if (isLoading) {
+  // Reset row expansion when drawer indicator changes
+  useEffect(() => {
+    setExpandedRows(new Set());
+  }, [drawerCode]);
+
+  if (historyLoading || (!!selectedDate && scLoading && !sc)) {
     return (
       <div className="p-6">
         <LoadingState message="Loading scorecards..." />
@@ -101,15 +131,15 @@ function ScorecardPageInner() {
     );
   }
 
-  if (error) {
+  if (historyError) {
     return (
       <div className="p-6">
-        <ErrorState error={error} onRetry={() => refetch()} />
+        <ErrorState error={historyError} onRetry={() => refetch()} />
       </div>
     );
   }
 
-  if (!history || history.length === 0) {
+  if (!historyLite || historyLite.length === 0) {
     return (
       <div className="p-6">
         <EmptyState title="No scorecards available" />
@@ -117,11 +147,14 @@ function ScorecardPageInner() {
     );
   }
 
-  const scorecards = history;
+  if (!sc) {
+    return (
+      <div className="p-6">
+        <LoadingState message="Loading scorecard..." />
+      </div>
+    );
+  }
 
-  const sc: PublicScorecard =
-    scorecards.find((s) => s.id === selectedScId) ?? scorecards[0];
-  const drawerInd = drawerIndId !== null ? sc.indicators.find((i) => i.id === drawerIndId) : null;
   const missingCount = sc.missing_indicators.length;
 
   return (
@@ -157,7 +190,7 @@ function ScorecardPageInner() {
                 overflowY: "auto",
               }}
             >
-              {scorecards.map((s) => (
+              {historyLite.map((s) => (
                 <button
                   key={s.id}
                   className="w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-white/5 transition-colors"
@@ -166,7 +199,7 @@ function ScorecardPageInner() {
                 >
                   <span>{formatDate(s.date)}</span>
                   <span className="text-xs" style={{ color: "#475569" }}>
-                    {s.phase ? `${s.phase} · ` : ""}{netDisplay(s.net_score)}
+                    {netDisplay(s.net_score)}
                   </span>
                 </button>
               ))}
@@ -214,13 +247,22 @@ function ScorecardPageInner() {
       <div className="grid grid-cols-3 gap-4">
         {sc.indicators.map((ind) => {
           const safeScore = ind.score ?? 0;
+          const isCarried = ind.outcome === "carry_forward";
+          const isInsufficient = ind.outcome === "insufficient_data";
+          const borderColor = isInsufficient
+            ? "rgba(245,158,11,0.6)"
+            : isCarried
+            ? "rgba(100,116,139,0.5)"
+            : safeScore >= 1
+            ? "var(--positive)"
+            : safeScore <= -1
+            ? "var(--negative)"
+            : "rgba(148,163,184,0.2)";
           return (
           <button
             key={ind.id}
             className="glass-card p-4 text-left hover:bg-white/[0.04] transition-colors group"
-            style={{
-              borderLeft: `3px solid ${safeScore >= 1 ? "var(--positive)" : safeScore <= -1 ? "var(--negative)" : "rgba(148,163,184,0.2)"}`,
-            }}
+            style={{ borderLeft: `3px solid ${borderColor}` }}
             onClick={() => setDrawerIndId(ind.id)}
           >
             {/* Header */}
@@ -239,14 +281,36 @@ function ScorecardPageInner() {
                   {ind.composite}
                 </div>
               </div>
-              <span className={scorePillClass(ind.score)} style={{ fontSize: 18, minWidth: 40, padding: "4px 10px" }}>
-                {scoreDisplay(ind.score)}
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span className={scorePillClass(isInsufficient ? null : ind.score)} style={{ fontSize: 18, minWidth: 40, padding: "4px 10px", opacity: isCarried ? 0.6 : 1 }}>
+                  {isInsufficient ? "—" : scoreDisplay(ind.score)}
+                </span>
+                {isCarried && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(100,116,139,0.15)", color: "#94A3B8", border: "1px solid rgba(100,116,139,0.25)" }}>
+                    ↩ Carried
+                  </span>
+                )}
+                {isInsufficient && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>
+                    No data
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Value */}
-            <div className="font-mono text-lg font-semibold" style={{ color: "#E2E8F0" }}>{ind.value}</div>
-            <div className="text-xs mt-0.5" style={{ color: "#64748B" }}>{ind.magnitude}</div>
+            {isCarried ? (
+              <div className="text-xs" style={{ color: "#475569" }}>Using reading from {formatDate(ind.last_change_date)}</div>
+            ) : isInsufficient ? (
+              <div className="text-xs" style={{ color: "#64748B" }}>{ind.reason ?? "Insufficient data for scoring"}</div>
+            ) : (
+              <>
+                <div className="font-mono text-lg font-semibold" style={{ color: "#E2E8F0" }}>{ind.value || "—"}</div>
+                <div className="text-xs mt-0.5" style={{ color: "#64748B" }}>{ind.magnitude}</div>
+              </>
+            )}
 
             {/* Trajectory — Ind 3 only */}
             {ind.id === 3 && ind.trajectory_3m_avg && (
@@ -278,8 +342,8 @@ function ScorecardPageInner() {
 
             {/* Last changed */}
             <div className="mt-2 pt-2 border-t text-xs flex items-center gap-1.5" style={{ borderColor: "rgba(148,163,184,0.08)", color: "#475569" }}>
-              Last changed: {formatDate(ind.last_change_date)}
-              {ind.prev_score !== undefined && ind.prev_score !== ind.score && (
+              {isCarried ? "Last actual:" : "Last changed:"} {formatDate(ind.last_change_date)}
+              {!isCarried && !isInsufficient && ind.prev_score !== undefined && ind.prev_score !== ind.score && (
                 <span style={{ color: safeScore > (ind.prev_score ?? 0) ? "var(--positive)" : "var(--negative)" }}>
                   was {scoreDisplay(ind.prev_score ?? 0)} → {scoreDisplay(ind.score)}
                 </span>
@@ -302,6 +366,8 @@ function ScorecardPageInner() {
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
           {sc.indicators.map((ind) => {
             const safeScore = ind.score ?? 0;
+            const isCarried = ind.outcome === "carry_forward";
+            const isInsufficient = ind.outcome === "insufficient_data";
             return (
             <button
               key={ind.id}
@@ -315,15 +381,24 @@ function ScorecardPageInner() {
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${Math.max(0, (safeScore / 2)) * 100}%`,
-                    background: safeScore >= 1 ? "var(--positive)" : safeScore <= -1 ? "var(--negative)" : "rgba(148,163,184,0.3)",
+                    width: isInsufficient ? "0%" : `${Math.max(0, (safeScore / 2)) * 100}%`,
+                    background: isCarried
+                      ? "rgba(100,116,139,0.3)"
+                      : safeScore >= 1
+                      ? "var(--positive)"
+                      : safeScore <= -1
+                      ? "var(--negative)"
+                      : "rgba(148,163,184,0.3)",
+                    opacity: isCarried ? 0.5 : 1,
                   }}
                 />
               </div>
-              <span className={scorePillClass(ind.score)} style={{ fontSize: 11 }}>
-                {scoreDisplay(ind.score)}
+              <span className={scorePillClass(isInsufficient ? null : ind.score)} style={{ fontSize: 11, opacity: isCarried ? 0.6 : 1 }}>
+                {isInsufficient ? "—" : scoreDisplay(ind.score)}
               </span>
               <span className="text-xs truncate" style={{ color: "#475569", width: 80 }}>{ind.short}</span>
+              {isCarried && <span className="text-[9px]" style={{ color: "#64748B" }}>↩</span>}
+              {isInsufficient && <span className="text-[9px]" style={{ color: "#F59E0B" }}>!</span>}
             </button>
             );
           })}
@@ -339,6 +414,21 @@ function ScorecardPageInner() {
       >
         {drawerInd && (
           <div className="p-6 space-y-6">
+            {/* Carry-forward note */}
+            {drawerInd.outcome === "carry_forward" && (
+              <div
+                className="rounded-lg p-3 text-xs"
+                style={{
+                  background: "rgba(100,116,139,0.08)",
+                  border: "1px solid rgba(100,116,139,0.25)",
+                  color: "#94A3B8",
+                }}
+              >
+                <span className="font-semibold">↩ Carried forward</span> — no new reading on this scorecard date.
+                Score and value are carried from the last actual reading ({formatDate(drawerInd.last_change_date)}).
+              </div>
+            )}
+
             {/* Insufficient data note */}
             {drawerInd.outcome === "insufficient_data" && (
               <div
@@ -349,8 +439,8 @@ function ScorecardPageInner() {
                   color: "#F59E0B",
                 }}
               >
-                This indicator returned insufficient data
-                {drawerInd.reason ? ` — reason: ${drawerInd.reason}` : "."}
+                <span className="font-semibold">Insufficient data</span> — this indicator scores zero and does not contribute to the composite.
+                {drawerInd.reason && <span className="block mt-1" style={{ color: "#FCD34D" }}>Reason: {drawerInd.reason}</span>}
               </div>
             )}
 
@@ -362,21 +452,36 @@ function ScorecardPageInner() {
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <span className="text-xs" style={{ color: "#475569" }}>Score:</span>
-                  <span className={scorePillClass(drawerInd.score)} style={{ fontSize: 14 }}>{scoreDisplay(drawerInd.score)}</span>
+                  <span
+                    className={scorePillClass(drawerInd.outcome === "insufficient_data" ? null : drawerInd.score)}
+                    style={{ fontSize: 14, opacity: drawerInd.outcome === "carry_forward" ? 0.6 : 1 }}
+                  >
+                    {drawerInd.outcome === "insufficient_data" ? "—" : scoreDisplay(drawerInd.score)}
+                  </span>
                   <span className="text-xs" style={{ color: "#475569" }}>range −2 to +2</span>
                 </div>
-                <div className="flex gap-2 text-sm">
-                  <span style={{ color: "#475569" }}>Value:</span>
-                  <span className="font-mono font-semibold" style={{ color: "#E2E8F0" }}>{drawerInd.value}</span>
-                </div>
-                <div className="flex gap-2 text-sm">
-                  <span style={{ color: "#475569" }}>Context:</span>
-                  <span style={{ color: "#94A3B8" }}>{drawerInd.magnitude}</span>
-                </div>
-                {drawerInd.trajectory_3m_avg && (
+                {drawerInd.outcome === "scored" && (
+                  <>
+                    <div className="flex gap-2 text-sm">
+                      <span style={{ color: "#475569" }}>Value:</span>
+                      <span className="font-mono font-semibold" style={{ color: "#E2E8F0" }}>{drawerInd.value || "—"}</span>
+                    </div>
+                    <div className="flex gap-2 text-sm">
+                      <span style={{ color: "#475569" }}>Context:</span>
+                      <span style={{ color: "#94A3B8" }}>{drawerInd.magnitude}</span>
+                    </div>
+                    {drawerInd.trajectory_3m_avg && (
+                      <div className="flex gap-2 text-sm">
+                        <span style={{ color: "#475569" }}>Trajectory:</span>
+                        <span style={{ color: "#94A3B8" }}>{drawerInd.trajectory_3m_avg}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {drawerInd.outcome === "carry_forward" && (
                   <div className="flex gap-2 text-sm">
-                    <span style={{ color: "#475569" }}>Trajectory:</span>
-                    <span style={{ color: "#94A3B8" }}>{drawerInd.trajectory_3m_avg}</span>
+                    <span style={{ color: "#475569" }}>Last actual:</span>
+                    <span style={{ color: "#94A3B8" }}>{formatDate(drawerInd.last_change_date)}</span>
                   </div>
                 )}
               </div>
@@ -395,38 +500,161 @@ function ScorecardPageInner() {
               </div>
             </div>
 
-            {/* C — Recent History */}
+            {/* D — Data History */}
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B" }}>
-                Recent History
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
+                  Data History
+                </div>
+                <div className="flex gap-1">
+                  {([30, 90, 365] as const).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setDrawerLimit(n)}
+                      className="text-[10px] px-2 py-0.5 rounded-md transition-colors"
+                      style={{
+                        background: drawerLimit === n ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.04)",
+                        color: drawerLimit === n ? "#3B82F6" : "#64748B",
+                        border: `1px solid ${drawerLimit === n ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`,
+                      }}
+                    >
+                      {n}d
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.1)" }}>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr style={{ background: "rgba(14,20,30,0.6)" }}>
-                      {["Date", "Score", "Value", "Context"].map((h) => (
-                        <th key={h} className="text-left px-3 py-2" style={{ color: "#475569" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getIndicatorHistory(scorecards, drawerInd.id).map((row, i) => (
-                      <tr
-                        key={i}
-                        className="border-t"
-                        style={{ borderColor: "rgba(148,163,184,0.06)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}
-                      >
-                        <td className="px-3 py-2" style={{ color: "#94A3B8" }}>{formatDate(row.date)}</td>
-                        <td className="px-3 py-2">
-                          <span className={scorePillClass(row.score)}>{scoreDisplay(row.score)}</span>
-                        </td>
-                        <td className="px-3 py-2 font-mono" style={{ color: "#E2E8F0" }}>{row.value}</td>
-                        <td className="px-3 py-2" style={{ color: "#64748B" }}>{row.magnitude.slice(0, 40)}</td>
+
+              {detailLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8" style={{ color: "#475569" }}>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span className="text-xs">Loading data...</span>
+                </div>
+              ) : !indicatorDetail || indicatorDetail.entries.length === 0 ? (
+                <p className="text-xs text-center py-6" style={{ color: "#475569" }}>No data points found</p>
+              ) : (
+                <div className="rounded-lg overflow-x-auto" style={{ border: "1px solid rgba(148,163,184,0.1)" }}>
+                  <table className="w-full text-xs" style={{ minWidth: 560 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(14,20,30,0.6)" }}>
+                        {["Date", "Value", "Fcst", "Prev", "Score", "Outcome", "Flags", "Quality"].map((h) => (
+                          <th key={h} className="text-left px-2 py-2" style={{ color: "#475569" }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {indicatorDetail.entries.map((entry, i) => {
+                        const rowId = entry.dataPoint.id;
+                        const isExpanded = expandedRows.has(rowId);
+                        const outcome = entry.score?.outcome ?? null;
+                        const scoreVal = entry.score?.value ?? null;
+                        const hasDetail = !!(entry.score?.computationDetail && Object.keys(entry.score.computationDetail).length > 0);
+                        const hasNote = !!(entry.dataPoint.notes || entry.dataPoint.enteredBy);
+                        const isExpandable = hasDetail || hasNote;
+                        const toggleRow = () => {
+                          if (!isExpandable) return;
+                          setExpandedRows((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(rowId)) next.delete(rowId); else next.add(rowId);
+                            return next;
+                          });
+                        };
+                        return (
+                          <>
+                            <tr
+                              key={rowId}
+                              className="border-t"
+                              onClick={toggleRow}
+                              style={{
+                                borderColor: "rgba(148,163,184,0.06)",
+                                background: isExpanded ? "rgba(59,130,246,0.04)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                                cursor: isExpandable ? "pointer" : "default",
+                              }}
+                            >
+                              <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#94A3B8" }}>
+                                <span className="flex items-center gap-1">
+                                  {isExpandable && (
+                                    <ChevronRight size={10} className={`shrink-0 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`} style={{ color: "#475569" }} />
+                                  )}
+                                  {entry.observationDate}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2 font-mono" style={{ color: "#E2E8F0" }}>
+                                {entry.dataPoint.value != null ? entry.dataPoint.value.toLocaleString() : "—"}
+                                {entry.dataPoint.source === "manual" && (
+                                  <span className="ml-1 text-[8px] px-1 rounded" style={{ background: "rgba(167,139,250,0.15)", color: "#A78BFA" }}>
+                                    Manual
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-2 py-2 font-mono" style={{ color: "#64748B" }}>
+                                {entry.dataPoint.forecastValue != null ? entry.dataPoint.forecastValue.toLocaleString() : "–"}
+                              </td>
+                              <td className="px-2 py-2 font-mono" style={{ color: "#64748B" }}>
+                                {entry.dataPoint.previousValue != null ? entry.dataPoint.previousValue.toLocaleString() : "–"}
+                              </td>
+                              <td className="px-2 py-2">
+                                <span className={scorePillClass(scoreVal)} style={{ fontSize: 10 }}>
+                                  {scoreVal != null ? scoreDisplay(scoreVal) : "–"}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2">
+                                {outcome === "carry_forward" && (
+                                  <span className="text-[8px] font-semibold uppercase px-1 py-0.5 rounded" style={{ background: "rgba(100,116,139,0.15)", color: "#94A3B8" }}>↩ Carry</span>
+                                )}
+                                {outcome === "insufficient_data" && (
+                                  <span className="text-[8px] font-semibold uppercase px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>No data</span>
+                                )}
+                                {outcome === "scored" && (
+                                  <span className="text-[8px]" style={{ color: "#475569" }}>Scored</span>
+                                )}
+                                {outcome === null && <span style={{ color: "#334155" }}>–</span>}
+                              </td>
+                              <td className="px-2 py-2" style={{ color: "#475569", maxWidth: 100 }}>
+                                {entry.score?.flags.length
+                                  ? entry.score.flags.map((f) => (
+                                      <span key={f} className="inline-block text-[8px] mr-0.5 px-1 rounded" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748B" }}>{f}</span>
+                                    ))
+                                  : "–"}
+                              </td>
+                              <td className="px-2 py-2" style={{ color: entry.dataPoint.dataQualityFlag ? "#F59E0B" : "#334155" }}>
+                                {entry.dataPoint.dataQualityFlag ?? "–"}
+                              </td>
+                            </tr>
+                            {isExpanded && isExpandable && (
+                              <tr
+                                key={`${rowId}-detail`}
+                                className="border-t"
+                                style={{ borderColor: "rgba(148,163,184,0.04)", background: "rgba(14,20,30,0.5)" }}
+                              >
+                                <td colSpan={8} className="px-3 py-3 space-y-2">
+                                  {hasDetail && (
+                                    <div>
+                                      <p className="text-[10px] font-semibold mb-1" style={{ color: "#64748B" }}>Scoring detail</p>
+                                      <pre className="text-[10px] font-mono whitespace-pre-wrap" style={{ color: "#94A3B8" }}>
+                                        {JSON.stringify(entry.score!.computationDetail, null, 2)}
+                                      </pre>
+                                    </div>
+                                  )}
+                                  {entry.dataPoint.notes && (
+                                    <p className="text-[10px]" style={{ color: "#64748B" }}>
+                                      <span style={{ color: "#475569" }}>Note: </span>{entry.dataPoint.notes}
+                                    </p>
+                                  )}
+                                  {entry.dataPoint.enteredBy && (
+                                    <p className="text-[10px]" style={{ color: "#475569" }}>
+                                      Entered by: {entry.dataPoint.enteredBy}
+                                    </p>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* D — Related Patterns */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -102,6 +102,14 @@ function ResultBanner({ success, message, onDismiss }: { success: boolean; messa
 
 // ─── Pipeline panels ──────────────────────────────────────────────────────────
 
+const RBI_CYCLE_STATES: { value: string; label: string }[] = [
+  { value: "cutting", label: "Cutting \u2013 RBI is actively cutting rates" },
+  { value: "paused_after_hikes", label: "Paused After Hikes \u2013 hold following a hike cycle" },
+  { value: "hold_neutral", label: "Hold / Neutral \u2013 no strong bias" },
+  { value: "hawkish_hold", label: "Hawkish Hold \u2013 hold but tone is hawkish" },
+  { value: "hiking", label: "Hiking \u2013 RBI is actively hiking rates" },
+];
+
 function ManualEntryPanel({
   code,
   onSuccess,
@@ -109,10 +117,12 @@ function ManualEntryPanel({
   code: string;
   onSuccess: (msg: string) => void;
 }) {
+  const isRbiRate = code === "IND_NIFTY_04_RBI_RATE";
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
   const [allowOverwrite, setAllowOverwrite] = useState(false);
+  const [cycleState, setCycleState] = useState("");
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -122,12 +132,14 @@ function ManualEntryPanel({
         value: parseFloat(value),
         notes: notes || undefined,
         allow_overwrite: allowOverwrite,
+        source_metadata: isRbiRate ? { state: cycleState } : undefined,
       }),
     onSuccess: (res) => {
       const action = res.result?.action ?? "submitted";
       onSuccess(`Value ${action}: ${res.result?.value} for ${res.result?.observationDate}`);
       setValue("");
       setNotes("");
+      if (isRbiRate) setCycleState("");
     },
   });
 
@@ -183,6 +195,39 @@ function ManualEntryPanel({
         </div>
       </div>
 
+      {isRbiRate && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+            RBI Cycle State <span style={{ color: "#EF4444" }}>*</span>
+          </label>
+          <select
+            value={cycleState}
+            onChange={(e) => setCycleState(e.target.value)}
+            className="rounded-lg px-3 py-2 text-sm outline-none"
+            style={{
+              background: "#0f172a",
+              border: `1px solid ${cycleState === "" ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)"}`,
+              color: cycleState === "" ? "#64748B" : "#F1F5F9",
+              colorScheme: "dark",
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+            onBlur={(e) =>
+              (e.currentTarget.style.borderColor =
+                cycleState === "" ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)")
+            }
+          >
+            <option value="" disabled style={{ background: "#0f172a", color: "#64748B" }}>
+              Select cycle state...
+            </option>
+            {RBI_CYCLE_STATES.map((s) => (
+              <option key={s.value} value={s.value} style={{ background: "#0f172a", color: "#F1F5F9" }}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
           Notes (optional)
@@ -224,7 +269,7 @@ function ManualEntryPanel({
 
       <button
         onClick={() => mutation.mutate()}
-        disabled={mutation.isPending || !value || !date}
+        disabled={mutation.isPending || !value || !date || (isRbiRate && !cycleState)}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
         style={{
           background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6",
@@ -495,11 +540,80 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
 }
 
 function Ind9BridgePanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
+  const LOG_JOB = "nifty_ind9_bridge";
+  const STORAGE_KEY = "poll:nifty:ind9_bridge";
+
+  const [triggerTime, setTriggerTime] = useState<Date | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [lastLog, setLastLog] = useState<FetchLog | null>(null);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore polling state across navigation / page refresh
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const t = new Date(raw);
+      const elapsed = Date.now() - t.getTime();
+      if (elapsed > 90_000) { sessionStorage.removeItem(STORAGE_KEY); return; }
+      setTriggerTime(t);
+      setIsPolling(true);
+      pollTimerRef.current = setTimeout(() => {
+        setIsPolling(false);
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+      }, 90_000 - elapsed);
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); }, []);
+
   const mutation = useMutation({
     mutationFn: () => triggerCronJob("nifty_ind9_bridge"),
-    onSuccess: () =>
-      onSuccess("Ind9 Bridge triggered. It will read the latest EdgeFinder USD score and write it as NIFTY Ind9."),
+    onSuccess: () => {
+      setTriggerError(null);
+      setLastLog(null);
+      const fired = new Date();
+      setTriggerTime(fired);
+      try { sessionStorage.setItem(STORAGE_KEY, fired.toISOString()); } catch {}
+      setTimeout(() => setIsPolling(true), 1500);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = setTimeout(() => {
+        setIsPolling(false);
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+      }, 90_000);
+    },
+    onError: (err: Error) => setTriggerError(err.message),
   });
+
+  const { data: logsData } = useQuery({
+    queryKey: ["pollLogs", LOG_JOB],
+    queryFn: () => getAdminLogs({ job_name: LOG_JOB, limit: 3 }),
+    enabled: isPolling,
+    refetchInterval: 3_000,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (!isPolling || !logsData?.logs?.length || !triggerTime) return;
+    const fresh = logsData.logs.find(
+      (l) => l.completedAt != null && new Date(l.startedAt) >= triggerTime,
+    );
+    if (fresh) {
+      setLastLog(fresh);
+      setIsPolling(false);
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      if (fresh.status === "success") {
+        onSuccess("Ind9 Bridge completed — USD score written as NIFTY Ind9.");
+      }
+    }
+  }, [logsData, isPolling, triggerTime, onSuccess]);
+
+  const isPending = mutation.isPending || isPolling;
+  const statusColor =
+    lastLog?.status === "success" ? "#10B981" :
+    lastLog?.status === "failed"  ? "#EF4444" : "#F59E0B";
 
   return (
     <div className="flex flex-col gap-4">
@@ -513,24 +627,53 @@ function Ind9BridgePanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
         </span>
       </div>
 
-      {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
-          Error: {(mutation.error as Error).message}
-        </p>
+      {triggerError && (
+        <p className="text-xs" style={{ color: "#EF4444" }}>Error: {triggerError}</p>
       )}
 
       <button
         onClick={() => mutation.mutate()}
-        disabled={mutation.isPending}
+        disabled={isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(99,102,241,0.3)" : "#6366F1", color: "#fff" }}
+        style={{ background: isPending ? "rgba(99,102,241,0.3)" : "#6366F1", color: "#fff" }}
       >
         {mutation.isPending ? (
+          <><Loader2 size={14} className="animate-spin" /> Triggering...</>
+        ) : isPolling ? (
           <><Loader2 size={14} className="animate-spin" /> Running...</>
         ) : (
           <><RefreshCw size={14} /> Run Ind9 Bridge</>
         )}
       </button>
+
+      {isPolling && !lastLog && (
+        <div className="flex items-center gap-1.5">
+          <Clock size={13} style={{ color: "#64748B" }} />
+          <span className="text-xs" style={{ color: "#64748B" }}>Waiting for job to complete…</span>
+        </div>
+      )}
+
+      {lastLog && (
+        <div
+          className="rounded-lg px-3 py-2.5 flex flex-col gap-1"
+          style={{ background: `${statusColor}08`, border: `1px solid ${statusColor}20` }}
+        >
+          <div className="flex items-center gap-1.5">
+            {lastLog.status === "success"
+              ? <CheckCircle2 size={13} style={{ color: "#10B981" }} />
+              : lastLog.status === "failed"
+              ? <XCircle size={13} style={{ color: "#EF4444" }} />
+              : <AlertCircle size={13} style={{ color: "#F59E0B" }} />}
+            <span className="text-xs font-semibold capitalize" style={{ color: statusColor }}>{lastLog.status}</span>
+          </div>
+          <p className="text-xs" style={{ color: "#475569" }}>
+            {lastLog.durationMs != null
+              ? lastLog.durationMs < 1000 ? `${lastLog.durationMs}ms` : `${(lastLog.durationMs / 1000).toFixed(1)}s`
+              : "—"}
+            {" · "}+{lastLog.rowsInserted} in · ~{lastLog.rowsUpdated} up
+          </p>
+        </div>
+      )}
     </div>
   );
 }
