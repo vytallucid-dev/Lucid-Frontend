@@ -9,7 +9,8 @@ export type DataSource =
   | "manual"
   | "derived"
   | "yahoo"
-  | "forex_factory";
+  | "forex_factory"
+  | "eodhd";
 
 export type IndicatorFrequency =
   | "daily"

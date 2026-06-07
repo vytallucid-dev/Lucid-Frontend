@@ -57,6 +57,7 @@ export const DATA_SOURCE_LABELS: Record<string, string> = {
   derived: "Derived",
   yahoo: "Yahoo Finance",
   forex_factory: "Forex Factory",
+  eodhd: "EODHD (Market Data)",
   event_driven: "Event Driven",
 };
 
@@ -68,6 +69,7 @@ export const DATA_SOURCE_COLORS: Record<string, string> = {
   derived: "#64748B",
   yahoo: "#EC4899",
   forex_factory: "#10B981",
+  eodhd: "#14B8A6",
   event_driven: "#F97316",
 };
 

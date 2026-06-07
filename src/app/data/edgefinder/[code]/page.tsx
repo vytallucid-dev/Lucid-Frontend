@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -107,7 +107,7 @@ function ResultBanner({
 
 // ─── Pipeline panels ──────────────────────────────────────────────────────────
 
-function ForexFactoryPanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
+function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg: string) => void }) {
   const mutation = useMutation({
     mutationFn: () => triggerCronJob("forex_factory_fetch"),
     onSuccess: () =>
@@ -145,6 +145,49 @@ function ForexFactoryPanel({ onSuccess }: { onSuccess: (msg: string) => void }) 
           <><Play size={14} /> Run Forex Factory Fetch</>
         )}
       </button>
+
+      {/* Divider: the calendar fetch only covers the current week, so allow a
+          manual entry for backfilling a missed release or correcting a value. */}
+      <div className="flex items-center gap-3 pt-1">
+        <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
+        <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: "#475569" }}>
+          or enter a value manually
+        </span>
+        <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
+      </div>
+
+      <ManualEntryForm
+        code={code}
+        actualLabel="Actual Value"
+        actualPlaceholder="e.g. 115 (for 115K)"
+        submitLabel="Save Manual Value"
+        onSuccess={onSuccess}
+        instructions={
+          <div
+            className="flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-xs"
+            style={{ background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#CBD5E1" }}
+          >
+            <div className="flex items-start gap-2">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <span>
+                <strong>Manual entry / backfill / override.</strong> Use this to fill a release the
+                calendar fetch missed, or to override a date Forex Factory already filled if the value
+                looks wrong — your entry supersedes it and the prior value is kept as history.
+              </span>
+            </div>
+            <ul className="list-disc pl-7 space-y-0.5" style={{ color: "#94A3B8" }}>
+              <li><strong>Date</strong> = the release&apos;s date as shown in Recent Data Points (or on the Forex Factory calendar). Match that exact date so an override lands on the same row.</li>
+              <li>
+                Enter the number <strong>unit-stripped</strong>, exactly as it reads on Forex Factory
+                without the K / M / B / % suffix — e.g. NFP &quot;115K&quot; → <strong>115</strong>,
+                ISM &quot;52.7&quot; → <strong>52.7</strong>.
+              </li>
+              <li>Forecast / Previous are optional (also unit-stripped).</li>
+              <li>Re-submitting the same date &amp; value does nothing; a changed value saves a correction.</li>
+            </ul>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -265,13 +308,22 @@ function FredFetchPanel({
   );
 }
 
-function ManualRatePanel({
+// Reusable manual data-entry form. Posts to the EdgeFinder manual endpoint
+// (data_points, vintage-aware idempotent upsert). Used by the manual / rate
+// pipelines AND embedded in the Forex Factory panel for backfill/corrections.
+function ManualEntryForm({
   code,
-  isRateDecision,
+  instructions,
+  actualLabel,
+  actualPlaceholder,
+  submitLabel = "Submit Value",
   onSuccess,
 }: {
   code: string;
-  isRateDecision: boolean;
+  instructions: ReactNode;
+  actualLabel: string;
+  actualPlaceholder: string;
+  submitLabel?: string;
   onSuccess: (msg: string) => void;
 }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -303,27 +355,7 @@ function ManualRatePanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {isRateDecision ? (
-        <div
-          className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-          style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", color: "#FDBA74" }}
-        >
-          <Info size={14} className="mt-0.5 shrink-0" />
-          <span>
-            <strong>Rate Decision</strong> — enter the new rate <em>level</em> (e.g. 4.75 for 4.75%).
-            The system will automatically compute the basis-point change from the prior rate and store
-            both the level and the delta.
-          </span>
-        </div>
-      ) : (
-        <div
-          className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-          style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#C4B5FD" }}
-        >
-          <Info size={14} className="mt-0.5 shrink-0" />
-          <span>This indicator requires manual data entry. Fill in the observed value (and optionally forecast/previous).</span>
-        </div>
-      )}
+      {instructions}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
@@ -342,13 +374,13 @@ function ManualRatePanel({
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-            {isRateDecision ? "New Rate Level (%)" : "Actual Value"}{" "}
+            {actualLabel}{" "}
             <span style={{ color: "#EF4444" }}>*</span>
           </label>
           <input
             type="number"
             step="any"
-            placeholder={isRateDecision ? "e.g. 4.75" : "e.g. 2.1"}
+            placeholder={actualPlaceholder}
             value={actual}
             onChange={(e) => setActual(e.target.value)}
             className="rounded-lg px-3 py-2 text-sm outline-none"
@@ -409,10 +441,52 @@ function ManualRatePanel({
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Submitting...</>
         ) : (
-          <><Database size={14} /> Submit Value</>
+          <><Database size={14} /> {submitLabel}</>
         )}
       </button>
     </div>
+  );
+}
+
+function ManualRatePanel({
+  code,
+  isRateDecision,
+  onSuccess,
+}: {
+  code: string;
+  isRateDecision: boolean;
+  onSuccess: (msg: string) => void;
+}) {
+  const instructions = isRateDecision ? (
+    <div
+      className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
+      style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", color: "#FDBA74" }}
+    >
+      <Info size={14} className="mt-0.5 shrink-0" />
+      <span>
+        <strong>Rate Decision</strong> — enter the new rate <em>level</em> (e.g. 4.75 for 4.75%).
+        The system will automatically compute the basis-point change from the prior rate and store
+        both the level and the delta.
+      </span>
+    </div>
+  ) : (
+    <div
+      className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
+      style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#C4B5FD" }}
+    >
+      <Info size={14} className="mt-0.5 shrink-0" />
+      <span>This indicator requires manual data entry. Fill in the observed value (and optionally forecast/previous).</span>
+    </div>
+  );
+
+  return (
+    <ManualEntryForm
+      code={code}
+      instructions={instructions}
+      actualLabel={isRateDecision ? "New Rate Level (%)" : "Actual Value"}
+      actualPlaceholder={isRateDecision ? "e.g. 4.75" : "e.g. 2.1"}
+      onSuccess={onSuccess}
+    />
   );
 }
 
@@ -441,11 +515,24 @@ export default function EdgefinderIndicatorDetailPage() {
   const frequency = indicator?.frequency ?? "monthly";
   const pipeline = getEfPipelineFromCode(code, dataSource, frequency);
   const logJobName = getEfLogJobName(code, dataSource, frequency);
+  const manualJobName = `manual_input_${code.toLowerCase()}`;
 
   const { data: logsData, isLoading: logsLoading, refetch: refetchLogs } = useQuery({
     queryKey: ["admin", "logs", logJobName],
     queryFn: () => getAdminLogs({ job_name: logJobName, limit: 8 }),
     enabled: isAdmin,
+    staleTime: 30_000,
+  });
+
+  // Forex Factory indicators can also receive manual overrides/backfills, which
+  // log per-indicator as manual_input_<code>. Pull those too and merge into the
+  // log panel so manual entries are visible alongside the calendar fetches.
+  // (Manual/rate pipelines already use manual_input_<code> as their primary
+  // logJobName, so this second query is only needed for the FF pipeline.)
+  const { data: manualLogsData, refetch: refetchManualLogs } = useQuery({
+    queryKey: ["admin", "logs", manualJobName],
+    queryFn: () => getAdminLogs({ job_name: manualJobName, limit: 8 }),
+    enabled: isAdmin && pipeline === "forex_factory",
     staleTime: 30_000,
   });
 
@@ -462,6 +549,7 @@ export default function EdgefinderIndicatorDetailPage() {
     setTimeout(() => {
       refetchLatest();
       refetchLogs();
+      refetchManualLogs();
     }, 2000);
   };
 
@@ -477,7 +565,13 @@ export default function EdgefinderIndicatorDetailPage() {
   }
 
   const dataPoints: DataPoint[] = latestData?.data ?? [];
-  const logs: FetchLog[] = logsData?.logs ?? [];
+  // Merge fetch logs with manual-entry logs (FF only — other pipelines return an
+  // empty manual set), newest first, capped at 8.
+  const logs: FetchLog[] = [...(logsData?.logs ?? []), ...(manualLogsData?.logs ?? [])]
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+    .slice(0, 8);
+  const logJobLabel =
+    pipeline === "forex_factory" ? `${logJobName} + ${manualJobName}` : logJobName;
   const sourceColor = DATA_SOURCE_COLORS[dataSource] ?? "#64748B";
 
   return (
@@ -546,7 +640,7 @@ export default function EdgefinderIndicatorDetailPage() {
               </p>
             </div>
 
-            {pipeline === "forex_factory" && <ForexFactoryPanel onSuccess={handleSuccess} />}
+            {pipeline === "forex_factory" && <ForexFactoryPanel code={code} onSuccess={handleSuccess} />}
             {pipeline === "cftc" && <CftcPanel onSuccess={handleSuccess} />}
             {pipeline === "fred" && <FredFetchPanel code={code} onSuccess={handleSuccess} />}
             {(pipeline === "manual_rate" || pipeline === "manual") && (
@@ -707,7 +801,7 @@ export default function EdgefinderIndicatorDetailPage() {
           <div>
             <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>Recent Fetch Logs</h2>
             <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
-              Job: <span className="font-mono" style={{ color: "#475569" }}>{logJobName}</span>
+              Job: <span className="font-mono" style={{ color: "#475569" }}>{logJobLabel}</span>
             </p>
           </div>
           <button onClick={() => refetchLogs()} style={{ color: "#475569" }} title="Refresh">

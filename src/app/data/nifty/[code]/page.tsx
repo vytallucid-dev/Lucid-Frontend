@@ -49,11 +49,25 @@ const NIFTY_LOG_JOB_NAMES: Record<string, string> = {
   IND_NIFTY_07_DII_ABSORPTION: "nse_fii_dii",
   IND_NIFTY_08_VIX: "nse_vix",
   IND_NIFTY_09_USD_WEAKNESS: "nifty_ind9_bridge",
-  IND_NIFTY_10_DXY: "fred_fetch",
-  IND_NIFTY_11_BRENT: "fred_fetch",
-  IND_NIFTY_12_USDINR: "fred_fetch",
+  IND_NIFTY_10_DXY: "eodhd",
+  IND_NIFTY_11_BRENT: "eodhd",
+  IND_NIFTY_12_USDINR: "eodhd",
   IND_NIFTY_13_FII_LS_RATIO: "nse_participant_oi",
 };
+
+// Short, button-friendly source names. DATA_SOURCE_LABELS are too long for a
+// "Fetch from X" button, so the manual-fetch panel uses these to reflect the
+// indicator's actual data_source (e.g. EODHD vs FRED) instead of hardcoding FRED.
+const FETCH_SOURCE_LABELS: Record<string, string> = {
+  fred: "FRED",
+  eodhd: "EODHD",
+  nse_scrape: "NSE",
+};
+
+function fetchSourceLabel(dataSource: string | undefined): string {
+  if (!dataSource) return "FRED";
+  return FETCH_SOURCE_LABELS[dataSource] ?? dataSource.toUpperCase();
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -288,13 +302,17 @@ function ManualEntryPanel({
 
 function FredFetchPanel({
   code,
+  dataSource,
   onSuccess,
 }: {
   code: string;
+  dataSource?: string;
   onSuccess: (msg: string) => void;
 }) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  const sourceLabel = fetchSourceLabel(dataSource);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -303,7 +321,7 @@ function FredFetchPanel({
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       }),
-    onSuccess: () => onSuccess(`FRED fetch triggered for ${code}. Check logs for status.`),
+    onSuccess: () => onSuccess(`${sourceLabel} fetch triggered for ${code}. Check logs for status.`),
   });
 
   return (
@@ -314,7 +332,7 @@ function FredFetchPanel({
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
-          Fetches data from the US Federal Reserve (FRED) API. Optionally restrict the date range; omit both to fetch all available data.
+          Fetches data from the {sourceLabel} API. Optionally restrict the date range; omit both to fetch all available data.
         </span>
       </div>
 
@@ -374,7 +392,7 @@ function FredFetchPanel({
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Fetching...</>
         ) : (
-          <><Play size={14} /> Fetch from FRED</>
+          <><Play size={14} /> Fetch from {sourceLabel}</>
         )}
       </button>
     </div>
@@ -730,7 +748,11 @@ export default function NiftyIndicatorDetailPage() {
   const indicator = latestData?.indicator;
   const dataPoints: DataPoint[] = latestData?.data ?? [];
   const logs: FetchLog[] = logsData?.logs ?? [];
-  const sourceColor = DATA_SOURCE_COLORS["fred"] ?? "#64748B";
+  // Prefer the indicator's actual data_source; fall back to the pipeline only
+  // when it's unavailable (e.g. still loading). Keeps the header chip consistent
+  // with the list page (e.g. EODHD/teal for DXY/Brent/USD-INR, not FRED/blue).
+  const sourceKey = indicator?.dataSource ?? pipeline;
+  const sourceColor = DATA_SOURCE_COLORS[sourceKey] ?? "#64748B";
 
   return (
     <div className="px-6 py-6 max-w-6xl mx-auto w-full">
@@ -763,7 +785,7 @@ export default function NiftyIndicatorDetailPage() {
                 className="rounded-full px-2.5 py-0.5 text-xs font-medium"
                 style={{ background: `${sourceColor}14`, color: sourceColor, border: `1px solid ${sourceColor}28` }}
               >
-                {DATA_SOURCE_LABELS[pipeline === "fred" ? "fred" : pipeline === "manual" ? "manual" : "nse_scrape"] ?? pipeline}
+                {DATA_SOURCE_LABELS[sourceKey] ?? sourceKey}
               </span>
               {indicator?.frequency && (
                 <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -804,7 +826,7 @@ export default function NiftyIndicatorDetailPage() {
             </div>
 
             {pipeline === "manual" && <ManualEntryPanel code={code} onSuccess={handleSuccess} />}
-            {pipeline === "fred" && <FredFetchPanel code={code} onSuccess={handleSuccess} />}
+            {pipeline === "fred" && <FredFetchPanel code={code} dataSource={indicator?.dataSource} onSuccess={handleSuccess} />}
             {pipeline === "nse_vix" && <NseSimplePanel type="vix" onSuccess={handleSuccess} />}
             {pipeline === "nse_fii_dii" && <NseSimplePanel type="fii_dii" onSuccess={handleSuccess} />}
             {pipeline === "nse_participant_oi" && <NseParticipantOiPanel onSuccess={handleSuccess} />}
