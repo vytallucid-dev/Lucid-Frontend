@@ -86,6 +86,32 @@ function InsufficientCell() {
   );
 }
 
+/** COT-score-column badge for non-scored rows: slate "Deferred" or amber "No data yet". */
+function StatusBadge({ outcome, reason }: { outcome: PublicCotAsset["outcome"]; reason: string | null }) {
+  const deferred = outcome === "deferred";
+  return (
+    <span
+      title={reason ?? undefined}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+      style={
+        deferred
+          ? {
+              background: "rgba(100, 116, 139, 0.15)",
+              color: "#94A3B8",
+              border: "1px solid rgba(100, 116, 139, 0.3)",
+            }
+          : {
+              background: "rgba(245, 158, 11, 0.15)",
+              color: "#F59E0B",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+            }
+      }
+    >
+      {deferred ? "Deferred" : "No data yet"}
+    </span>
+  );
+}
+
 export default function CotPage() {
   const [sortKey, setSortKey] = useState<SortKey>("longPct");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -422,19 +448,9 @@ export default function CotPage() {
                     <InsufficientCell />
                     <InsufficientCell />
 
-                    {/* COT Score → amber "No data yet" badge */}
+                    {/* COT Score → "Deferred" (slate) or "No data yet" (amber) badge */}
                     <td className="px-3 py-3">
-                      <span
-                        title={a.reason ?? undefined}
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
-                        style={{
-                          background: "rgba(245, 158, 11, 0.15)",
-                          color: "#F59E0B",
-                          border: "1px solid rgba(245, 158, 11, 0.3)",
-                        }}
-                      >
-                        No data yet
-                      </span>
+                      <StatusBadge outcome={a.outcome} reason={a.reason} />
                     </td>
 
                     {/* Trend → em-dash */}

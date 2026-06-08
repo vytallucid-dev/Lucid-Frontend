@@ -191,7 +191,10 @@ export type AssetBias =
   | 'Bearish'
   | 'Strong Bearish';
 
-export type AssetType = 'Forex' | 'Commodity' | 'Index';
+export type AssetType = 'Forex' | 'Currency' | 'Commodity' | 'Index';
+
+/** COT page row outcome — deferred = no CFTC ingestion planned yet (SPY, NAS100). */
+export type CotOutcome = 'scored' | 'insufficient_data' | 'deferred';
 
 export interface PublicAssetData {
   asset: string;
@@ -245,7 +248,7 @@ export interface PublicCotAsset {
   cotScore: number | null;
   scoreTooltip: string;
   trend: number[] | null;
-  outcome: OracleOutcome;
+  outcome: CotOutcome;
   reason: string | null;
 }
 
