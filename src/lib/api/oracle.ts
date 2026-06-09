@@ -71,6 +71,7 @@ export interface PublicScorecardAsset {
   scoreHistory: number[] | null;
   outcome: AssetOutcome;
   reason: string | null;
+  lastUpdated: string | null;
 }
 
 // ─── FX Scorecard types ───────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ export interface PublicFxPairData {
   scoreHistory: number[] | null;
   outcome: AssetOutcome;
   reason: string | null;
+  lastUpdated: string | null;
 }
 
 // ─── Response envelope types (internal) ───────────────────────────────────────
@@ -219,6 +221,7 @@ export interface PublicAssetData {
   jolts: number | null;
   outcome: AssetOutcome;
   reason: string | null;
+  lastUpdated: string | null;
 }
 
 interface AssetsEnvelope {
@@ -250,6 +253,8 @@ export interface PublicCotAsset {
   trend: number[] | null;
   outcome: CotOutcome;
   reason: string | null;
+  dataAsOf: string | null;
+  releasedOn: string | null;
 }
 
 interface CotEnvelope {

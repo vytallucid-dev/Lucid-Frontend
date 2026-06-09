@@ -262,7 +262,7 @@ function OverviewCard({
 }) {
   return (
     <div
-      className="flex-1 rounded-xl p-5 flex flex-col gap-1.5"
+      className="rounded-xl p-4 sm:p-5 flex flex-col gap-1.5"
       style={{
         background: "rgba(20,28,40,0.6)",
         border: "1px solid rgba(148,163,184,0.1)",
@@ -472,7 +472,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div style={{ padding: "24px 24px 48px", display: "flex", flexDirection: "column", gap: 0 }}>
+    <div className="px-4 sm:px-6 py-4 sm:py-6 pb-12 flex flex-col gap-0">
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600, color: "#E2E8F0", margin: 0 }}>Analytics</h1>
@@ -481,7 +481,7 @@ export default function AnalyticsPage() {
 
       {/* Universal filter bar */}
       <div
-        className="flex items-center gap-3"
+        className="flex flex-wrap items-center gap-3"
         style={{
           position: "sticky",
           top: 0,
@@ -514,7 +514,7 @@ export default function AnalyticsPage() {
 
       {/* Sub-tab nav */}
       <div
-        className="flex items-center gap-6"
+        className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar"
         style={{
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           marginBottom: 24,
@@ -546,7 +546,7 @@ export default function AnalyticsPage() {
       {tab === "Performance" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* A — Overview cards */}
-          <div style={{ display: "flex", gap: 12 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <OverviewCard
               label="Win Rate"
               value={`${(stats.winRate * 100).toFixed(1)}%`}
@@ -574,7 +574,7 @@ export default function AnalyticsPage() {
               border: "1px solid rgba(148,163,184,0.1)",
             }}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", margin: 0 }}>
                 Cumulative P&L
               </h3>
@@ -669,7 +669,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* C — Breakdown Grid 2×2 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Card 1: By Pair */}
             <div
               className="rounded-xl p-5"
@@ -957,9 +957,8 @@ export default function AnalyticsPage() {
               Risk Analysis
             </h3>
             <div
+              className="grid grid-cols-2 lg:grid-cols-4"
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
                 gap: 24,
                 alignItems: "start",
               }}
@@ -1051,7 +1050,7 @@ export default function AnalyticsPage() {
             >
               Streaks
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 32 }}>
               {/* Left: stats */}
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
@@ -1178,9 +1177,9 @@ export default function AnalyticsPage() {
           style={{ minHeight: "60vh" }}
         >
           <div
-            className="rounded-xl p-10 flex flex-col items-center gap-5"
+            className="rounded-xl p-6 sm:p-10 flex flex-col items-center gap-5 w-full mx-4 sm:mx-0"
             style={{
-              width: 600,
+              maxWidth: 600,
               background: "rgba(20,28,40,0.6)",
               border: "1px solid rgba(148,163,184,0.1)",
               textAlign: "center",
@@ -1228,9 +1227,9 @@ export default function AnalyticsPage() {
           style={{ minHeight: "60vh" }}
         >
           <div
-            className="rounded-xl p-10 flex flex-col items-center gap-5"
+            className="rounded-xl p-6 sm:p-10 flex flex-col items-center gap-5 w-full mx-4 sm:mx-0"
             style={{
-              width: 600,
+              maxWidth: 600,
               background: "rgba(20,28,40,0.6)",
               border: "1px solid rgba(148,163,184,0.1)",
               textAlign: "center",

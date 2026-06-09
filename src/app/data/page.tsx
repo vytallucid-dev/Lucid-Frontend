@@ -47,7 +47,7 @@ function ModuleCard({
   return (
     <div
       onClick={() => router.push(href)}
-      className="cursor-pointer flex flex-col gap-5 rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01] group"
+      className="cursor-pointer flex flex-col gap-5 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01] group"
       style={{
         background: "rgba(10, 22, 40, 0.7)",
         border: "1px solid rgba(255,255,255,0.07)",
@@ -94,19 +94,19 @@ function ModuleCard({
 
       {/* Stats row */}
       <div
-        className="grid gap-3"
+        className="grid gap-2 sm:gap-3"
         style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}
       >
         {stats.map((s) => (
           <div
             key={s.label}
-            className="flex flex-col gap-1 rounded-xl px-4 py-3"
+            className="flex flex-col gap-1 rounded-xl px-2 sm:px-4 py-3"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
           >
-            <span className="text-[10px] uppercase tracking-wider" style={{ color: "#475569" }}>
+            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider" style={{ color: "#475569" }}>
               {s.label}
             </span>
-            <span className="text-lg font-bold" style={{ color: "#F1F5F9" }}>
+            <span className="text-base sm:text-lg font-bold" style={{ color: "#F1F5F9" }}>
               {s.value}
             </span>
           </div>
@@ -214,9 +214,9 @@ export default function DataPage() {
   const edgefinderIndicators = edgefinderData?.data ?? [];
 
   return (
-    <div className="px-6 py-6 max-w-5xl mx-auto w-full">
+    <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto w-full">
       {/* Page header */}
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-8 flex flex-wrap items-center gap-3">
         <div
           className="p-2 rounded-lg"
           style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}

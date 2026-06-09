@@ -52,6 +52,22 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hide scrollbar but keep scrollability (used for horizontally scrollable
+   tab strips / chip rows on touch devices). */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Momentum scrolling for horizontal strips on iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 /* Score pills */
 .pill-bullish {
   background: rgba(16, 185, 129, 0.15);

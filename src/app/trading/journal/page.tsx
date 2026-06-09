@@ -166,7 +166,7 @@ export default function JournalPage() {
       onClick={() => filterOpen && setFilterOpen(false)}
     >
       {/* Page header */}
-      <div className="px-6 pt-6 pb-4 flex items-start justify-between">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: "#E2E8F0" }}>Journal</h1>
           <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
@@ -174,7 +174,7 @@ export default function JournalPage() {
           </p>
         </div>
         <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm self-start"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "#94A3B8" }}
         >
           <span className="font-medium">{count} trades</span>
@@ -187,7 +187,7 @@ export default function JournalPage() {
 
       {/* Controls bar */}
       <div
-        className="px-6 py-3 flex items-center justify-between gap-4 sticky top-0 z-30"
+        className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30"
         style={{
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(148, 163, 184, 0.08)",
@@ -248,7 +248,7 @@ export default function JournalPage() {
         </div>
 
         {/* Right: view toggle */}
-        <div className="flex rounded-lg p-0.5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+        <div className="flex rounded-lg p-0.5 ml-auto" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
           {(["table", "gallery"] as const).map(v => (
             <button
               key={v}
@@ -268,7 +268,7 @@ export default function JournalPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 py-4">
+      <div className="flex-1 px-4 sm:px-6 py-4">
         {filteredTrades.length === 0 ? (
           <EmptyState
             hasFilters={activeFilters.length > 0 || selectedAccount !== "all"}

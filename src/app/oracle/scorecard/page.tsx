@@ -9,6 +9,7 @@ import {
 } from "@/data/assets";
 import { useAssetScorecard } from "@/hooks/useAssetScorecard";
 import { useAssets } from "@/hooks/useAssets";
+import { formatUpdated } from "@/lib/format-date";
 import {
   type ScorecardAssetKey,
   type PublicScorecardSection,
@@ -244,6 +245,7 @@ function SectionCard({ section }: { section: PublicScorecardSection }) {
         </div>
       </div>
 
+      <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -291,6 +293,7 @@ function SectionCard({ section }: { section: PublicScorecardSection }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -321,7 +324,7 @@ export default function ScorecardPage() {
   const asset = scorecardQuery.data;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Asset selector */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         {assetOptions.map((opt) => {
@@ -452,9 +455,9 @@ export default function ScorecardPage() {
         </div>
       ) : (
         /* ── Scored — full layout ────────────────────────────────────── */
-        <div className="flex gap-6 items-start">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* LEFT PANEL */}
-          <div className="w-70 shrink-0 flex flex-col gap-4">
+          <div className="w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
             {/* Score & Bias */}
             <div className="glass-card p-5 text-center">
               {asset.totalScore !== null && <ScoreGauge score={asset.totalScore} />}
@@ -672,7 +675,7 @@ export default function ScorecardPage() {
               className="text-[10px] text-center"
               style={{ color: "#334155" }}
             >
-              Last updated: March 29, 2026 — 14:32 IST
+              Last updated: {formatUpdated(asset.lastUpdated)}
             </p>
           </div>
 
@@ -684,7 +687,7 @@ export default function ScorecardPage() {
 
             {/* Lucid Outlook placeholder */}
             <div
-              className="glass-card p-6"
+              className="glass-card p-4 sm:p-6"
               style={{
                 borderColor: "rgba(59, 130, 246, 0.3)",
                 boxShadow: "0 0 24px rgba(59, 130, 246, 0.1)",

@@ -251,7 +251,7 @@ export default function NiftyDataPage() {
   const bridge = indicators.filter((i) => !i.compositeGroup);
 
   return (
-    <div className="px-6 py-6 max-w-6xl mx-auto w-full">
+    <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "#475569" }}>
         <Link href="/data" className="hover:text-[#94A3B8] transition-colors">
@@ -262,14 +262,14 @@ export default function NiftyDataPage() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <div
-          className="p-2.5 rounded-xl"
+          className="p-2.5 rounded-xl shrink-0"
           style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)" }}
         >
           <Activity size={20} style={{ color: "#10B981" }} />
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
             NIFTY Indicators
           </h1>
@@ -281,7 +281,7 @@ export default function NiftyDataPage() {
 
       {/* Scorecard trigger */}
       <div
-        className="mb-6 rounded-2xl p-5"
+        className="mb-6 rounded-2xl p-4 sm:p-5"
         style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
         <h2 className="text-sm font-semibold mb-1" style={{ color: "#F1F5F9" }}>

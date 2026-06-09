@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useSidebar } from "./SidebarContext";
 
 const sectionNames: Record<string, string> = {
   "/": "Pulse",
@@ -92,6 +93,7 @@ export function TopBar() {
 
   // Auth menu
   const { user, loading, signOut } = useAuth();
+  const { toggleMobile } = useSidebar();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -124,25 +126,35 @@ export function TopBar() {
 
   return (
     <header
-      className="h-14 flex items-center justify-between px-6 shrink-0"
+      className="h-14 flex items-center justify-between gap-3 px-4 sm:px-6 shrink-0 sticky top-0 z-30"
       style={{
         borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
         background: "rgba(2, 8, 23, 0.6)",
         backdropFilter: "blur(12px)",
       }}
     >
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Mobile menu toggle */}
+        <button
+          type="button"
+          onClick={toggleMobile}
+          className="lg:hidden -ml-1 p-2 rounded-md hover:bg-white/5 transition-colors shrink-0"
+          style={{ color: "#94A3B8" }}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={18} />
+        </button>
+        <span className="text-sm font-semibold truncate" style={{ color: "#F1F5F9" }}>
           {section}
         </span>
-        <span style={{ color: "#334155" }}>/</span>
-        <span className="text-sm" style={{ color: "#64748B" }}>
+        <span className="hidden sm:inline" style={{ color: "#334155" }}>/</span>
+        <span className="hidden sm:inline text-sm" style={{ color: "#64748B" }}>
           Overview
         </span>
       </div>
 
-      <div className="flex items-center gap-4">
-        <span className="text-xs" style={{ color: "#64748B" }}>
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <span className="hidden md:inline text-xs" style={{ color: "#64748B" }}>
           {now ? formatIst(now) : ""}
         </span>
         <div className="flex items-center gap-1.5" title={statusTooltip}>
@@ -152,7 +164,7 @@ export function TopBar() {
             }
             style={{ background: statusColor }}
           />
-          <span className="text-xs font-medium" style={{ color: statusColor }}>
+          <span className="hidden sm:inline text-xs font-medium" style={{ color: statusColor }}>
             {statusLabel}
           </span>
         </div>

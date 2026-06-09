@@ -164,12 +164,12 @@ export default function USDLabPage() {
   const [filter, setFilter] = useState<FilterKey>("All");
   const [selected, setSelected] = useState<UsdLabSubIndicator | null>(null);
 
-  if (isLoading) return <div className="p-6"><LoadingState message="Loading USD Lab..." /></div>;
-  if (error) return <div className="p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
-  if (!data) return <div className="p-6"><EmptyState title="No Ind 9 data available" /></div>;
+  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState message="Loading USD Lab..." /></div>;
+  if (error) return <div className="p-4 sm:p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
+  if (!data) return <div className="p-4 sm:p-6"><EmptyState title="No Ind 9 data available" /></div>;
 
   return (
-    <div className="p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5 max-w-350">
       <Header data={data} />
       {data.dataQuality.suppressed && <SuppressedBanner />}
       <HeroStrip data={data} />
@@ -195,8 +195,8 @@ export default function USDLabPage() {
 
 function Header({ data }: { data: UsdLabResponse }) {
   return (
-    <div className="flex items-start justify-between">
-      <div>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
         <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>USD Lab</h1>
         <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
           The texture behind Indicator 9 — every sub-indicator, every cluster, every threshold.
@@ -236,7 +236,7 @@ function HeroStrip({ data }: { data: UsdLabResponse }) {
   const side = data.composition.side;
 
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-4 sm:p-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
         {/* Col 1 — NIFTY-facing score */}
         <div className="md:pr-6 pb-4 md:pb-0">
@@ -250,7 +250,7 @@ function HeroStrip({ data }: { data: UsdLabResponse }) {
         </div>
 
         {/* Col 2 — Raw composite */}
-        <div className="md:px-6 py-4 md:py-0" style={{ borderLeft: "1px solid rgba(148,163,184,0.1)", borderRight: "1px solid rgba(148,163,184,0.1)" }}>
+        <div className="md:px-6 py-4 md:py-0 border-t md:border-t-0 md:border-l md:border-r" style={{ borderColor: "rgba(148,163,184,0.1)" }}>
           <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>
             Raw composite
           </div>
@@ -281,7 +281,7 @@ function HeroStrip({ data }: { data: UsdLabResponse }) {
         </div>
 
         {/* Col 3 — Composition flag */}
-        <div className="md:pl-6 pt-4 md:pt-0">
+        <div className="md:pl-6 pt-4 md:pt-0 border-t md:border-t-0" style={{ borderColor: "rgba(148,163,184,0.1)" }}>
           <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>
             Composition flag
           </div>
@@ -317,7 +317,7 @@ function MathSection({ data }: { data: UsdLabResponse }) {
   const raw = data.rawComposite;
   const usdStrengthTier = data.niftyScore === null ? null : -data.niftyScore;
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-4 sm:p-5">
       <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
         How Ind 9 is computed
       </div>
@@ -435,7 +435,7 @@ function SubIndicatorTable({
   const staleCount = data.subIndicators.filter((s) => s.isStale).length;
 
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
           14 Sub-Indicators — Detailed
@@ -459,7 +459,7 @@ function SubIndicatorTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        <table className="w-full text-xs" style={{ minWidth: 700 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(148,163,184,0.1)" }}>
               {["#", "Indicator", "Category", "Cluster", "Actual", "Reference", "Score", "Reasoning", "Last release", "Status"].map((h) => (
@@ -599,8 +599,8 @@ function CompositionFlagCard({ data }: { data: UsdLabResponse }) {
   const strong = c.side === "strong";
 
   return (
-    <div className="glass-card p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="glass-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>Composition Flag</div>
         <div className="text-xs" style={{ color: "#475569" }}>Active: {formatDate(data.asOf)}</div>
       </div>
@@ -728,7 +728,7 @@ function HistoryChart({ data }: { data: UsdLabResponse }) {
   }, [points]);
 
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-4 sm:p-5">
       <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>
         Ind 9 Raw Composite History — last {points.length} scorecards
       </div>
@@ -810,7 +810,7 @@ function DataQualityPanel({ data }: { data: UsdLabResponse }) {
   const stale = data.subIndicators.filter((s) => s.isStale);
   const compColor = dq.computability === "FULL" ? "#10B981" : dq.computability === "DEGRADED" ? "#F59E0B" : "#EF4444";
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-4 sm:p-5">
       <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>Data Quality</div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
         <Stat label="Sub-indicators with data" value={`${dq.dataCount} / 14`} ok={dq.dataCount >= 12} />

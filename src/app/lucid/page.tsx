@@ -33,7 +33,7 @@ const features = [
 
 export default function LucidPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6 py-16">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-4 sm:px-6 py-10 sm:py-16">
       {/* Glow orb backdrop */}
       <div
         aria-hidden="true"
@@ -42,8 +42,8 @@ export default function LucidPage() {
           top: "20%",
           left: "50%",
           transform: "translateX(-50%)",
-          width: 600,
-          height: 600,
+          width: "min(600px, 90vw)",
+          height: "min(600px, 90vw)",
           borderRadius: "50%",
           background:
             "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)",
@@ -96,6 +96,7 @@ export default function LucidPage() {
         </h1>
 
         <p
+          className="px-1"
           style={{
             fontSize: 15,
             color: "#64748B",
@@ -121,11 +122,11 @@ export default function LucidPage() {
           }}
         >
           {/* Fake message history */}
-          <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
+          <div className="px-3 sm:px-5 pt-5 pb-4 flex flex-col gap-4">
             {/* User bubble */}
             <div className="flex justify-end">
               <div
-                className="rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-xs text-left"
+                className="rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] sm:max-w-xs text-left"
                 style={{
                   background: "rgba(59,130,246,0.18)",
                   border: "1px solid rgba(59,130,246,0.2)",
@@ -151,7 +152,7 @@ export default function LucidPage() {
                 <Sparkles size={13} style={{ color: "#3B82F6" }} />
               </div>
               <div
-                className="rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-sm text-left"
+                className="rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[85%] sm:max-w-sm text-left"
                 style={{
                   background: "rgba(28,38,54,0.8)",
                   border: "1px solid rgba(148,163,184,0.1)",
@@ -168,7 +169,7 @@ export default function LucidPage() {
 
           {/* Fake input bar */}
           <div
-            className="flex items-center gap-3 px-4 mx-1 mb-1 rounded-xl"
+            className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 mx-1 mb-1 rounded-xl"
             style={{
               height: 50,
               background: "rgba(10,14,20,0.6)",
@@ -201,7 +202,7 @@ export default function LucidPage() {
         </div>
 
         {/* Feature grid */}
-        <div className="grid grid-cols-2 gap-4 w-full mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full mb-12">
           {features.map((f) => (
             <div
               key={f.title}

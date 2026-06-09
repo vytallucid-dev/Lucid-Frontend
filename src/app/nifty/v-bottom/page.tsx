@@ -72,16 +72,16 @@ export default function VBottomPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-300">
+    <div className="p-4 sm:p-6 space-y-5 max-w-300">
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>V-Bottom</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
             Discriminate real V-bottoms from counter-trend bounces.
           </p>
         </div>
-        <div className="text-sm" style={{ color: "#64748B" }}>
+        <div className="text-sm shrink-0" style={{ color: "#64748B" }}>
           Source: <span className="font-mono" style={{ color: "#3B82F6" }}>P15-2</span>
           {" · "}
           <span style={{ color: "var(--band-strong-bullish)" }}>CONFIRMED</span>
@@ -90,7 +90,7 @@ export default function VBottomPage() {
       </div>
 
       {/* ── Date Picker (always mounted) ─────────────────────────────── */}
-      <div className="glass-card p-5">
+      <div className="glass-card p-4 sm:p-5">
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <label
@@ -159,7 +159,7 @@ export default function VBottomPage() {
           It is a fundamental read on a moment YOU identify on the chart. The tool assumes price action is doing
           something V-shaped. It does not check that assumption.
         </p>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
           <div>
             <div className="text-xs font-semibold mb-2" style={{ color: "var(--band-strong-bearish)" }}>Do NOT use to:</div>
             <ul className="space-y-1">
@@ -203,8 +203,8 @@ function ThresholdTable({ classification }: { classification: VBottomClassificat
         The Rule — P15-2
       </div>
 
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.1)" }}>
-        <table className="w-full text-sm">
+      <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid rgba(148,163,184,0.1)" }}>
+        <table className="w-full text-sm" style={{ minWidth: 480 }}>
           <thead>
             <tr style={{ background: "rgba(14,20,30,0.6)" }}>
               <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#475569" }}>Ind 9 Raw at Trough</th>
@@ -277,7 +277,7 @@ function ResultArea({
   if (error) {
     if (is404(error)) {
       return (
-        <div className="glass-card p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
+        <div className="glass-card p-5 sm:p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
           <EmptyState
             title="No scorecard for selected date"
             description={`${error.message}. Pick a date with available data above.`}
@@ -314,7 +314,7 @@ function SuccessView({ data }: { data: PublicVBottomResponse }) {
     <div className="space-y-5">
       {/* ── Hero Verdict Card ───────────────────────────────────────── */}
       <div
-        className="glass-card p-8 text-center"
+        className="glass-card p-5 sm:p-8 text-center"
         style={{
           background: `color-mix(in srgb, ${color} 8%, transparent)`,
           borderColor: `color-mix(in srgb, ${color} 35%, transparent)`,

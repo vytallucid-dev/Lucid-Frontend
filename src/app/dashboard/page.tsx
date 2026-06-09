@@ -455,13 +455,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-8 px-8 py-8 max-w-350 mx-auto">
+      <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-350 mx-auto">
 
         {/* ── Section 1: Hero ────────────────────────────────────────────────── */}
-        <div
-          className="glass-card p-8 -z-1"
-          style={{ padding: 32 }}
-        >
+        <div className="glass-card -z-1 p-5 sm:p-8">
           {/* Greeting + status */}
           <div className="mb-6">
             <h1 style={{ fontSize: 28, fontWeight: 600, color: "#F1F5F9", lineHeight: 1.2, marginBottom: 8 }}>
@@ -509,7 +506,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 2: Quick Actions ───────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             {
               icon: <Plus size={20} />,
@@ -572,7 +569,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 3: Metric Cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Total Capital Managed */}
           <div className="glass-card p-5 flex flex-col gap-1.5">
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
@@ -729,7 +726,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 5: Two-Column Strip ────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Left — Live + Planned Trades */}
           <div className="glass-card p-5 flex flex-col gap-6">
@@ -931,7 +928,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-6 gap-3 mb-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3 mb-4">
             {pairsConfig.map((pair) => (
               <div
                 key={pair.symbol}

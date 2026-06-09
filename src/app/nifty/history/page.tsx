@@ -50,21 +50,21 @@ export default function HistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading scorecards..." />
       </div>
     );
   }
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState error={error} onRetry={() => refetch()} />
       </div>
     );
   }
   if (!history || history.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No scorecards available" />
       </div>
     );
@@ -153,22 +153,22 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
     : "";
 
   return (
-    <div className="p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>History</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>Every scorecard, every phase.</p>
         </div>
-        <div className="text-sm text-right" style={{ color: "#64748B" }}>
+        <div className="text-sm text-right shrink-0" style={{ color: "#64748B" }}>
           <p>{scorecards.length} scorecards · {uniquePhases.length} phases</p>
           <p>{phaseRange}</p>
         </div>
       </div>
 
       {/* ── Top Bar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
         {/* View toggle */}
         <div
           className="flex rounded-lg p-0.5 gap-0.5"
@@ -195,13 +195,12 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           placeholder="Search phases, notes, catalysts…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 rounded-lg text-sm"
+          className="px-3 py-1.5 rounded-lg text-sm w-full sm:w-60"
           style={{
             background: "rgba(14,20,30,0.6)",
             border: "1px solid rgba(148,163,184,0.1)",
             color: "#E2E8F0",
             outline: "none",
-            width: 240,
           }}
         />
 
@@ -285,7 +284,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
               return (
                 <div key={phase} className="glass-card p-5">
                   {/* Phase header */}
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="text-base font-bold" style={{ color: "#E2E8F0" }}>{phase}</h3>
@@ -333,7 +332,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                     {sorted2.map((sc) => (
                       <button
                         key={sc.id}
-                        className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-4 hover:bg-white/5 transition-colors group"
+                        className="w-full text-left px-3 py-2 rounded-lg flex flex-wrap items-center gap-2 sm:gap-4 hover:bg-white/5 transition-colors group"
                         style={{ background: "rgba(14,20,30,0.3)" }}
                         onClick={() => setDrawerSc(sc)}
                       >
@@ -382,8 +381,8 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           {sorted.length === 0 ? (
             <FilterEmpty onClear={clearFilters} />
           ) : (
-            <div className="glass-card overflow-hidden">
-              <table className="w-full text-xs">
+            <div className="glass-card overflow-x-auto">
+              <table className="w-full text-xs" style={{ minWidth: 760 }}>
                 <thead>
                   <tr style={{ background: "rgba(14,20,30,0.6)", borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
                     <th className="text-left px-3 py-3"><SortHeader col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
@@ -478,7 +477,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
         title={drawerSc ? `${drawerSc.phase ? `${drawerSc.phase} — ` : ""}${formatDate(drawerSc.date)}` : ""}
       >
         {drawerSc && (
-          <div className="p-6 space-y-5">
+          <div className="p-4 sm:p-6 space-y-5">
             {/* Band summary */}
             <div
               className="p-4 rounded-xl"

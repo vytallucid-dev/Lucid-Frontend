@@ -289,9 +289,9 @@ export function PlannedDrawerContent({
 
       {/* Sticky bottom action bar */}
       <div
-        className="fixed bottom-0 right-0 flex items-center gap-3 px-6 py-4"
+        className="fixed bottom-0 right-0 flex items-center gap-3 px-4 sm:px-6 py-4 w-full sm:w-auto"
         style={{
-          width: 480,
+          maxWidth: 480,
           background: "rgba(10,18,30,0.97)",
           borderTop: "1px solid rgba(148,163,184,0.1)",
           backdropFilter: "blur(12px)",

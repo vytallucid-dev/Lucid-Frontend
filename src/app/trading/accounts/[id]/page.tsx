@@ -179,10 +179,10 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
     >
       {/* ── Account header ──────────────────────────────────────────── */}
       <div
-        className="rounded-2xl p-6 mb-6"
+        className="rounded-2xl p-4 sm:p-6 mb-6"
         style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
       >
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <StagePill stage={account.stage} />
@@ -197,7 +197,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
             </p>
           </div>
 
-          <div className="text-right">
+          <div className="sm:text-right">
             <p style={{ fontSize: 36, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
               {formatCurrency(account.current_balance)}
             </p>
@@ -209,7 +209,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
       </div>
 
       {/* ── Stats row ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard label="Trade Count" value={tradeCount} sub="total trades" />
         <StatCard
           label="Win Rate"
@@ -229,13 +229,13 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
       {/* ── Targets ──────────────────────────────────────────────────── */}
       <div
-        className="rounded-2xl p-6 mb-6"
+        className="rounded-2xl p-4 sm:p-6 mb-6"
         style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
       >
         <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Targets
         </h3>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
           {/* Profit Target */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -284,10 +284,10 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
       {/* ── Balance over time (Recharts) ─────────────────────────────── */}
       <div
-        className="rounded-2xl p-6 mb-6"
+        className="rounded-2xl p-4 sm:p-6 mb-6"
         style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Balance Over Time
           </h3>
@@ -368,6 +368,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
         className="rounded-2xl mb-6 overflow-hidden"
         style={{ border: "1px solid rgba(148,163,184,0.1)", background: "rgba(20,28,40,0.5)" }}
       >
+
         <div
           className="px-6 py-4"
           style={{ borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(10,14,20,0.4)" }}
@@ -382,7 +383,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
             <p style={{ fontSize: 13, color: "#64748B" }}>No closed trades on this account yet.</p>
           </div>
         ) : (
-          <>
+          <div className="overflow-x-auto">
             {/* Header */}
             <div
               className="grid px-6 py-2.5"
@@ -390,6 +391,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
                 gridTemplateColumns: "80px 120px 100px 90px 80px 90px 110px",
                 borderBottom: "1px solid rgba(148,163,184,0.06)",
                 background: "rgba(10,14,20,0.3)",
+                minWidth: 680,
               }}
             >
               {["Date", "Pair", "Model", "Direction", "Pips", "P&L", "Exit"].map(col => (
@@ -412,6 +414,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
                     background: idx % 2 === 0 ? "rgba(20,28,40,0.4)" : "rgba(15,23,35,0.2)",
                     borderBottom: idx < closedTrades.length - 1 ? "1px solid rgba(148,163,184,0.04)" : "none",
                     minHeight: 44,
+                    minWidth: 680,
                   }}
                 >
                   <span style={{ fontSize: 12, color: "#64748B" }}>
@@ -432,7 +435,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </div>
 

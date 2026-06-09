@@ -376,7 +376,7 @@ function CycleStanceManager() {
 
   return (
     <div
-      className="mb-6 rounded-2xl p-5"
+      className="mb-6 rounded-2xl p-4 sm:p-5"
       style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
     >
       <div className="flex items-start justify-between gap-3 mb-1">
@@ -391,7 +391,7 @@ function CycleStanceManager() {
         <div className="group relative shrink-0">
           <Info size={14} style={{ color: "#475569", cursor: "pointer" }} />
           <div
-            className="absolute right-0 top-5 z-10 hidden group-hover:block w-72 rounded-xl p-3 text-[11px] leading-relaxed shadow-xl"
+            className="absolute right-0 top-5 z-10 hidden group-hover:block w-64 sm:w-72 rounded-xl p-3 text-[11px] leading-relaxed shadow-xl"
             style={{
               background: "rgba(15,23,42,0.98)",
               border: "1px solid rgba(255,255,255,0.1)",
@@ -619,7 +619,7 @@ export default function EdgefinderDataPage() {
   const indicators = data?.data ?? [];
 
   return (
-    <div className="px-6 py-6 max-w-6xl mx-auto w-full">
+    <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "#475569" }}>
         <Link href="/data" className="hover:text-[#94A3B8] transition-colors">
@@ -630,14 +630,14 @@ export default function EdgefinderDataPage() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <div
-          className="p-2.5 rounded-xl"
+          className="p-2.5 rounded-xl shrink-0"
           style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
         >
           <BarChart2 size={20} style={{ color: "#3B82F6" }} />
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
             EdgeFinder Indicators
           </h1>
@@ -649,7 +649,7 @@ export default function EdgefinderDataPage() {
 
       {/* Pipeline Controls */}
       <div
-        className="mb-6 rounded-2xl p-5"
+        className="mb-6 rounded-2xl p-4 sm:p-5"
         style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
         <h2 className="text-sm font-semibold mb-1" style={{ color: "#F1F5F9" }}>

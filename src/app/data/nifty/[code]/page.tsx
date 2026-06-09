@@ -167,7 +167,7 @@ function ManualEntryPanel({
         <span>This indicator requires manual data entry. Fill in the observed value for the desired date.</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
             Observation Date <span style={{ color: "#EF4444" }}>*</span>
@@ -336,7 +336,7 @@ function FredFetchPanel({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
             Date From (optional)
@@ -512,7 +512,7 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
       )}
 
       {mode === "range" && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { label: "Date From", value: dateFrom, set: setDateFrom },
             { label: "Date To", value: dateTo, set: setDateTo },
@@ -755,7 +755,7 @@ export default function NiftyIndicatorDetailPage() {
   const sourceColor = DATA_SOURCE_COLORS[sourceKey] ?? "#64748B";
 
   return (
-    <div className="px-6 py-6 max-w-6xl mx-auto w-full">
+    <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm flex-wrap" style={{ color: "#475569" }}>
         <Link href="/data" className="hover:text-[#94A3B8] transition-colors">Data</Link>
@@ -766,7 +766,7 @@ export default function NiftyIndicatorDetailPage() {
       </div>
 
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 min-w-0">
         {latestLoading ? (
           <div className="flex items-center gap-2" style={{ color: "#475569" }}>
             <Loader2 size={16} className="animate-spin" />
@@ -774,7 +774,7 @@ export default function NiftyIndicatorDetailPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
+            <h1 className="text-xl font-bold wrap-break-word" style={{ color: "#F1F5F9" }}>
               {indicator?.name ?? code}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
@@ -813,7 +813,7 @@ export default function NiftyIndicatorDetailPage() {
         {/* Left: Pipeline panel */}
         <div className="lg:col-span-3">
           <div
-            className="rounded-2xl p-5 flex flex-col gap-4"
+            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
             style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div>
@@ -837,7 +837,7 @@ export default function NiftyIndicatorDetailPage() {
         {/* Right: Recent data points */}
         <div className="lg:col-span-2">
           <div
-            className="rounded-2xl p-5 flex flex-col gap-4"
+            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
             style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div className="flex items-center justify-between">
@@ -906,15 +906,15 @@ export default function NiftyIndicatorDetailPage() {
 
       {/* Fetch Logs */}
       <div
-        className="mt-6 rounded-2xl p-5 flex flex-col gap-4"
+        className="mt-6 rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
         style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
               Recent Fetch Logs
             </h2>
-            <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B" }}>
               Job: <span className="font-mono" style={{ color: "#475569" }}>{logJobName}</span>
             </p>
           </div>

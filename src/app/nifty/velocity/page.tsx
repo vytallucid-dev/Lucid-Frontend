@@ -69,7 +69,7 @@ export default function VelocityPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5 max-w-350">
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Velocity</h1>
@@ -77,7 +77,7 @@ export default function VelocityPage() {
       </div>
 
       {/* ── Date Range Inputs (always mounted) ──────────────────────── */}
-      <div className="glass-card p-5">
+      <div className="glass-card p-4 sm:p-5">
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <label
@@ -207,7 +207,7 @@ function TierTable({ label }: { label: VelocityLabel | null }) {
               <span className="text-lg w-8 text-center" style={{ color: tierColor }}>
                 {tier.symbol}
               </span>
-              <span className="text-xs tabular-nums w-32" style={{ color: "#475569" }}>
+              <span className="text-xs tabular-nums w-28 sm:w-32" style={{ color: "#475569" }}>
                 {tier.range}
               </span>
               <span className="text-xs font-medium" style={{ color: isCurrent ? "#E2E8F0" : "#64748B" }}>
@@ -243,7 +243,7 @@ function ResultArea({
   if (error) {
     if (is404(error)) {
       return (
-        <div className="glass-card p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
+        <div className="glass-card p-5 sm:p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
           <EmptyState
             title="No scorecard for selected date"
             description={`${error.message}. Pick a date with available data above.`}
@@ -280,7 +280,7 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
     <div className="space-y-5">
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div
-        className="glass-card p-8 text-center"
+        className="glass-card p-5 sm:p-8 text-center"
         style={{
           background: `color-mix(in srgb, ${velColor} 6%, transparent)`,
           borderColor: `color-mix(in srgb, ${velColor} 30%, transparent)`,

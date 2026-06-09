@@ -46,14 +46,14 @@ export default function PatternsPage() {
   // Combined gates
   if (scorecardsQuery.isLoading || patternsQuery.isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading patterns..." />
       </div>
     );
   }
   if (scorecardsQuery.error || patternsQuery.error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState
           error={scorecardsQuery.error ?? patternsQuery.error}
           onRetry={() => {
@@ -66,14 +66,14 @@ export default function PatternsPage() {
   }
   if (!scorecardsQuery.data || scorecardsQuery.data.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No scorecards available — patterns cannot be ranked without context" />
       </div>
     );
   }
   if (!patternsQuery.data || patternsQuery.data.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No patterns available" />
       </div>
     );
@@ -215,15 +215,15 @@ function PatternsPageInner({
   }, [relevanceList]);
 
   return (
-    <div className="p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Patterns</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>What we&apos;ve learned. What&apos;s relevant now.</p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
           <span style={{ color: "#10B981" }}>{tierCounts.CONFIRMED} CONFIRMED</span>
           <span style={{ color: "#64748B" }}>·</span>
           <span style={{ color: "#60A5FA" }}>{tierCounts.OBSERVED} OBSERVED</span>
@@ -242,7 +242,7 @@ function PatternsPageInner({
 
       {/* ── Section 1: Relevant Now ──────────────────────────────────── */}
       {topRelevant.length > 0 && (
-        <div className="glass-card p-5">
+        <div className="glass-card p-4 sm:p-5">
           <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>
             Relevant Now
           </div>
@@ -350,13 +350,12 @@ function PatternsPageInner({
             placeholder="Search patterns…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="ml-auto px-3 py-1.5 rounded-lg text-xs"
+            className="sm:ml-auto px-3 py-1.5 rounded-lg text-xs w-full sm:w-48"
             style={{
               background: "rgba(14,20,30,0.6)",
               border: "1px solid rgba(148,163,184,0.1)",
               color: "#E2E8F0",
               outline: "none",
-              width: 200,
             }}
           />
 
@@ -464,7 +463,7 @@ function PatternDrawerContent({
   const inWindow = exampleRows.filter((r) => r.sc !== null);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
 
       {fromRelevant && relevance && relevance.matched_triggers.length > 0 && (
         <div

@@ -306,7 +306,8 @@ function StatusSection({
             </div>
           ) : (
             <div className="rounded-xl mb-4 overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.08)" }}>
-              <table className="w-full border-collapse" style={{ background: "rgba(20,28,40,0.5)" }}>
+              <div className="overflow-x-auto">
+              <table className="w-full border-collapse" style={{ background: "rgba(20,28,40,0.5)", minWidth: 760 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
                     <th style={{ width: 4, padding: 0 }} />
@@ -337,6 +338,7 @@ function StatusSection({
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </>
@@ -390,17 +392,17 @@ export default function PlannedPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-6 py-6 max-w-full">
+    <div className="flex flex-col gap-6 px-4 sm:px-6 py-4 sm:py-6 max-w-full">
 
       {/* Page header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "#E2E8F0" }}>Planned Trades</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
             Setups in waiting. Setups in motion.
           </p>
         </div>
-        <div className="flex items-center gap-3 mt-1">
+        <div className="flex items-center gap-3">
           <span style={{ fontSize: 12, color: "#64748B" }}>
             <span style={{ color: "#93C5FD", fontWeight: 600 }}>{activeCount} active</span>
             {" · "}
@@ -410,7 +412,7 @@ export default function PlannedPage() {
       </div>
 
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Filter chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {FILTER_OPTIONS.map(opt => {

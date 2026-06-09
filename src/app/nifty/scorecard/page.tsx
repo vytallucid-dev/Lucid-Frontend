@@ -60,7 +60,7 @@ export default function ScorecardPage() {
   // Suspense-wrap because the inner uses useSearchParams, which forces a
   // bailout from static prerendering unless boundaries are explicit.
   return (
-    <Suspense fallback={<div className="p-6"><LoadingState message="Loading scorecards..." /></div>}>
+    <Suspense fallback={<div className="p-4 sm:p-6"><LoadingState message="Loading scorecards..." /></div>}>
       <ScorecardPageInner />
     </Suspense>
   );
@@ -125,7 +125,7 @@ function ScorecardPageInner() {
 
   if (historyLoading || (!!selectedDate && scLoading && !sc)) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading scorecards..." />
       </div>
     );
@@ -133,7 +133,7 @@ function ScorecardPageInner() {
 
   if (historyError) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState error={historyError} onRetry={() => refetch()} />
       </div>
     );
@@ -141,7 +141,7 @@ function ScorecardPageInner() {
 
   if (!historyLite || historyLite.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No scorecards available" />
       </div>
     );
@@ -149,7 +149,7 @@ function ScorecardPageInner() {
 
   if (!sc) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading scorecard..." />
       </div>
     );
@@ -158,11 +158,11 @@ function ScorecardPageInner() {
   const missingCount = sc.missing_indicators.length;
 
   return (
-    <div className="p-6 space-y-5 max-w-[1400px]">
+    <div className="p-4 sm:p-6 space-y-5 max-w-[1400px]">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Scorecard</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
             All 13 indicators, current readings, magnitudes.
@@ -170,7 +170,7 @@ function ScorecardPageInner() {
         </div>
 
         {/* Scorecard selector */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             className="flex items-center gap-2 glass-card px-4 py-2 text-sm"
             onClick={() => setSelectorOpen((o) => !o)}
@@ -222,7 +222,7 @@ function ScorecardPageInner() {
 
       {/* ── Summary Strip ───────────────────────────────────────────── */}
       <div
-        className="glass-card px-6 py-4 flex items-center gap-8"
+        className="glass-card px-4 sm:px-6 py-4 flex flex-wrap items-center gap-4 sm:gap-8"
         style={{ background: bandBg(sc.band), borderColor: bandColor(sc.band) + "30" }}
       >
         {[
@@ -244,7 +244,7 @@ function ScorecardPageInner() {
       </div>
 
       {/* ── Indicator Grid ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {sc.indicators.map((ind) => {
           const safeScore = ind.score ?? 0;
           const isCarried = ind.outcome === "carry_forward";
@@ -359,11 +359,11 @@ function ScorecardPageInner() {
       </div>
 
       {/* ── Composite Bar ───────────────────────────────────────────── */}
-      <div className="glass-card p-5">
+      <div className="glass-card p-4 sm:p-5">
         <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
           Indicator Composite — {netDisplay(sc.net_score)} of 17 max
         </div>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
           {sc.indicators.map((ind) => {
             const safeScore = ind.score ?? 0;
             const isCarried = ind.outcome === "carry_forward";
@@ -413,7 +413,7 @@ function ScorecardPageInner() {
         expandHref={drawerInd?.id === 9 ? "/nifty/usd-lab" : undefined}
       >
         {drawerInd && (
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6">
             {/* Carry-forward note */}
             {drawerInd.outcome === "carry_forward" && (
               <div

@@ -103,45 +103,45 @@ export default function HeatmapPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading heatmap..." />
       </div>
     );
   }
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState error={error} onRetry={() => refetch()} />
       </div>
     );
   }
   if (!heatmap) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No heatmap data available" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Page Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: "#F1F5F9" }}>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold truncate" style={{ color: "#F1F5F9" }}>
             Economic Heatmap
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
             Macro release data and surprise indicators by economy
           </p>
         </div>
-        <p className="text-xs" style={{ color: "#475569" }}>
+        <p className="text-xs shrink-0 sm:text-right" style={{ color: "#475569" }}>
           Viewed {formatToday(TODAY)}
         </p>
       </div>
 
       {/* Economy Selector */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {economies.map((e) => {
           const active = economy === e.key;
           return (
@@ -170,7 +170,7 @@ export default function HeatmapPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: "Indicators Tracked", value: stats.total, color: "#94A3B8" },
           { label: "Bullish", value: stats.bullish, color: "#10B981" },

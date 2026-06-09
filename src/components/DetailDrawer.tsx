@@ -50,9 +50,8 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
       {/* Drawer panel */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 h-screen z-50 flex flex-col drawer-enter"
+        className="fixed top-0 right-0 h-screen z-50 flex flex-col drawer-enter w-full max-w-120"
         style={{
-          width: 480,
           background: "rgba(10, 18, 30, 0.97)",
           backdropFilter: "blur(16px)",
           borderLeft: "1px solid rgba(148, 163, 184, 0.12)",
@@ -64,7 +63,7 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
+          className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
           style={{ borderBottom: "1px solid rgba(148, 163, 184, 0.1)" }}
         >
           <h2
@@ -96,7 +95,7 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
           {children}
         </div>
       </div>

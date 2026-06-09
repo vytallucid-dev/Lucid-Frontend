@@ -150,7 +150,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
         >
           {/* Modal header */}
           <div
-            className="flex items-center justify-between px-6 py-4 shrink-0"
+            className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
             style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
           >
             <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>Add Trade</h2>
@@ -164,7 +164,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
           </div>
 
           {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 px-6 py-5">
+          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
 
             {/* Screenshot auto-fill zone */}
             <div
@@ -192,7 +192,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
               {/* Group 1: Setup */}
               <div>
                 <GroupHeader>Setup</GroupHeader>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Pair">
                     <select
                       value={pair}
@@ -246,7 +246,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
               {/* Group 2: Prices */}
               <div>
                 <GroupHeader>Prices</GroupHeader>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <FieldGroup label="Entry Price">
                     <input
                       type="number"
@@ -313,7 +313,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
               {/* Group 3: Conviction & Context */}
               <div>
                 <GroupHeader>Conviction &amp; Context</GroupHeader>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Conviction">
                     <SegmentedControl
                       options={["Low", "Medium", "High"] as const}
@@ -415,7 +415,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                 </div>
 
                 {isClosed && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Partial Exit Price">
                       <input
                         type="number"
@@ -474,7 +474,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
 
           {/* Footer */}
           <div
-            className="flex items-center justify-end gap-3 px-6 py-4 shrink-0"
+            className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
             style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
           >
             <button

@@ -8,6 +8,7 @@ import { Sparkline } from "@/components/Sparkline";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { formatUpdated } from "@/lib/format-date";
 
 type SortKey =
   | "asset"
@@ -169,21 +170,21 @@ export default function CotPage() {
   const badgeWidth = 80;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: "#F1F5F9" }}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold truncate" style={{ color: "#F1F5F9" }}>
             COT Report
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
             Institutional positioning — Non-Commercial traders
           </p>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right shrink-0">
           <p className="text-sm" style={{ color: "#94A3B8" }}>
-            Data as of <span className="font-medium text-white">Mar 25, 2026</span> · Released{" "}
-            <span className="font-medium text-white">Mar 28, 2026</span>
+            Data as of <span className="font-medium text-white">{formatUpdated(assets[0]?.dataAsOf)}</span> · Released{" "}
+            <span className="font-medium text-white">{formatUpdated(assets[0]?.releasedOn)}</span>
           </p>
           <p className="text-xs mt-0.5" style={{ color: "#475569" }}>
             COT covers previous Tuesday positions. Released every Friday.
@@ -192,7 +193,7 @@ export default function CotPage() {
       </div>
 
       {/* SECTION 1: Positioning Bar Chart */}
-      <div className="glass-card p-5 relative">
+      <div className="glass-card p-5 relative overflow-x-auto">
         <h2 className="label mb-4" style={{ color: "#64748B" }}>
           Positioning Overview
         </h2>
@@ -210,7 +211,7 @@ export default function CotPage() {
             </span>
           </div>
         ) : (
-          <div className="relative">
+          <div className="relative" style={{ minWidth: 400 }}>
             {chartSorted.map((asset, i) => {
               const isHovered = hoveredBar === asset.asset;
               return (

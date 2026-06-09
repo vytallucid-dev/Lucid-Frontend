@@ -2,8 +2,8 @@ import { Settings as SettingsIcon } from "lucide-react";
 
 export default function SettingsPage() {
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-56px)]">
-      <div className="glass-card p-10 max-w-[520px] w-full text-center">
+    <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
+      <div className="glass-card p-6 sm:p-10 max-w-130 w-full text-center">
         <div className="flex justify-center mb-5">
           <SettingsIcon size={48} style={{ color: "#3B82F6" }} />
         </div>

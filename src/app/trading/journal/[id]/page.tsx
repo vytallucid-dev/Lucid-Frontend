@@ -24,11 +24,11 @@ export default function TradeDetailPage({ params }: { params: { id: string } }) 
       title={`Trade #${trade.id.replace("trd_", "")}`}
     >
       {/* Page header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div className="flex items-center gap-4">
           {/* Pair + flags */}
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {config && <span className="text-2xl">{config.flag_a}{config.flag_b}</span>}
               <h2 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>
                 {getPairDisplay(trade)}
@@ -62,9 +62,9 @@ export default function TradeDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         {/* P&L summary */}
-        <div className="text-right">
+        <div className="sm:text-right">
           {isLive ? (
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 sm:justify-end">
               <span className="pulse-live w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6", display: "inline-block" }} />
               <span style={{ fontSize: 32, fontWeight: 700, color: "#93C5FD" }}>Live</span>
             </div>
@@ -82,7 +82,7 @@ export default function TradeDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       {/* Two-column body */}
-      <div className="grid gap-8" style={{ gridTemplateColumns: "3fr 2fr" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
 
         {/* Left column: main trade content (reuses drawer content) */}
         <div>

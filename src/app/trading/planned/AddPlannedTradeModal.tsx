@@ -169,7 +169,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-6 py-4 shrink-0"
+            className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
             style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
           >
             <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>
@@ -186,12 +186,12 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto flex-1 px-6 py-5">
+          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
             <div className="flex flex-col gap-6">
               {/* Setup */}
               <div>
                 <GroupHeader>Setup</GroupHeader>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Pair">
                     <select
                       value={pair}
@@ -235,7 +235,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
               {/* Levels */}
               <div>
                 <GroupHeader>Price Levels</GroupHeader>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Entry">
                     <input
                       type="number"
@@ -285,7 +285,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
               {/* Risk & Conviction */}
               <div>
                 <GroupHeader>Risk &amp; Conviction</GroupHeader>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Risk %">
                     <input
                       type="number"
@@ -330,7 +330,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
 
           {/* Footer */}
           <div
-            className="flex items-center justify-end gap-3 px-6 py-4 shrink-0"
+            className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
             style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
           >
             <button

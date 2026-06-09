@@ -346,7 +346,7 @@ function AddAccountModal({ existingFirms, onAdd, onClose }: AddAccountModalProps
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>Profit Target %</label>
               <input style={inputStyle} type="number" placeholder="10" value={profitTargetPct} onChange={e => setProfitTargetPct(e.target.value)} min="0" max="100" step="0.5" required />
@@ -547,24 +547,24 @@ export default function AccountsPage() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="flex items-start justify-between px-6 py-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between px-4 sm:px-6 py-4 sm:py-6">
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 600, color: "#E2E8F0" }}>Accounts</h1>
           <p style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>Capital under management across prop firms.</p>
         </div>
         <div
-          className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+          className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 self-start"
           style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.1)", fontSize: 13, color: "#94A3B8" }}
         >
           <span>Total Capital: <strong style={{ color: "#E2E8F0" }}>{formatCurrency(totalCapital)}</strong></span>
-          <span style={{ color: "#334155", margin: "0 4px" }}>·</span>
+          <span style={{ color: "#334155" }}>·</span>
           <span>Net P&amp;L: <strong style={{ color: pnlColor }}>{netPnl >= 0 ? "+" : ""}{formatCurrency(netPnl)}</strong></span>
         </div>
       </div>
 
       {/* Top bar */}
       <div
-        className="flex items-center gap-3 px-6 pb-4"
+        className="flex flex-wrap items-center gap-3 px-4 sm:px-6 pb-4"
         style={{ borderBottom: "1px solid rgba(148,163,184,0.06)" }}
       >
         <button
@@ -625,7 +625,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 py-5">
+      <div className="flex-1 px-4 sm:px-6 py-5">
 
         {/* TABLE VIEW */}
         {view === "table" && (
@@ -633,6 +633,7 @@ export default function AccountsPage() {
             className="rounded-xl overflow-hidden"
             style={{ border: "1px solid rgba(148,163,184,0.08)", background: "rgba(15,23,35,0.4)" }}
           >
+            <div className="overflow-x-auto">
             {/* Table header */}
             <div
               className="grid px-4 py-3"
@@ -640,6 +641,7 @@ export default function AccountsPage() {
                 gridTemplateColumns: "1.6fr 1.6fr 100px 110px 90px 140px 100px 100px 130px",
                 borderBottom: "1px solid rgba(148,163,184,0.08)",
                 background: "rgba(10,14,20,0.5)",
+                minWidth: 900,
               }}
             >
               {["Firm", "Name", "Size", "Balance", "Profit %", "Drawdown Used", "Stage", "Status", "Goal Progress"].map(col => (
@@ -685,6 +687,7 @@ export default function AccountsPage() {
                       borderBottom: idx < accounts.length - 1 ? "1px solid rgba(148,163,184,0.05)" : "none",
                       alignItems: "center",
                       minHeight: 48,
+                      minWidth: 900,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(59,130,246,0.05)")}
                     onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "rgba(20,28,40,0.5)" : "rgba(15,23,35,0.3)")}
@@ -703,6 +706,7 @@ export default function AccountsPage() {
                 );
               })
             )}
+            </div>
           </div>
         )}
 
@@ -717,7 +721,7 @@ export default function AccountsPage() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {accounts.map(account => (
                 <AccountGalleryCard
                   key={account.id}

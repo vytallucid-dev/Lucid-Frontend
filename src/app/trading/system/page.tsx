@@ -159,8 +159,8 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="flex flex-col gap-5 p-6" style={{ ...CARD, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="flex flex-col gap-5 p-4 sm:p-6 w-full" style={{ ...CARD, maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
         <div className="flex items-center justify-between">
           <h2 style={{ fontSize: 16, fontWeight: 600, color: "#E2E8F0" }}>
             {initial?.name ? "Edit Model" : "Add Model"}
@@ -253,8 +253,8 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="flex flex-col gap-5 p-6" style={{ ...CARD, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="flex flex-col gap-5 p-4 sm:p-6 w-full" style={{ ...CARD, maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
         <div className="flex items-center justify-between">
           <h2 style={{ fontSize: 16, fontWeight: 600, color: "#E2E8F0" }}>
             {initial?.symbol ? "Edit Pair" : "Add Pair"}
@@ -262,7 +262,7 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
           <button onClick={onClose} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldGroup label="Symbol">
             <input style={INPUT_STYLE} value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="EURUSD" />
           </FieldGroup>
@@ -362,7 +362,7 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
       {/* Performance stats 2×3 grid */}
       <div>
         <SectionTitle>Performance</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
             { label: "Avg RR", value: formatRR(stats.rr), color: "#E2E8F0" },
@@ -432,7 +432,7 @@ function PairDrawerContent({ pair, onEdit }: { pair: PairConfig; onEdit: () => v
       {/* Performance stats */}
       <div>
         <SectionTitle>Performance</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
             { label: "Trade Count", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "#E2E8F0" },
@@ -523,7 +523,7 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
 
       <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 16, marginBottom: 16 }}>
         <SectionLabel>Performance</SectionLabel>
-        <div className="flex items-center gap-8 mt-3">
+        <div className="flex flex-wrap items-center gap-5 sm:gap-8 mt-3">
           <StatCell label="WR" value={formatWR(stats.wr)} color={wrColor(stats.wr)} />
           <StatCell label="RR" value={formatRR(stats.rr)} />
           <StatCell label="Trades" value={stats.trade_count > 0 ? String(stats.trade_count) : "—"} />
@@ -663,7 +663,7 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
 
       <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 12, marginBottom: 12 }}>
         <SectionLabel>Performance</SectionLabel>
-        <div className="flex items-center gap-6 mt-2">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-2">
           <StatCell label="Trades" value={stats.trade_count > 0 ? String(stats.trade_count) : "—"} />
           <StatCell label="WR" value={formatWR(stats.wr)} color={wrColor(stats.wr)} />
           <StatCell
@@ -741,7 +741,7 @@ function PairsTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {pairList.map((pair) => (
           <PairCard key={pair.symbol} pair={pair} onClick={() => setDrawerPair(pair)} />
         ))}
@@ -821,7 +821,7 @@ function SessionsTab() {
       <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20, fontStyle: "italic" }}>
         Sessions are auto-tagged from trade entry time. No manual configuration required.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SESSION_DEFINITIONS.map((s) => (
           <SessionCard key={s.key} session={s} />
         ))}
@@ -838,7 +838,7 @@ export default function SystemPage() {
   const [activeTab, setActiveTab] = useState<Tab>("Models");
 
   return (
-    <div style={{ padding: "32px 32px 48px", maxWidth: 1100 }}>
+    <div className="px-4 sm:px-8 py-5 sm:py-8 pb-12" style={{ maxWidth: 1100 }}>
       {/* Page Header */}
       <div className="mb-6">
         <h1 style={{ fontSize: 24, fontWeight: 600, color: "#E2E8F0", marginBottom: 4 }}>System</h1>

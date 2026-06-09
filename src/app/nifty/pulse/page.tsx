@@ -41,7 +41,7 @@ export default function PulsePage() {
 
   if (latestQuery.isLoading || historyQuery.isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <LoadingState message="Loading pulse..." />
       </div>
     );
@@ -49,7 +49,7 @@ export default function PulsePage() {
 
   if (latestQuery.error || historyQuery.error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ErrorState
           error={latestQuery.error ?? historyQuery.error}
           onRetry={() => {
@@ -63,7 +63,7 @@ export default function PulsePage() {
 
   if (!latestQuery.data) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmptyState title="No scorecard data available" />
       </div>
     );
@@ -115,15 +115,15 @@ export default function PulsePage() {
   const ind9Raw = current.ind9_raw_composite;
 
   return (
-    <div className="p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Pulse</h1>
           <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>Where macro sits right now.</p>
         </div>
-        <div className="text-right text-sm" style={{ color: "#64748B" }}>
+        <div className="text-right text-sm shrink-0" style={{ color: "#64748B" }}>
           <p>As of {formatDate(current.date)}</p>
           {missingCount > 0 && (
             <p className="text-xs mt-0.5" style={{ color: "#F59E0B" }}>
@@ -144,7 +144,7 @@ export default function PulsePage() {
 
       {/* ── Section 1: Hero Band Card ────────────────────────────────── */}
       <div
-        className="glass-card p-8 grid grid-cols-2 gap-8"
+        className="glass-card p-5 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8"
         style={{ background: bandBg(current.band), borderColor: bandColor(current.band) + "30" }}
       >
         {/* Left — Band reading */}
@@ -272,7 +272,7 @@ export default function PulsePage() {
         current.peak_score_peak_value !== undefined &&
         current.peak_score_peak_date && (
         <div
-          className="glass-card p-4 flex items-start justify-between"
+          className="glass-card p-4 flex flex-wrap items-start justify-between gap-3"
           style={{
             background: "var(--warning-bg)",
             border: "1px solid rgba(245,158,11,0.3)",
@@ -337,11 +337,11 @@ export default function PulsePage() {
       )}
 
       {/* ── Section 3: Section 9F Split ─────────────────────────────── */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 sm:p-6">
         <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
           Section 9F — Composite Breakdown
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
           {[
             { label: "DOMESTIC", value: current.domestic_composite, desc: "The slow-moving structural floor.", sub: "structural", min: 0, max: 7, drawerKey: "domestic" as DrawerContent },
             { label: "EXTERNAL", value: current.external_composite, desc: "The fast-moving cycle driver.", sub: "cycle", min: -6, max: 6, drawerKey: "external" as DrawerContent },
@@ -392,7 +392,7 @@ export default function PulsePage() {
       </div>
 
       {/* ── Section 4: Two-Column Strip ─────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Left — What Changed */}
         <div className="glass-card p-5 space-y-4">
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
@@ -535,7 +535,7 @@ export default function PulsePage() {
         onClose={() => setDrawerContent(null)}
         title={drawerContent === "domestic" ? "Domestic Indicators" : "External Indicators"}
       >
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           <p className="text-xs" style={{ color: "#64748B" }}>
             {drawerContent === "domestic"
               ? "6 domestic indicators (Ind 1, 2, 3, 4, 5, 7) driving the structural floor."

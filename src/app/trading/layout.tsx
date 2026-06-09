@@ -28,7 +28,7 @@ export default function TradingLayout({ children }: { children: React.ReactNode 
     <div className="flex flex-col min-h-[calc(100vh-56px)]">
       {/* Tab bar */}
       <div
-        className="flex items-center gap-6 px-6 h-11 shrink-0"
+        className="flex items-center gap-5 sm:gap-6 px-4 sm:px-6 h-11 shrink-0 overflow-x-auto no-scrollbar scroll-touch"
         style={{
           borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
           background: "rgba(2, 8, 23, 0.4)",
@@ -40,7 +40,7 @@ export default function TradingLayout({ children }: { children: React.ReactNode 
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative h-full flex items-center text-sm font-medium transition-colors"
+              className="relative h-full flex items-center text-sm font-medium transition-colors whitespace-nowrap shrink-0"
               style={{
                 color: active ? "#F1F5F9" : "#64748B",
               }}

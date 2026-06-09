@@ -13,6 +13,7 @@ import { type PublicAssetData } from "@/lib/api/oracle";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { formatUpdated } from "@/lib/format-date";
 
 type BiasFilter = "All" | "Bullish" | "Bearish" | "Neutral";
 type SortOption = "score-desc" | "score-asc" | "alpha";
@@ -255,12 +256,12 @@ export default function TopSetupsPage() {
   if (!assets || assets.length === 0) return <EmptyState title="No assets available" />;
 
   return (
-    <div className="p-6 relative">
+    <div className="p-4 sm:p-6 relative">
       {/* Page header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-6">
+        <div className="min-w-0">
           <h1
-            className="text-xl font-bold mb-1"
+            className="text-xl font-bold mb-1 truncate"
             style={{ color: "#F1F5F9", letterSpacing: "-0.02em" }}
           >
             Top Setups
@@ -269,9 +270,9 @@ export default function TopSetupsPage() {
             Fundamental + COT bias across all tracked assets
           </p>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right shrink-0">
           <p className="text-xs" style={{ color: "#64748B" }}>
-            Last updated: March 29, 2026 — 14:32 IST
+            Last updated: {formatUpdated(assets[0]?.lastUpdated)}
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: "#334155" }}>
             Updates with each data release
@@ -348,7 +349,7 @@ export default function TopSetupsPage() {
       </div>
 
       {/* Summary stat cards */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
           {
             label: "Total Assets Tracked",
@@ -654,7 +655,7 @@ export default function TopSetupsPage() {
         {/* Table footer */}
         {filtered.length > 0 && (
           <div
-            className="px-4 py-3 flex items-center justify-between"
+            className="px-4 py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
           >
             <p className="text-[11px]" style={{ color: "#334155" }}>
@@ -662,7 +663,7 @@ export default function TopSetupsPage() {
               with each economic release.
             </p>
             <p className="text-[11px]" style={{ color: "#334155" }}>
-              Last updated: March 29, 2026 — 14:32 IST
+              Last updated: {formatUpdated(assets[0]?.lastUpdated)}
             </p>
           </div>
         )}
@@ -679,7 +680,7 @@ export default function TopSetupsPage() {
           />
           {/* Panel */}
           <div
-            className="fixed top-0 right-0 h-full w-95 z-50 p-6 flex flex-col"
+            className="fixed top-0 right-0 h-full w-full sm:w-95 z-50 p-4 sm:p-6 flex flex-col"
             style={{
               background: "rgba(10, 22, 40, 0.95)",
               backdropFilter: "blur(16px)",
