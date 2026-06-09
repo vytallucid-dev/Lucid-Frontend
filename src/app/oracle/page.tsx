@@ -298,7 +298,7 @@ export default function TopSetupsPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex sm:items-center gap-4 flex-col sm:flex-row items-start w-full ">
           <div className="flex items-center gap-2">
             <span className="label" style={{ color: "#64748B" }}>
               Sort:
@@ -320,7 +320,7 @@ export default function TopSetupsPage() {
           </div>
 
           <div
-            className="flex items-center gap-2 px-2 py-1.5 rounded-md"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md w-full sm:w-auto"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.06)",
@@ -422,7 +422,7 @@ export default function TopSetupsPage() {
               </tr>
               {/* Column header row */}
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <th className="label text-center px-3 py-2.5 sticky left-0 z-10">
+                <th className="label text-center px-3 py-2.5 left-0 z-10">
                   ASSET
                 </th>
                 <th
@@ -474,7 +474,7 @@ export default function TopSetupsPage() {
                         e.currentTarget.style.background = "transparent";
                       }}
                     >
-                      <td className="px-3 py-2.5 sticky left-0 z-10">
+                      <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="pl-2">
                             <p
@@ -537,7 +537,7 @@ export default function TopSetupsPage() {
                         e.currentTarget.style.background = "transparent";
                       }}
                     >
-                      <td className="px-3 py-2.5 sticky left-0 z-10">
+                      <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="pl-2">
                             <p
@@ -602,7 +602,7 @@ export default function TopSetupsPage() {
                     }}
                   >
                     {/* Asset name at full opacity */}
-                    <td className="px-3 py-2.5 sticky left-0 z-10">
+                    <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="pl-2">
                           <p
