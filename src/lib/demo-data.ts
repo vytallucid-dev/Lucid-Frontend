@@ -5,7 +5,12 @@ export type Direction = 'Buy' | 'Sell';
 export type ExitType = 'TP' | 'SL' | 'Manual' | 'Partial+TP' | 'Partial+SL' | 'BE';
 export type Session = 'Asian' | 'London' | 'London-NY Overlap' | 'New York';
 export type AccountStage = 'Stage 1' | 'Stage 2' | 'Funded' | 'Blown';
-export type AccountStatus = 'Active' | 'Passed' | 'Blown';
+export type AccountStatus = 'Active' | 'Passed' | 'Blown' | 'Closed';
+// The spine of the all-traders repositioning: an account's type decides which
+// fields and language appear. Personal/Demo are normal broker accounts; Prop
+// Firm is the opt-in add-on that surfaces challenge/stage/drawdown/payout.
+export type AccountType = 'personal' | 'demo' | 'prop_firm';
+export type CashFlowType = 'deposit' | 'withdrawal' | 'payout';
 export type ModelName = '4HPullBack' | 'Breakout' | 'Short';
 export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'EURJPY' | 'GBPJPY' | 'XAUUSD';
 export type PlannedStatus = 'Watching' | 'Ready' | 'Invalidated' | 'Cancelled';
@@ -59,22 +64,37 @@ export interface DebriefMemory {
 
 export interface Account {
   id: string;
-  prop_firm: string;
+  account_type: AccountType; // drives conditional fields + language everywhere
   account_name: string;
-  account_size: number;
+  account_size: number; // starting balance (universal)
   current_balance: number;
-  stage: AccountStage;
+  currency: string;
   status: AccountStatus;
-  max_drawdown_pct: number;
-  profit_target_pct: number;
   starting_date: string;
-  payouts: Payout[];
+  // Personal / Demo
+  broker?: string; // free-text broker name (optional)
+  profit_goal_pct?: number | null; // optional user-set goal (not firm-imposed)
+  // Prop firm (add-on) — preserved, only meaningful when account_type === 'prop_firm'
+  prop_firm?: string;
+  stage?: AccountStage;
+  max_drawdown_pct?: number;
+  profit_target_pct?: number;
+  // Money movements: deposits/withdrawals for personal, payouts for prop
+  cash_flows: CashFlow[];
+  payouts: Payout[]; // preserved (prop firm payout history)
 }
 
 export interface Payout {
   date: string;
   amount: number;
   running_total: number;
+}
+
+export interface CashFlow {
+  date: string;
+  type: CashFlowType;
+  amount: number; // positive magnitude; `type` carries the direction
+  note?: string;
 }
 
 export interface Model {
@@ -114,47 +134,106 @@ export interface PlannedTrade {
 
 // === SEED DATA ===
 
+// A deliberate mix so the type-aware UI is visible: one Prop Firm (full
+// challenge/drawdown/payout treatment), one Personal (broker + deposits/
+// withdrawals + optional goal), one Demo (practice, no money pressure).
 export const accounts: Account[] = [
   {
     id: 'acc_1',
+    account_type: 'prop_firm',
     prop_firm: 'FundingPips',
-    account_name: 'FP 10k Stage 2',
+    account_name: 'FP 10k Funded',
     account_size: 10000,
     current_balance: 10175,
-    stage: 'Stage 2',
+    currency: 'USD',
+    stage: 'Funded',
     status: 'Active',
     max_drawdown_pct: 5,
     profit_target_pct: 5,
     starting_date: '2026-01-15',
-    payouts: [],
+    cash_flows: [],
+    payouts: [
+      { date: '2026-03-05', amount: 210, running_total: 210 },
+      { date: '2026-04-02', amount: 140, running_total: 350 },
+    ],
   },
   {
     id: 'acc_2',
-    prop_firm: 'FundingPips',
-    account_name: 'FP 10k Stage 1 (passed)',
-    account_size: 10000,
-    current_balance: 10800,
-    stage: 'Stage 1',
-    status: 'Passed',
-    max_drawdown_pct: 5,
-    profit_target_pct: 8,
-    starting_date: '2025-10-12',
+    account_type: 'personal',
+    broker: 'IC Markets',
+    account_name: 'IC Markets Live',
+    account_size: 5000,
+    current_balance: 5840,
+    currency: 'USD',
+    status: 'Active',
+    profit_goal_pct: 20,
+    starting_date: '2025-11-20',
+    cash_flows: [
+      { date: '2025-11-20', type: 'deposit', amount: 5000, note: 'Initial funding' },
+      { date: '2026-02-10', type: 'withdrawal', amount: 500, note: 'Profit withdrawal' },
+      { date: '2026-03-15', type: 'deposit', amount: 1000, note: 'Top-up' },
+    ],
     payouts: [],
   },
   {
     id: 'acc_3',
-    prop_firm: 'FundingPips',
-    account_name: "Friend's account",
+    account_type: 'demo',
+    broker: 'MT5 Demo',
+    account_name: 'Breakout Strategy Demo',
     account_size: 10000,
-    current_balance: 10010,
+    current_balance: 10420,
+    currency: 'USD',
+    status: 'Active',
+    profit_goal_pct: null,
+    starting_date: '2026-02-01',
+    cash_flows: [],
+    payouts: [],
+  },
+  {
+    id: 'acc_4',
+    account_type: 'prop_firm',
+    prop_firm: 'Alpha Capital',
+    account_name: 'AC 25k Stage 2',
+    account_size: 25000,
+    current_balance: 25640,
+    currency: 'USD',
     stage: 'Stage 2',
     status: 'Active',
-    max_drawdown_pct: 5,
-    profit_target_pct: 5,
-    starting_date: '2026-02-01',
+    max_drawdown_pct: 6,
+    profit_target_pct: 8,
+    starting_date: '2026-04-10',
+    cash_flows: [],
     payouts: [],
   },
 ];
+
+// ─── Account-type helpers (shared across Trading Hub + Dashboard) ─────────────
+
+export function isPropAccount(a: Pick<Account, 'account_type'>): boolean {
+  return a.account_type === 'prop_firm';
+}
+
+export function accountTypeLabel(type: AccountType): string {
+  return type === 'prop_firm' ? 'Prop Firm' : type === 'demo' ? 'Demo' : 'Personal';
+}
+
+/** Pill colors: Personal = accent blue, Demo = muted gray, Prop = indigo/purple. */
+export const ACCOUNT_TYPE_COLORS: Record<AccountType, string> = {
+  personal: '#3B82F6',
+  demo: '#94A3B8',
+  prop_firm: '#818CF8',
+};
+
+/** "Prop Firm" for prop accounts, "Broker" otherwise — the source-column label. */
+export function accountSourceLabel(type: AccountType): string {
+  return type === 'prop_firm' ? 'Prop Firm' : 'Broker';
+}
+
+/** The account's source name (firm for prop, broker for personal/demo). */
+export function accountSource(a: Account): string {
+  const src = a.account_type === 'prop_firm' ? a.prop_firm : a.broker;
+  return src && src.trim() ? src : '—';
+}
 
 export const models: Model[] = [
   {

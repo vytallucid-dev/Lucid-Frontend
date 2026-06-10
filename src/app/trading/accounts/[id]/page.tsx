@@ -10,11 +10,14 @@ import {
   formatDate,
   type Account,
   type Trade,
+  isPropAccount,
+  accountSource,
 } from "@/lib/demo-data";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import {
   StagePill,
   StatusPill,
+  AccountTypePill,
   calcDrawdown,
   calcGoalProgress,
   calcAccountStats,
@@ -143,6 +146,8 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
   const chartData = useMemo(() => buildChartData(account, accountTrades), [account, accountTrades]);
 
+  const prop = isPropAccount(account);
+  const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
   const { tradeCount, winRate, avgPnl } = calcAccountStats(accountTrades);
@@ -184,16 +189,17 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <StagePill stage={account.stage} />
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <AccountTypePill type={account.account_type} />
+              {prop && account.stage && <StagePill stage={account.stage} />}
               <StatusPill status={account.status} />
             </div>
-            <p style={{ fontSize: 13, color: "#64748B", marginBottom: 4 }}>{account.prop_firm}</p>
+            <p style={{ fontSize: 13, color: "#64748B", marginBottom: 4 }}>{accountSource(account)}</p>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#E2E8F0", marginBottom: 8 }}>
               {account.account_name}
             </h2>
             <p style={{ fontSize: 13, color: "#64748B" }}>
-              Started {formatDate(account.starting_date)} · Size {formatCurrency(account.account_size)}
+              Started {formatDate(account.starting_date)} · {prop ? "Size" : "Starting balance"} {formatCurrency(account.account_size)}
             </p>
           </div>
 
@@ -223,11 +229,29 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
         <StatCard
           label="Net P&L"
           value={<span style={{ color: pnlColor }}>{formatCurrency(pnl)}</span>}
-          sub={`vs ${formatCurrency(profitTarget)} target`}
+          sub={prop ? `vs ${formatCurrency(profitTarget)} target` : hasGoal ? `vs ${formatCurrency(profitTarget)} goal` : "since start"}
         />
       </div>
 
-      {/* ── Targets ──────────────────────────────────────────────────── */}
+      {/* ── Goal (personal, optional) ────────────────────────────────── */}
+      {!prop && hasGoal && (
+        <div className="rounded-2xl p-4 sm:p-6 mb-6" style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>Goal</h3>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontSize: 13, color: "#94A3B8" }}>Profit Goal</span>
+              <span style={{ fontSize: 13, color: "#64748B" }}>{goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}</span>
+            </div>
+            <div style={{ width: "100%", height: 10, background: "rgba(148,163,184,0.12)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 5 }} />
+            </div>
+            <p style={{ fontSize: 12, color: "#475569" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal achieved</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Targets (prop only) ──────────────────────────────────────── */}
+      {prop && (
       <div
         className="rounded-2xl p-4 sm:p-6 mb-6"
         style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
@@ -281,6 +305,7 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Balance over time (Recharts) ─────────────────────────────── */}
       <div
@@ -296,10 +321,12 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
               <span style={{ width: 24, height: 2, background: "#3B82F6", display: "inline-block", borderRadius: 1 }} />
               Balance
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 24, height: 2, background: "#EF4444", display: "inline-block", borderRadius: 1, borderTop: "1px dashed #EF4444" }} />
-              Max Drawdown Limit
-            </span>
+            {prop && (
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 24, height: 2, background: "#EF4444", display: "inline-block", borderRadius: 1, borderTop: "1px dashed #EF4444" }} />
+                Max Drawdown Limit
+              </span>
+            )}
           </div>
         </div>
 
@@ -342,13 +369,15 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
                 strokeDasharray="4 4"
                 label={{ value: "Start", fontSize: 10, fill: "#475569", position: "right" }}
               />
-              <ReferenceLine
-                y={ddThreshold}
-                stroke="#EF4444"
-                strokeDasharray="6 3"
-                strokeOpacity={0.6}
-                label={{ value: "Max DD", fontSize: 10, fill: "#EF4444", position: "right" }}
-              />
+              {prop && (
+                <ReferenceLine
+                  y={ddThreshold}
+                  stroke="#EF4444"
+                  strokeDasharray="6 3"
+                  strokeOpacity={0.6}
+                  label={{ value: "Max DD", fontSize: 10, fill: "#EF4444", position: "right" }}
+                />
+              )}
               <Area
                 type="monotone"
                 dataKey="balance"
@@ -449,11 +478,12 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
           style={{ borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(10,14,20,0.4)" }}
         >
           <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Payout History
+            {prop ? "Payout History" : "Deposits & Withdrawals"}
           </h3>
         </div>
 
-        {account.payouts.length === 0 ? (
+        {prop ? (
+          account.payouts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
             <p style={{ fontSize: 13, color: "#64748B" }}>No payouts logged yet.</p>
           </div>
@@ -514,6 +544,33 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
                 </LineChart>
               </ResponsiveContainer>
             )}
+          </div>
+          )
+        ) : account.cash_flows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <p style={{ fontSize: 13, color: "#64748B" }}>No deposits or withdrawals logged yet.</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.08)" }}>
+              {account.cash_flows.map((cf, i) => {
+                const isOut = cf.type === "withdrawal";
+                const color = isOut ? "var(--negative)" : "var(--positive)";
+                const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
+                return (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ background: i % 2 === 0 ? "rgba(20,28,40,0.6)" : "rgba(15,23,35,0.4)", borderBottom: i < account.cash_flows.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none" }}>
+                    <span style={{ fontSize: 12, color: "#64748B", minWidth: 100 }}>
+                      {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#94A3B8", flex: 1 }}>
+                      {cfLabel}
+                      {cf.note ? <span style={{ color: "#475569" }}> · {cf.note}</span> : null}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color }}>{isOut ? "−" : "+"}{formatCurrency(cf.amount)}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

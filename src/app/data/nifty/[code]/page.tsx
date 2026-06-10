@@ -50,7 +50,9 @@ const NIFTY_LOG_JOB_NAMES: Record<string, string> = {
   IND_NIFTY_08_VIX: "nse_vix",
   IND_NIFTY_09_USD_WEAKNESS: "nifty_ind9_bridge",
   IND_NIFTY_10_DXY: "eodhd",
-  IND_NIFTY_11_BRENT: "eodhd",
+  // Brent moved off EODHD to the Crude Price API: "crude" (contains-match) catches
+  // both crude_price_fetch (orchestrator) and fetch_crude_brent (per-indicator).
+  IND_NIFTY_11_BRENT: "crude",
   IND_NIFTY_12_USDINR: "eodhd",
   IND_NIFTY_13_FII_LS_RATIO: "nse_participant_oi",
 };
@@ -61,6 +63,7 @@ const NIFTY_LOG_JOB_NAMES: Record<string, string> = {
 const FETCH_SOURCE_LABELS: Record<string, string> = {
   fred: "FRED",
   eodhd: "EODHD",
+  crude_price_api: "Crude Price",
   nse_scrape: "NSE",
 };
 

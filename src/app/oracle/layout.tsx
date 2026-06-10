@@ -9,6 +9,7 @@ const tabs = [
   { label: "FX Scorecard", href: "/oracle/fx-scorecard" },
   { label: "Heatmap", href: "/oracle/heatmap" },
   { label: "COT Report", href: "/oracle/cot" },
+  { label: "Compass", href: "/oracle/compass" },
 ];
 
 export default function OracleLayout({

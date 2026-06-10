@@ -10,7 +10,8 @@ export type DataSource =
   | "derived"
   | "yahoo"
   | "forex_factory"
-  | "eodhd";
+  | "eodhd"
+  | "crude_price_api";
 
 export type IndicatorFrequency =
   | "daily"

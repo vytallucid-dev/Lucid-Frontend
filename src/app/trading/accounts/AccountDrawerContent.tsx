@@ -4,23 +4,32 @@ import {
   type Account,
   type Trade,
   type Payout,
+  type AccountType,
   pairs,
   formatCurrency,
   formatDate,
+  isPropAccount,
+  accountSource,
+  accountTypeLabel,
+  ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 export function calcDrawdown(account: Account) {
+  const ddPct = account.max_drawdown_pct ?? 0;
   const drawdownUsed = Math.max(0, account.account_size - account.current_balance);
-  const drawdownLimit = account.account_size * account.max_drawdown_pct / 100;
+  const drawdownLimit = (account.account_size * ddPct) / 100;
   const pctUsed = drawdownLimit > 0 ? Math.min(100, (drawdownUsed / drawdownLimit) * 100) : 0;
   return { drawdownUsed, drawdownLimit, pctUsed };
 }
 
-export function calcGoalProgress(account: Account) {
+// Falls back across prop profit_target_pct → personal profit_goal_pct so the
+// same bar renders a firm-set target or a user-set goal depending on type.
+export function calcGoalProgress(account: Account, targetPct?: number) {
+  const pctTarget = targetPct ?? account.profit_target_pct ?? account.profit_goal_pct ?? 0;
   const profitAchieved = Math.max(0, account.current_balance - account.account_size);
-  const profitTarget = account.account_size * account.profit_target_pct / 100;
+  const profitTarget = (account.account_size * pctTarget) / 100;
   const pct = profitTarget > 0 ? Math.min(100, (profitAchieved / profitTarget) * 100) : 0;
   return { profitAchieved, profitTarget, pct };
 }
@@ -71,11 +80,22 @@ export function StatusPill({ status }: { status: string }) {
     "Active": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
     "Passed": { bg: "rgba(16,185,129,0.15)", color: "#10B981", border: "rgba(16,185,129,0.25)" },
     "Blown":  { bg: "rgba(239,68,68,0.1)",   color: "#EF4444", border: "rgba(239,68,68,0.25)" },
+    "Closed": { bg: "rgba(148,163,184,0.12)", color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
   };
   const s = map[status] ?? map["Active"];
   return (
     <span className="pill" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
       {status}
+    </span>
+  );
+}
+
+/** Account-type pill: Personal (blue), Demo (gray), Prop Firm (indigo/purple). */
+export function AccountTypePill({ type }: { type: AccountType }) {
+  const color = ACCOUNT_TYPE_COLORS[type];
+  return (
+    <span className="pill" style={{ background: `${color}22`, color, border: `1px solid ${color}40` }}>
+      {accountTypeLabel(type)}
     </span>
   );
 }
@@ -194,6 +214,8 @@ interface AccountDrawerContentProps {
 }
 
 export function AccountDrawerContent({ account, accountTrades, onTradeClick }: AccountDrawerContentProps) {
+  const prop = isPropAccount(account);
+  const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
   const { tradeCount, winRate, avgPnl, bestPair, worstPair } = calcAccountStats(accountTrades);
@@ -222,11 +244,12 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
 
       {/* ── Section 1: Header ──────────────────────────────────── */}
       <Card>
-        <div className="flex items-center gap-2 mb-3">
-          <StagePill stage={account.stage} />
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <AccountTypePill type={account.account_type} />
+          {prop && account.stage && <StagePill stage={account.stage} />}
           <StatusPill status={account.status} />
         </div>
-        <p style={{ fontSize: 12, color: "#64748B", marginBottom: 2 }}>{account.prop_firm}</p>
+        <p style={{ fontSize: 12, color: "#64748B", marginBottom: 2 }}>{accountSource(account)}</p>
         <p style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 8 }}>
           {account.account_name}
         </p>
@@ -238,7 +261,28 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
         </p>
       </Card>
 
-      {/* ── Section 2: Targets ────────────────────────────────────── */}
+      {/* ── Section 2: Targets (prop) / Goal (personal) ──────────────── */}
+      {!prop && hasGoal && (
+        <Card>
+          <SectionTitle>Goal</SectionTitle>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span style={{ fontSize: 12, color: "#94A3B8" }}>Profit Goal</span>
+              <span style={{ fontSize: 12, color: "#64748B" }}>
+                {goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}
+              </span>
+            </div>
+            <GoalBar pct={goalPct} />
+            <div className="flex items-center justify-between mt-1">
+              <span style={{ fontSize: 11, color: "#475569" }}>
+                {goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {prop && (
       <Card>
         <SectionTitle>Targets</SectionTitle>
 
@@ -290,6 +334,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
           )}
         </div>
       </Card>
+      )}
 
       {/* ── Section 3: Quick Stats ────────────────────────────────── */}
       <div>
@@ -375,39 +420,81 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
         )}
       </div>
 
-      {/* ── Section 5: Payouts ────────────────────────────────────── */}
-      <div>
-        <SectionTitle>Payouts</SectionTitle>
-        {account.payouts.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#64748B" }}>No payouts logged yet.</p>
-        ) : (
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{ border: "1px solid rgba(148,163,184,0.08)" }}
-          >
-            {account.payouts.map((payout: Payout, i: number) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 px-3 py-2.5"
-                style={{
-                  background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
-                  borderBottom: i < account.payouts.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
-                }}
-              >
-                <span style={{ fontSize: 11, color: "#64748B", minWidth: 80 }}>
-                  {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--positive)", flex: 1 }}>
-                  +{formatCurrency(payout.amount)}
-                </span>
-                <span style={{ fontSize: 11, color: "#64748B" }}>
-                  Running: {formatCurrency(payout.running_total)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* ── Section 5: Payouts (prop) / Deposits & Withdrawals (personal) ── */}
+      {prop ? (
+        <div>
+          <SectionTitle>Payouts</SectionTitle>
+          {account.payouts.length === 0 ? (
+            <p style={{ fontSize: 13, color: "#64748B" }}>No payouts logged yet.</p>
+          ) : (
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+            >
+              {account.payouts.map((payout: Payout, i: number) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-3 py-2.5"
+                  style={{
+                    background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
+                    borderBottom: i < account.payouts.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: "#64748B", minWidth: 80 }}>
+                    {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--positive)", flex: 1 }}>
+                    +{formatCurrency(payout.amount)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#64748B" }}>
+                    Running: {formatCurrency(payout.running_total)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <SectionTitle>Deposits &amp; Withdrawals</SectionTitle>
+          {account.cash_flows.length === 0 ? (
+            <p style={{ fontSize: 13, color: "#64748B" }}>No deposits or withdrawals logged yet.</p>
+          ) : (
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+            >
+              {account.cash_flows.map((cf, i) => {
+                const isOut = cf.type === "withdrawal";
+                const color = isOut ? "var(--negative)" : "var(--positive)";
+                const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                    style={{
+                      background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
+                      borderBottom: i < account.cash_flows.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "#64748B", minWidth: 80 }}>
+                      {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                    <span style={{ fontSize: 12, color: "#94A3B8", flex: 1 }}>
+                      {cfLabel}
+                      {cf.note ? <span style={{ color: "#64748B" }}> · {cf.note}</span> : null}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color }}>
+                      {isOut ? "−" : "+"}
+                      {formatCurrency(cf.amount)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

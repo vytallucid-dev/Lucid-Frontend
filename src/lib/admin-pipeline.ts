@@ -58,6 +58,7 @@ export const DATA_SOURCE_LABELS: Record<string, string> = {
   yahoo: "Yahoo Finance",
   forex_factory: "Forex Factory",
   eodhd: "EODHD (Market Data)",
+  crude_price_api: "Crude Price API (Oil Spot)",
   event_driven: "Event Driven",
 };
 
@@ -70,6 +71,7 @@ export const DATA_SOURCE_COLORS: Record<string, string> = {
   yahoo: "#EC4899",
   forex_factory: "#10B981",
   eodhd: "#14B8A6",
+  crude_price_api: "#EAB308",
   event_driven: "#F97316",
 };
 

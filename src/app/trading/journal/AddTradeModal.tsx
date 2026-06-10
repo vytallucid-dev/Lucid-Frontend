@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, Camera } from "lucide-react";
-import { accounts, pairs, models } from "@/lib/demo-data";
+import { accounts, pairs, models, accountTypeLabel } from "@/lib/demo-data";
 
 interface AddTradeModalProps {
   open: boolean;
@@ -236,7 +236,7 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                       style={INPUT_STYLE}
                     >
                       {accounts.map(a => (
-                        <option key={a.id} value={a.id}>{a.account_name}</option>
+                        <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                       ))}
                     </select>
                   </FieldGroup>

@@ -266,3 +266,75 @@ export async function getCotAssets(): Promise<PublicCotAsset[]> {
   const res = await apiFetch<CotEnvelope>('/api/oracle/cot');
   return res.data;
 }
+
+// ─── Compass types ────────────────────────────────────────────────────────────
+
+export type CompassRegime = 'Risk-On' | 'Caution' | 'Risk-Off';
+export type CompassBand = 'GREEN' | 'YELLOW' | 'RED';
+
+export interface PublicCompassSubCheck {
+  name: string;
+  value: string;
+  detail: string;
+  colorBand: CompassBand;
+}
+
+export interface PublicCompassInput {
+  code: string;
+  colorBand: CompassBand;
+  weight: number;
+  displayValue: string;
+  displayDetail: string | null;
+  subChecks: PublicCompassSubCheck[] | null;
+}
+
+export interface PublicCompassOverrideRef {
+  code: string;
+  adjustment: number;
+}
+
+export interface PublicCompassScoreImpactRow {
+  asset: string;
+  kind: 'asset' | 'pair';
+  baseScore: number;
+  finalScore: number;
+  adjustment: number;
+  regime: CompassRegime | null;
+  overrides: PublicCompassOverrideRef[];
+}
+
+export interface PublicCompassHistoryRow {
+  date: string;
+  activeRegime: CompassRegime;
+  candidateRegime: CompassRegime;
+  crisisOverrideFired: boolean;
+  greenWeight: number;
+  redWeight: number;
+  bands: Record<string, CompassBand>;
+}
+
+export interface PublicCompassSnapshot {
+  current: {
+    classificationDate: string;
+    candidateRegime: CompassRegime;
+    activeRegime: CompassRegime;
+    persistenceDaysCount: number;
+    crisisOverrideFired: boolean;
+    daysStable: number;
+    weights: { green: number; yellow: number; red: number; total: number };
+  };
+  inputs: PublicCompassInput[];
+  scoreImpact: PublicCompassScoreImpactRow[];
+  history: PublicCompassHistoryRow[];
+}
+
+interface CompassEnvelope {
+  success: boolean;
+  data: PublicCompassSnapshot | null;
+}
+
+/** Full Compass snapshot. `null` until the classifier has produced a regime. */
+export async function getCompass(): Promise<PublicCompassSnapshot | null> {
+  const res = await apiFetch<CompassEnvelope>('/api/oracle/compass');
+  return res.data;
+}

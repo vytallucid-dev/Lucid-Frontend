@@ -7,7 +7,7 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-  DollarSign,
+  ArrowLeftRight,
   ClipboardList,
   Radar,
   ChevronDown,
@@ -30,6 +30,8 @@ import {
   pairs,
   formatCurrency,
   getDistanceToEntry,
+  isPropAccount,
+  accountTypeLabel,
   type Trade,
   type PlannedTrade,
   type Account,
@@ -38,7 +40,7 @@ import { DetailDrawer } from "@/components/DetailDrawer";
 import { TradeDrawerContent } from "@/app/trading/journal/TradeDrawerContent";
 import {
   AccountDrawerContent,
-  StagePill,
+  AccountTypePill,
   StatusPill,
   calcDrawdown,
   calcGoalProgress,
@@ -197,14 +199,10 @@ function PnlTooltip({ active, payload }: { active?: boolean; payload?: Array<{ p
   );
 }
 
-// ─── Log Payout Modal (lightweight) ───────────────────────────────────────────
+// ─── Cash Flow Modal (deposit / withdrawal / payout — context aware) ──────────
 
-function LogPayoutModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
-
-  const fundedAccounts = allAccounts.filter((a) => a.stage === "Funded");
-  const activeAccounts = allAccounts.filter((a) => a.status === "Active");
-  const payoutTargets = fundedAccounts.length > 0 ? fundedAccounts : activeAccounts;
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -216,57 +214,44 @@ function LogPayoutModal({ open, onClose }: { open: boolean; onClose: () => void 
     color: "#E2E8F0",
     outline: "none",
   };
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 };
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-        onClick={onClose}
-      />
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-      >
-        <div
-          className="rounded-2xl pointer-events-auto w-full max-w-md mx-4"
-          style={{
-            background: "rgba(12,18,30,0.98)",
-            border: "1px solid rgba(148,163,184,0.12)",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
-            backdropFilter: "blur(16px)",
-          }}
-        >
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <div className="rounded-2xl pointer-events-auto w-full max-w-md mx-4" style={{ background: "rgba(12,18,30,0.98)", border: "1px solid rgba(148,163,184,0.12)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)", backdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: "#E2E8F0" }}>Log Payout</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: "#E2E8F0" }}>Cash Flow</h2>
             <button onClick={onClose} style={{ color: "#64748B", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
           <div className="px-6 py-5 flex flex-col gap-4">
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 }}>
-                Account
-              </label>
+              <label style={labelStyle}>Account</label>
               <select style={inputStyle}>
-                {payoutTargets.map((a) => (
-                  <option key={a.id} value={a.id}>{a.account_name}</option>
+                {allAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 }}>
-                Date
-              </label>
+              <label style={labelStyle}>Type</label>
+              <select style={inputStyle} defaultValue="deposit">
+                <option value="deposit">Deposit</option>
+                <option value="withdrawal">Withdrawal</option>
+                <option value="payout">Payout (prop accounts)</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Date</label>
               <input type="date" style={inputStyle} defaultValue={new Date().toISOString().slice(0, 10)} />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 }}>
-                Amount ($)
-              </label>
+              <label style={labelStyle}>Amount</label>
               <input type="number" placeholder="0.00" min="0" style={inputStyle} />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 }}>
-                Notes (optional)
-              </label>
+              <label style={labelStyle}>Note (optional)</label>
               <textarea rows={2} placeholder="Optional note..." style={{ ...inputStyle, resize: "none" }} />
             </div>
             <div className="flex gap-3 pt-2">
@@ -274,7 +259,7 @@ function LogPayoutModal({ open, onClose }: { open: boolean; onClose: () => void 
                 Cancel
               </button>
               <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff" }}>
-                Log Payout
+                Log
               </button>
             </div>
           </div>
@@ -287,8 +272,10 @@ function LogPayoutModal({ open, onClose }: { open: boolean; onClose: () => void 
 // ─── Compact account row ──────────────────────────────────────────────────────
 
 function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: () => void }) {
+  const prop = isPropAccount(account);
+  const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const pnl = account.current_balance - account.account_size;
-  const pnlPct = (pnl / account.account_size) * 100;
+  const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
   const pnlColor = pnl > 0 ? "#10B981" : pnl < 0 ? "#EF4444" : "#94A3B8";
   const { pct: goalPct } = calcGoalProgress(account);
   const { pctUsed: ddPct } = calcDrawdown(account);
@@ -312,10 +299,11 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
         (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(148,163,184,0.08)";
       }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span style={{ fontSize: 12, color: "#64748B" }}>
-          {account.prop_firm} · {account.account_name}
-        </span>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <AccountTypePill type={account.account_type} />
+          <span className="truncate" style={{ fontSize: 12, color: "#94A3B8" }}>{account.account_name}</span>
+        </div>
         <StatusPill status={account.status} />
       </div>
 
@@ -328,27 +316,33 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
         </span>
       </div>
 
-      {/* Progress bars */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span style={{ fontSize: 10, color: "#475569", width: 32, flexShrink: 0 }}>Goal</span>
-          <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 2 }} />
+      {/* Progress bars — prop shows target + drawdown; personal shows goal if set */}
+      {prop ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>Target</span>
+            <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 2 }} />
+            </div>
+            <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{isPassed ? "✓" : `${goalPct.toFixed(0)}%`}</span>
           </div>
-          <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>
-            {isPassed ? "✓" : `${goalPct.toFixed(0)}%`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span style={{ fontSize: 10, color: "#475569", width: 32, flexShrink: 0 }}>DD</span>
-          <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: `${ddPct}%`, height: "100%", background: ddColor, borderRadius: 2 }} />
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>DD</span>
+            <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: `${ddPct}%`, height: "100%", background: ddColor, borderRadius: 2 }} />
+            </div>
+            <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{ddPct.toFixed(0)}%</span>
           </div>
-          <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>
-            {ddPct.toFixed(0)}%
-          </span>
         </div>
-      </div>
+      ) : hasGoal ? (
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>Goal</span>
+          <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 2 }} />
+          </div>
+          <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{goalPct.toFixed(0)}%</span>
+        </div>
+      ) : null}
     </button>
   );
 }
@@ -365,7 +359,7 @@ export default function DashboardPage() {
 
   // Modal state
   const [showAddTrade, setShowAddTrade] = useState(false);
-  const [showLogPayout, setShowLogPayout] = useState(false);
+  const [showCashFlow, setShowCashFlow] = useState(false);
 
   // Chat input
   const [chatValue, setChatValue] = useState("");
@@ -387,22 +381,36 @@ export default function DashboardPage() {
   );
   const readyCount = useMemo(() => allPlanned.filter((p) => p.status === "Ready").length, []);
 
-  // Status line
+  // Status line — type-agnostic, framed off whatever accounts exist
   const statusLine = useMemo(() => {
-    if (readyCount === 0 && liveTrades.length === 0)
-      return "Markets are quiet. Time to plan or rest.";
-    const parts: string[] = [];
-    if (readyCount > 0)
-      parts.push(`${readyCount} planned trade${readyCount !== 1 ? "s" : ""} ready`);
-    if (liveTrades.length > 0)
-      parts.push(`${liveTrades.length} live trade${liveTrades.length !== 1 ? "s" : ""} running`);
-    return `You have ${parts.join(" and ")}.`;
+    const totalBal = allAccounts.reduce((s, a) => s + a.current_balance, 0);
+    const totalStart = allAccounts.reduce((s, a) => s + a.account_size, 0);
+    const pct = totalStart > 0 ? ((totalBal - totalStart) / totalStart) * 100 : 0;
+    const inChallenge = allAccounts.filter(
+      (a) => isPropAccount(a) && a.status === "Active" && (a.stage === "Stage 1" || a.stage === "Stage 2"),
+    ).length;
+
+    let s =
+      allAccounts.length > 0
+        ? `Your accounts are ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% overall.`
+        : "Welcome — add an account to start tracking your trading.";
+    if (inChallenge > 0) s += ` ${inChallenge} prop challenge${inChallenge !== 1 ? "s" : ""} active.`;
+
+    if (readyCount > 0 || liveTrades.length > 0) {
+      const parts: string[] = [];
+      if (readyCount > 0) parts.push(`${readyCount} planned trade${readyCount !== 1 ? "s" : ""} ready`);
+      if (liveTrades.length > 0) parts.push(`${liveTrades.length} live trade${liveTrades.length !== 1 ? "s" : ""} running`);
+      s += ` You have ${parts.join(" and ")}.`;
+    } else {
+      s += " Markets are quiet — time to plan or rest.";
+    }
+    return s;
   }, [readyCount, liveTrades.length]);
 
   // Metric cards
   const metrics = useMemo(() => {
     const activeAccounts = allAccounts.filter((a) => a.status === "Active");
-    const totalCapital = activeAccounts.reduce((s, a) => s + a.account_size, 0);
+    const totalBalance = allAccounts.reduce((s, a) => s + a.current_balance, 0);
     const overallPnl = allAccounts.reduce((s, a) => s + (a.current_balance - a.account_size), 0);
     const activeCount = activeAccounts.length;
 
@@ -414,7 +422,25 @@ export default function DashboardPage() {
     const losses = last20.filter((t) => t.blended_rr < 0);
     const wr = wins.length + losses.length > 0 ? (wins.length / (wins.length + losses.length)) * 100 : 0;
 
-    return { totalCapital, overallPnl, activeCount, wr, tradeCount: last20.length };
+    // Adaptive 4th metric: challenges if any prop accounts exist, else best performer.
+    const propAccounts = allAccounts.filter(isPropAccount);
+    const challengesActive = propAccounts.filter(
+      (a) => a.status === "Active" && (a.stage === "Stage 1" || a.stage === "Stage 2"),
+    ).length;
+    const pnlPct = (a: Account) => (a.account_size > 0 ? (a.current_balance - a.account_size) / a.account_size : 0);
+    const best = [...allAccounts].sort((a, b) => pnlPct(b) - pnlPct(a))[0] ?? null;
+
+    return {
+      totalBalance,
+      overallPnl,
+      activeCount,
+      wr,
+      tradeCount: last20.length,
+      hasProp: propAccounts.length > 0,
+      challengesActive,
+      bestName: best?.account_name ?? "—",
+      bestPct: best ? pnlPct(best) * 100 : 0,
+    };
   }, []);
 
   // P&L Curve
@@ -441,7 +467,6 @@ export default function DashboardPage() {
   }
 
   const pairsConfig = pairs;
-  const activeAccounts = allAccounts.filter((a) => a.status === "Active");
 
   return (
     <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
@@ -515,10 +540,10 @@ export default function DashboardPage() {
               action: () => setShowAddTrade(true),
             },
             {
-              icon: <DollarSign size={20} />,
-              label: "Log Payout",
-              desc: "Record a prop firm payout",
-              action: () => setShowLogPayout(true),
+              icon: <ArrowLeftRight size={20} />,
+              label: "Cash Flow",
+              desc: "Deposit, withdrawal or payout",
+              action: () => setShowCashFlow(true),
             },
             {
               icon: <ClipboardList size={20} />,
@@ -569,16 +594,16 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 3: Metric Cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {/* Total Capital Managed */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* Total Balance */}
           <div className="glass-card p-5 flex flex-col gap-1.5">
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
-              Total Capital Managed
+              Total Balance
             </span>
             <span style={{ fontSize: 28, fontWeight: 700, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>
-              {formatCurrency(metrics.totalCapital)}
+              {formatCurrency(metrics.totalBalance)}
             </span>
-            <span style={{ fontSize: 11, color: "#475569" }}>Active accounts only</span>
+            <span style={{ fontSize: 11, color: "#475569" }}>Across all accounts</span>
           </div>
 
           {/* Overall P&L */}
@@ -628,6 +653,33 @@ export default function DashboardPage() {
               {metrics.wr.toFixed(0)}%
             </span>
             <span style={{ fontSize: 11, color: "#475569" }}>Last {metrics.tradeCount} trades</span>
+          </div>
+
+          {/* Adaptive: Challenges Active (if prop accounts) else Best Performer */}
+          <div className="glass-card p-5 flex flex-col gap-1.5">
+            {metrics.hasProp ? (
+              <>
+                <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+                  Challenges Active
+                </span>
+                <span style={{ fontSize: 28, fontWeight: 700, color: "#818CF8", fontVariantNumeric: "tabular-nums" }}>
+                  {metrics.challengesActive}
+                </span>
+                <span style={{ fontSize: 11, color: "#475569" }}>In challenge phase</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+                  Best Performing Account
+                </span>
+                <span className="truncate" style={{ fontSize: 18, fontWeight: 700, color: "#E2E8F0" }}>
+                  {metrics.bestName}
+                </span>
+                <span style={{ fontSize: 11, color: metrics.bestPct >= 0 ? "#10B981" : "#EF4444" }}>
+                  {metrics.bestPct >= 0 ? "+" : ""}{metrics.bestPct.toFixed(2)}%
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -901,8 +953,8 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {activeAccounts.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#475569" }}>No active accounts.</p>
+            {allAccounts.length === 0 ? (
+              <p style={{ fontSize: 13, color: "#475569" }}>No accounts yet. Add one to get started.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {allAccounts.map((account) => (
@@ -969,7 +1021,7 @@ export default function DashboardPage() {
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <AddTradeModal open={showAddTrade} onClose={() => setShowAddTrade(false)} />
-      <LogPayoutModal open={showLogPayout} onClose={() => setShowLogPayout(false)} />
+      <CashFlowModal open={showCashFlow} onClose={() => setShowCashFlow(false)} />
 
       {/* ── DetailDrawers ────────────────────────────────────────────────────── */}
 
