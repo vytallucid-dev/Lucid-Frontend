@@ -3,12 +3,14 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Plus, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import {
-  plannedTrades as seedTrades,
   pairs,
   type PlannedTrade,
   type PlannedStatus,
   getDistanceToEntry,
 } from "@/lib/demo-data";
+import { usePlanned, useUpdatePlanned, useDeletePlanned } from "@/hooks/useTrading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { AddPlannedTradeModal } from "./AddPlannedTradeModal";
 import { PlannedDrawerContent, calcRR, ModelPill, ConvictionPill, DistanceBadge } from "./PlannedDrawerContent";
@@ -349,12 +351,21 @@ function StatusSection({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PlannedPage() {
-  const [trades, setTrades] = useState<PlannedTrade[]>(seedTrades);
+  const plannedQuery = usePlanned();
+  const updatePlannedM = useUpdatePlanned();
+  const deletePlannedM = useDeletePlanned();
+
+  const trades = useMemo(() => plannedQuery.data ?? [], [plannedQuery.data]);
+
   const [statusFilter, setStatusFilter] = useState<PlannedStatus | "All">("All");
-  const [drawerTrade, setDrawerTrade] = useState<PlannedTrade | null>(null);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [convertTrade, setConvertTrade] = useState<PlannedTrade | null>(null);
-  const [editTrade, setEditTrade] = useState<PlannedTrade | null>(null);
+  const [convertId, setConvertId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const drawerTrade = trades.find(t => t.id === drawerId) ?? null;
+  const convertTrade = trades.find(t => t.id === convertId) ?? null;
+  const editTrade = trades.find(t => t.id === editId) ?? null;
 
   const filteredTrades = useMemo(() =>
     statusFilter === "All" ? trades : trades.filter(t => t.status === statusFilter),
@@ -373,22 +384,17 @@ export default function PlannedPage() {
   const invalidatedCount = trades.filter(t => t.status === "Invalidated").length;
 
   function updateStatus(id: string, status: PlannedStatus) {
-    setTrades(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-    if (drawerTrade?.id === id) setDrawerTrade(prev => prev ? { ...prev, status } : null);
+    updatePlannedM.mutate({ id, body: { status } });
   }
 
   function handleDelete(id: string) {
-    setTrades(prev => prev.filter(t => t.id !== id));
-    if (drawerTrade?.id === id) setDrawerTrade(null);
-  }
-
-  function handleAdd(trade: PlannedTrade) {
-    setTrades(prev => [trade, ...prev]);
+    deletePlannedM.mutate(id);
+    if (drawerId === id) setDrawerId(null);
   }
 
   function handleConvert(trade: PlannedTrade) {
-    setConvertTrade(trade);
-    setDrawerTrade(null);
+    setConvertId(trade.id);
+    setDrawerId(null);
   }
 
   return (
@@ -455,8 +461,14 @@ export default function PlannedPage() {
         </button>
       </div>
 
+      {/* Loading / error */}
+      {plannedQuery.isLoading && <LoadingState message="Loading planned trades…" />}
+      {plannedQuery.isError && (
+        <ErrorState error={plannedQuery.error} onRetry={() => plannedQuery.refetch()} title="Couldn't load planned trades" />
+      )}
+
       {/* Empty state */}
-      {trades.length === 0 && (
+      {!plannedQuery.isLoading && !plannedQuery.isError && trades.length === 0 && (
         <div
           className="flex flex-col items-center justify-center gap-3 rounded-2xl"
           style={{
@@ -488,12 +500,12 @@ export default function PlannedPage() {
               status={status}
               trades={grouped[status]}
               defaultCollapsed={status === "Cancelled"}
-              onRowClick={setDrawerTrade}
+              onRowClick={t => setDrawerId(t.id)}
               onConvert={handleConvert}
               onInvalidate={id => updateStatus(id, "Invalidated")}
               onCancel={id => updateStatus(id, "Cancelled")}
               onDelete={handleDelete}
-              onEdit={t => { setEditTrade(t); setShowAddModal(true); }}
+              onEdit={t => { setEditId(t.id); setShowAddModal(true); }}
             />
           ))}
         </div>
@@ -502,7 +514,7 @@ export default function PlannedPage() {
       {/* Detail drawer */}
       <DetailDrawer
         open={!!drawerTrade}
-        onClose={() => setDrawerTrade(null)}
+        onClose={() => setDrawerId(null)}
         title={drawerTrade
           ? `${pairs.find(p => p.symbol === drawerTrade.pair)?.display_name ?? drawerTrade.pair} · ${drawerTrade.model}`
           : ""}
@@ -519,8 +531,8 @@ export default function PlannedPage() {
       {/* Add / Edit planned trade modal */}
       <AddPlannedTradeModal
         open={showAddModal}
-        onClose={() => { setShowAddModal(false); setEditTrade(null); }}
-        onAdd={handleAdd}
+        onClose={() => { setShowAddModal(false); setEditId(null); }}
+        editId={editId ?? undefined}
         prefill={editTrade ?? undefined}
       />
 
@@ -528,17 +540,27 @@ export default function PlannedPage() {
       {convertTrade && (
         <AddTradeModal
           open={!!convertTrade}
-          onClose={() => {
-            // Mark planned trade as cancelled when modal closes after conversion
-            setTrades(prev =>
-              prev.map(t =>
-                t.id === convertTrade.id
-                  ? { ...t, status: "Cancelled" as PlannedStatus, notes: t.notes + "\n[Converted to Live Trade]" }
-                  : t
-              )
-            );
-            setConvertTrade(null);
+          prefill={{
+            pair: convertTrade.pair,
+            model: convertTrade.model,
+            direction: convertTrade.direction,
+            entry_price: convertTrade.planned_entry,
+            sl_price: convertTrade.planned_sl,
+            first_tp_price: convertTrade.planned_first_tp,
+            main_tp_price: convertTrade.planned_main_tp,
+            risk_pct: convertTrade.planned_risk_pct,
+            conviction: convertTrade.conviction,
           }}
+          onSubmitted={() =>
+            updatePlannedM.mutate({
+              id: convertTrade.id,
+              body: {
+                status: "Cancelled",
+                notes: (convertTrade.notes ? convertTrade.notes + "\n" : "") + "[Converted to Live Trade]",
+              },
+            })
+          }
+          onClose={() => setConvertId(null)}
         />
       )}
     </div>

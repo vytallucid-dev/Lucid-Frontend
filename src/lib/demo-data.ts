@@ -11,8 +11,11 @@ export type AccountStatus = 'Active' | 'Passed' | 'Blown' | 'Closed';
 // Firm is the opt-in add-on that surfaces challenge/stage/drawdown/payout.
 export type AccountType = 'personal' | 'demo' | 'prop_firm';
 export type CashFlowType = 'deposit' | 'withdrawal' | 'payout';
-export type ModelName = '4HPullBack' | 'Breakout' | 'Short';
-export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'EURJPY' | 'GBPJPY' | 'XAUUSD';
+// Models and pairs are user-defined (managed in the Trading Hub → System tab),
+// so these identifiers are free-form strings rather than fixed unions. The six
+// seed pairs / three seed models below are just defaults.
+export type ModelName = string;
+export type Pair = string;
 export type PlannedStatus = 'Watching' | 'Ready' | 'Invalidated' | 'Cancelled';
 
 export interface Trade {
@@ -67,7 +70,9 @@ export interface Account {
   account_type: AccountType; // drives conditional fields + language everywhere
   account_name: string;
   account_size: number; // starting balance (universal)
-  current_balance: number;
+  current_balance: number; // live equity = account_size + trading_pnl + net_deposits
+  trading_pnl?: number; // realized P&L from closed trades only (full-equity model)
+  net_deposits?: number; // deposits − withdrawals − payouts
   currency: string;
   status: AccountStatus;
   starting_date: string;
@@ -211,6 +216,16 @@ export const accounts: Account[] = [
 
 export function isPropAccount(a: Pick<Account, 'account_type'>): boolean {
   return a.account_type === 'prop_firm';
+}
+
+/**
+ * Realized trading P&L (closed trades only) under the full-equity model. The
+ * account's `current_balance` is live equity (size + trading P&L + net cash
+ * flows), so this — not `current_balance − account_size` — is the true trading
+ * performance. Falls back to balance − size for any account missing the field.
+ */
+export function accountTradingPnl(a: Account): number {
+  return a.trading_pnl ?? (a.current_balance - a.account_size);
 }
 
 export function accountTypeLabel(type: AccountType): string {

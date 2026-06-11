@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
-  accounts,
-  trades as allTrades,
   pairs,
   formatCurrency,
   formatDate,
@@ -12,7 +10,10 @@ import {
   type Trade,
   isPropAccount,
   accountSource,
+  accountTradingPnl,
 } from "@/lib/demo-data";
+import { useAccounts, useTrades } from "@/hooks/useTrading";
+import { LoadingState } from "@/components/state/LoadingState";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import {
   StagePill,
@@ -45,27 +46,51 @@ function formatDateShort(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Equity over time = starting size, then every closed trade's P&L and every
+// cash movement (deposit +, withdrawal/payout −) applied in chronological order.
 function buildChartData(account: Account, accountTrades: Trade[]) {
-  const closedTrades = accountTrades
-    .filter(t => t.date_closed)
-    .sort((a, b) => new Date(a.date_closed).getTime() - new Date(b.date_closed).getTime());
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+
+  type Event = { t: number; date: string; delta: number; label: string };
+  const events: Event[] = [];
+
+  for (const trade of accountTrades.filter(t => t.date_closed)) {
+    events.push({
+      t: new Date(trade.date_closed).getTime(),
+      date: fmt(trade.date_closed),
+      delta: trade.blended_pnl,
+      label: `${getPairDisplay(trade.pair)} ${trade.blended_pnl >= 0 ? "+" : ""}${formatCurrency(trade.blended_pnl)}`,
+    });
+  }
+  for (const cf of account.cash_flows) {
+    const signed = cf.type === "deposit" ? cf.amount : -cf.amount;
+    events.push({
+      t: new Date(cf.date).getTime(),
+      date: fmt(cf.date),
+      delta: signed,
+      label: `${cf.type === "deposit" ? "Deposit" : "Withdrawal"} ${signed >= 0 ? "+" : ""}${formatCurrency(signed)}`,
+    });
+  }
+  for (const p of account.payouts) {
+    events.push({
+      t: new Date(p.date).getTime(),
+      date: fmt(p.date),
+      delta: -p.amount,
+      label: `Payout −${formatCurrency(p.amount)}`,
+    });
+  }
+
+  events.sort((a, b) => a.t - b.t);
 
   const data: { date: string; balance: number; label: string }[] = [
-    {
-      date: new Date(account.starting_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" }),
-      balance: account.account_size,
-      label: "Start",
-    },
+    { date: fmt(account.starting_date), balance: account.account_size, label: "Start" },
   ];
 
   let runningBalance = account.account_size;
-  for (const trade of closedTrades) {
-    runningBalance += trade.blended_pnl;
-    data.push({
-      date: new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" }),
-      balance: Math.round(runningBalance * 100) / 100,
-      label: `${getPairDisplay(trade.pair)} ${trade.blended_pnl >= 0 ? "+" : ""}${formatCurrency(trade.blended_pnl)}`,
-    });
+  for (const e of events) {
+    runningBalance = Math.round((runningBalance + e.delta) * 100) / 100;
+    data.push({ date: e.date, balance: runningBalance, label: e.label });
   }
 
   return data;
@@ -135,16 +160,42 @@ function StatCard({ label, value, sub }: { label: string; value: React.ReactNode
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function AccountDetailPage({ params }: { params: { id: string } }) {
-  const account = accounts.find(a => a.id === params.id);
-  if (!account) notFound();
+export default function AccountDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const accountsQuery = useAccounts();
+  const tradesQuery = useTrades();
+
+  const account = (accountsQuery.data ?? []).find(a => a.id === id);
 
   const accountTrades = useMemo(
-    () => allTrades.filter(t => t.account_id === account.id),
-    [account.id]
+    () => (tradesQuery.data ?? []).filter(t => t.account_id === id),
+    [tradesQuery.data, id]
   );
 
-  const chartData = useMemo(() => buildChartData(account, accountTrades), [account, accountTrades]);
+  const chartData = useMemo(
+    () => (account ? buildChartData(account, accountTrades) : []),
+    [account, accountTrades]
+  );
+
+  if (accountsQuery.isLoading) {
+    return (
+      <DetailPageLayout backHref="/trading/accounts" backLabel="Accounts" title="Account">
+        <LoadingState message="Loading account…" />
+      </DetailPageLayout>
+    );
+  }
+
+  if (!account) {
+    return (
+      <DetailPageLayout backHref="/trading/accounts" backLabel="Accounts" title="Account not found">
+        <div className="py-16 text-center" style={{ color: "#64748B", fontSize: 14 }}>
+          This account could not be found. It may have been deleted.
+        </div>
+      </DetailPageLayout>
+    );
+  }
 
   const prop = isPropAccount(account);
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
@@ -154,8 +205,8 @@ export default function AccountDetailPage({ params }: { params: { id: string } }
 
   const isPassed = account.status === "Passed";
   const isActive = account.status === "Active";
-  const pnl = account.current_balance - account.account_size;
-  const pnlPct = (pnl / account.account_size) * 100;
+  const pnl = accountTradingPnl(account);
+  const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
   const pnlColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
   const ddColor = pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#10B981";
   const remaining = profitTarget - profitAchieved;

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { pairs, models, type PlannedTrade, type PlannedStatus } from "@/lib/demo-data";
+import type { PlannedTrade, Direction, Conviction } from "@/lib/demo-data";
+import { useTradingModels, useTradingPairs, useCreatePlanned, useUpdatePlanned } from "@/hooks/useTrading";
+import type { CreatePlannedPayload } from "@/lib/api/trading";
 
 interface AddPlannedTradeModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (trade: PlannedTrade) => void;
+  /** When set, the modal updates this planned trade instead of creating one. */
+  editId?: string;
   prefill?: Partial<PlannedTrade>;
 }
 
@@ -66,7 +69,7 @@ function SegmentedControl<T extends string>({
   onChange,
   colorMap,
 }: {
-  options: T[];
+  options: readonly T[];
   value: T;
   onChange: (v: T) => void;
   colorMap?: Record<string, { active: string; bg: string }>;
@@ -101,45 +104,89 @@ function SegmentedControl<T extends string>({
   );
 }
 
-export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlannedTradeModalProps) {
-  const [pair, setPair] = useState<typeof pairs[0]["symbol"]>(
-    prefill?.pair ?? pairs[0].symbol
-  );
-  const [model, setModel] = useState(prefill?.model ?? models[0].name);
-  const [direction, setDirection] = useState<"Buy" | "Sell">(prefill?.direction ?? "Buy");
-  const [plannedEntry, setPlannedEntry] = useState(prefill?.planned_entry?.toString() ?? "");
-  const [plannedSl, setPlannedSl] = useState(prefill?.planned_sl?.toString() ?? "");
-  const [plannedFirstTp, setPlannedFirstTp] = useState(prefill?.planned_first_tp?.toString() ?? "");
-  const [plannedMainTp, setPlannedMainTp] = useState(prefill?.planned_main_tp?.toString() ?? "");
-  const [riskPct, setRiskPct] = useState(prefill?.planned_risk_pct?.toString() ?? "");
-  const [conviction, setConviction] = useState<"Low" | "Medium" | "High">(
-    prefill?.conviction ?? "Medium"
-  );
-  const [notes, setNotes] = useState(prefill?.notes ?? "");
+export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlannedTradeModalProps) {
+  const pairsQuery = useTradingPairs();
+  const modelsQuery = useTradingModels();
+  const createPlanned = useCreatePlanned();
+  const updatePlanned = useUpdatePlanned();
+
+  const pairList = pairsQuery.data ?? [];
+  const modelList = modelsQuery.data ?? [];
+
+  const [pair, setPair] = useState("");
+  const [model, setModel] = useState("");
+  const [direction, setDirection] = useState<Direction>("Buy");
+  const [plannedEntry, setPlannedEntry] = useState("");
+  const [plannedSl, setPlannedSl] = useState("");
+  const [plannedFirstTp, setPlannedFirstTp] = useState("");
+  const [plannedMainTp, setPlannedMainTp] = useState("");
+  const [currentMarketPrice, setCurrentMarketPrice] = useState("");
+  const [riskPct, setRiskPct] = useState("");
+  const [conviction, setConviction] = useState<Conviction>("Medium");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPair(prefill?.pair ?? "");
+    setModel(prefill?.model ?? "");
+    setDirection(prefill?.direction ?? "Buy");
+    setPlannedEntry(prefill?.planned_entry != null ? String(prefill.planned_entry) : "");
+    setPlannedSl(prefill?.planned_sl != null ? String(prefill.planned_sl) : "");
+    setPlannedFirstTp(prefill?.planned_first_tp != null ? String(prefill.planned_first_tp) : "");
+    setPlannedMainTp(prefill?.planned_main_tp != null ? String(prefill.planned_main_tp) : "");
+    setCurrentMarketPrice(prefill?.current_market_price != null ? String(prefill.current_market_price) : "");
+    setRiskPct(prefill?.planned_risk_pct != null ? String(prefill.planned_risk_pct) : "");
+    setConviction(prefill?.conviction ?? "Medium");
+    setNotes(prefill?.notes ?? "");
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editId]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!pair && pairList.length) setPair(prefill?.pair ?? pairList[0].symbol);
+    if (!model && modelList.length) setModel(prefill?.model ?? modelList[0].name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pairList, modelList]);
 
   if (!open) return null;
 
-  function handleSubmit(e: React.FormEvent) {
+  const saving = createPlanned.isPending || updatePlanned.isPending;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const newTrade: PlannedTrade = {
-      id: `plt_${Date.now()}`,
-      pair,
-      model,
+    setError(null);
+    const entryNum = parseFloat(plannedEntry);
+    const slNum = parseFloat(plannedSl);
+    const mainTpNum = parseFloat(plannedMainTp);
+    if ([entryNum, slNum, mainTpNum].some(Number.isNaN)) {
+      setError("Entry, Stop Loss and Main TP are required numbers.");
+      return;
+    }
+    const body: CreatePlannedPayload = {
+      pair: pair || (pairList[0]?.symbol ?? ""),
+      model: model || (modelList[0]?.name ?? ""),
       direction,
-      planned_entry: parseFloat(plannedEntry) || 0,
-      planned_sl: parseFloat(plannedSl) || 0,
+      planned_entry: entryNum,
+      planned_sl: slNum,
       planned_first_tp: plannedFirstTp ? parseFloat(plannedFirstTp) : null,
-      planned_main_tp: parseFloat(plannedMainTp) || 0,
-      planned_risk_pct: parseFloat(riskPct) || 1.0,
+      planned_main_tp: mainTpNum,
+      planned_risk_pct: riskPct ? parseFloat(riskPct) : 1.0,
       conviction,
-      status: "Watching",
-      date_added: new Date().toISOString(),
-      notes,
-      screenshots: [],
-      current_market_price: parseFloat(plannedEntry) || 0,
+      notes: notes.trim() || null,
+      ...(currentMarketPrice ? { current_market_price: parseFloat(currentMarketPrice) } : {}),
     };
-    onAdd(newTrade);
-    onClose();
+    try {
+      if (editId) {
+        await updatePlanned.mutateAsync({ id: editId, body });
+      } else {
+        await createPlanned.mutateAsync(body);
+      }
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save planned trade.");
+    }
   }
 
   return (
@@ -173,7 +220,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
             style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
           >
             <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>
-              Add Planned Trade
+              {editId ? "Edit Planned Trade" : "Add Planned Trade"}
             </h2>
             <button
               type="button"
@@ -193,24 +240,16 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
                 <GroupHeader>Setup</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Pair">
-                    <select
-                      value={pair}
-                      onChange={e => setPair(e.target.value as typeof pair)}
-                      style={INPUT_STYLE}
-                    >
-                      {pairs.map(p => (
+                    <select value={pair} onChange={e => setPair(e.target.value)} style={INPUT_STYLE}>
+                      {pairList.map(p => (
                         <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
                       ))}
                     </select>
                   </FieldGroup>
 
                   <FieldGroup label="Model">
-                    <select
-                      value={model}
-                      onChange={e => setModel(e.target.value as typeof model)}
-                      style={INPUT_STYLE}
-                    >
-                      {models.map(m => (
+                    <select value={model} onChange={e => setModel(e.target.value)} style={INPUT_STYLE}>
+                      {modelList.map(m => (
                         <option key={m.id} value={m.name}>{m.name}</option>
                       ))}
                     </select>
@@ -237,48 +276,22 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
                 <GroupHeader>Price Levels</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Entry">
-                    <input
-                      type="number"
-                      step="any"
-                      value={plannedEntry}
-                      onChange={e => setPlannedEntry(e.target.value)}
-                      placeholder="1.2580"
-                      style={INPUT_STYLE}
-                      required
-                    />
+                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.2580" style={INPUT_STYLE} required />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input
-                      type="number"
-                      step="any"
-                      value={plannedSl}
-                      onChange={e => setPlannedSl(e.target.value)}
-                      placeholder="1.2540"
-                      style={INPUT_STYLE}
-                      required
-                    />
+                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.2540" style={INPUT_STYLE} required />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input
-                      type="number"
-                      step="any"
-                      value={plannedFirstTp}
-                      onChange={e => setPlannedFirstTp(e.target.value)}
-                      placeholder="1.2620"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.2620" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input
-                      type="number"
-                      step="any"
-                      value={plannedMainTp}
-                      onChange={e => setPlannedMainTp(e.target.value)}
-                      placeholder="1.2680"
-                      style={INPUT_STYLE}
-                      required
-                    />
+                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.2680" style={INPUT_STYLE} required />
                   </FieldGroup>
+                  <div className="col-span-2 sm:col-span-1">
+                    <FieldGroup label="Current Market Price">
+                      <input type="number" step="any" value={currentMarketPrice} onChange={e => setCurrentMarketPrice(e.target.value)} placeholder="Defaults to entry — update to track distance" style={INPUT_STYLE} />
+                    </FieldGroup>
+                  </div>
                 </div>
               </div>
 
@@ -287,14 +300,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
                 <GroupHeader>Risk &amp; Conviction</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Risk %">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={riskPct}
-                      onChange={e => setRiskPct(e.target.value)}
-                      placeholder="1.0"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" style={INPUT_STYLE} />
                   </FieldGroup>
 
                   <FieldGroup label="Conviction">
@@ -316,13 +322,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
               <div>
                 <GroupHeader>Notes</GroupHeader>
                 <FieldGroup label="Setup Notes">
-                  <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="Describe the setup — key levels, conditions to watch..."
-                    rows={3}
-                    style={{ ...INPUT_STYLE, resize: "vertical" }}
-                  />
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Describe the setup — key levels, conditions to watch..." rows={3} style={{ ...INPUT_STYLE, resize: "vertical" }} />
                 </FieldGroup>
               </div>
             </div>
@@ -333,6 +333,7 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
             className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
             style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
           >
+            {error && <span className="mr-auto text-sm" style={{ color: "#FCA5A5" }}>{error}</span>}
             <button
               type="button"
               onClick={onClose}
@@ -343,13 +344,11 @@ export function AddPlannedTradeModal({ open, onClose, onAdd, prefill }: AddPlann
             </button>
             <button
               type="submit"
+              disabled={saving}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-              style={{
-                background: "rgba(59,130,246,0.9)",
-                color: "#fff",
-              }}
+              style={{ background: "rgba(59,130,246,0.9)", color: "#fff", opacity: saving ? 0.6 : 1 }}
             >
-              Add to Watchlist
+              {saving ? "Saving…" : editId ? "Save Changes" : "Add to Watchlist"}
             </button>
           </div>
         </form>

@@ -5,13 +5,20 @@ import {
   Plus, ChevronDown, ChevronUp, Pencil, Trash2, X,
 } from "lucide-react";
 import {
-  models as allModels, pairs as allPairs, trades,
   formatCurrency, formatDate,
-  type Model, type PairConfig, type ModelName, type Pair, type Session,
+  type Model, type PairConfig, type Session,
 } from "@/lib/demo-data";
 import {
   getModelStats, getPairStats, getSessionStats, getTotalClosedTradeCount,
 } from "@/lib/stats";
+import {
+  useTrades, useTradingModels, useTradingPairs,
+  useCreateModel, useUpdateModel, useDeleteModel,
+  useCreatePair, useUpdatePair,
+} from "@/hooks/useTrading";
+import type { ApiPair } from "@/lib/api/trading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 
 // ─── Design helpers ──────────────────────────────────────────────────────────
@@ -154,7 +161,7 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name as ModelName, description, rules, status });
+    onSave({ name, description, rules, status });
     onClose();
   };
 
@@ -248,7 +255,7 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
 
   const handleSave = () => {
     if (!symbol.trim()) return;
-    onSave({ symbol: symbol as Pair, display_name: displayName, flag_a: flagA, flag_b: flagB, pip_value: Number(pipValue), status });
+    onSave({ symbol, display_name: displayName, flag_a: flagA, flag_b: flagB, pip_value: Number(pipValue), status });
     onClose();
   };
 
@@ -324,7 +331,8 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
 // ─── Drawer Content ───────────────────────────────────────────────────────────
 
 function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit: () => void; onDelete: () => void }) {
-  const stats = getModelStats(model.name);
+  const trades = useTrades().data ?? [];
+  const stats = getModelStats(trades, model.name);
   const modelTrades = trades.filter((t) => t.model === model.name && t.date_closed !== "");
 
   return (
@@ -412,7 +420,8 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
 }
 
 function PairDrawerContent({ pair, onEdit }: { pair: PairConfig; onEdit: () => void }) {
-  const stats = getPairStats(pair.symbol);
+  const trades = useTrades().data ?? [];
+  const stats = getPairStats(trades, pair.symbol);
   const pairTrades = trades.filter((t) => t.pair === pair.symbol && t.date_closed !== "");
 
   return (
@@ -491,7 +500,8 @@ function PairDrawerContent({ pair, onEdit }: { pair: PairConfig; onEdit: () => v
 
 function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
   const [showRules, setShowRules] = useState(false);
-  const stats = getModelStats(model.name);
+  const trades = useTrades().data ?? [];
+  const stats = getModelStats(trades, model.name);
 
   return (
     <div
@@ -562,26 +572,32 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
 }
 
 function ModelsTab() {
-  const [modelList, setModelList] = useState<Model[]>(allModels);
+  const modelsQuery = useTradingModels();
+  const createModel = useCreateModel();
+  const updateModel = useUpdateModel();
+  const deleteModel = useDeleteModel();
+
+  const modelList = modelsQuery.data ?? [];
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Model | null>(null);
-  const [drawerModel, setDrawerModel] = useState<Model | null>(null);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+
+  const drawerModel = modelList.find((m) => m.id === drawerId) ?? null;
 
   const handleSave = (data: Omit<Model, "id">) => {
     if (editTarget) {
-      const updated = { ...editTarget, ...data };
-      setModelList((prev) => prev.map((m) => (m.id === editTarget.id ? updated : m)));
-      if (drawerModel?.id === editTarget.id) setDrawerModel(updated);
+      updateModel.mutate({ id: editTarget.id, body: data });
     } else {
-      setModelList((prev) => [...prev, { id: `mdl_${Date.now()}`, ...data }]);
+      createModel.mutate(data);
     }
     setEditTarget(null);
     setModalOpen(false);
   };
 
   const handleDelete = (model: Model) => {
-    setModelList((prev) => prev.filter((m) => m.id !== model.id));
-    setDrawerModel(null);
+    deleteModel.mutate(model.id);
+    setDrawerId(null);
   };
 
   const openEdit = (model: Model) => {
@@ -601,11 +617,17 @@ function ModelsTab() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {modelList.map((model) => (
-          <ModelCard key={model.id} model={model} onClick={() => setDrawerModel(model)} />
-        ))}
-      </div>
+      {modelsQuery.isLoading ? (
+        <LoadingState message="Loading models…" />
+      ) : modelsQuery.isError ? (
+        <ErrorState error={modelsQuery.error} onRetry={() => modelsQuery.refetch()} title="Couldn't load models" />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {modelList.map((model) => (
+            <ModelCard key={model.id} model={model} onClick={() => setDrawerId(model.id)} />
+          ))}
+        </div>
+      )}
 
       <ModelModal
         open={modalOpen}
@@ -614,7 +636,7 @@ function ModelsTab() {
         onSave={handleSave}
       />
 
-      <DetailDrawer open={!!drawerModel} onClose={() => setDrawerModel(null)} title={drawerModel?.name ?? ""}>
+      <DetailDrawer open={!!drawerModel} onClose={() => setDrawerId(null)} title={drawerModel?.name ?? ""}>
         {drawerModel && (
           <ModelDrawerContent
             model={drawerModel}
@@ -630,7 +652,8 @@ function ModelsTab() {
 // ─── Pairs Tab ────────────────────────────────────────────────────────────────
 
 function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) {
-  const stats = getPairStats(pair.symbol);
+  const trades = useTrades().data ?? [];
+  const stats = getPairStats(trades, pair.symbol);
   const recentTrades = trades
     .filter((t) => t.pair === pair.symbol && t.date_closed !== "")
     .sort((a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime())
@@ -706,26 +729,39 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
 }
 
 function PairsTab() {
-  const [pairList, setPairList] = useState<PairConfig[]>(allPairs);
+  const pairsQuery = useTradingPairs();
+  const createPair = useCreatePair();
+  const updatePair = useUpdatePair();
+
+  const pairList = pairsQuery.data ?? [];
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<PairConfig | null>(null);
-  const [drawerPair, setDrawerPair] = useState<PairConfig | null>(null);
+  const [editTarget, setEditTarget] = useState<ApiPair | null>(null);
+  const [drawerSymbol, setDrawerSymbol] = useState<string | null>(null);
+
+  const drawerPair = pairList.find((p) => p.symbol === drawerSymbol) ?? null;
 
   const handleSave = (data: PairConfig) => {
+    const body = {
+      symbol: data.symbol,
+      display_name: data.display_name,
+      flag_a: data.flag_a,
+      flag_b: data.flag_b,
+      pip_value: data.pip_value,
+      status: data.status,
+    };
     if (editTarget) {
-      const updated = { ...editTarget, ...data };
-      setPairList((prev) => prev.map((p) => (p.symbol === editTarget.symbol ? updated : p)));
-      if (drawerPair?.symbol === editTarget.symbol) setDrawerPair(updated);
+      updatePair.mutate({ id: editTarget.id, body });
     } else {
-      setPairList((prev) => [...prev, data]);
+      createPair.mutate(body);
     }
     setEditTarget(null);
     setModalOpen(false);
   };
 
-  const openEdit = (pair: PairConfig) => {
+  const openEdit = (pair: ApiPair) => {
     setEditTarget(pair);
-    setDrawerPair(null);
+    setDrawerSymbol(null);
     setModalOpen(true);
   };
 
@@ -741,11 +777,17 @@ function PairsTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {pairList.map((pair) => (
-          <PairCard key={pair.symbol} pair={pair} onClick={() => setDrawerPair(pair)} />
-        ))}
-      </div>
+      {pairsQuery.isLoading ? (
+        <LoadingState message="Loading pairs…" />
+      ) : pairsQuery.isError ? (
+        <ErrorState error={pairsQuery.error} onRetry={() => pairsQuery.refetch()} title="Couldn't load pairs" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {pairList.map((pair) => (
+            <PairCard key={pair.id} pair={pair} onClick={() => setDrawerSymbol(pair.symbol)} />
+          ))}
+        </div>
+      )}
 
       <PairModal
         open={modalOpen}
@@ -754,7 +796,7 @@ function PairsTab() {
         onSave={handleSave}
       />
 
-      <DetailDrawer open={!!drawerPair} onClose={() => setDrawerPair(null)} title={drawerPair?.display_name ?? ""}>
+      <DetailDrawer open={!!drawerPair} onClose={() => setDrawerSymbol(null)} title={drawerPair?.display_name ?? ""}>
         {drawerPair && (
           <PairDrawerContent pair={drawerPair} onEdit={() => openEdit(drawerPair)} />
         )}
@@ -773,8 +815,9 @@ const SESSION_DEFINITIONS: { key: Session; emoji: string; label: string; time: s
 ];
 
 function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] }) {
-  const stats = getSessionStats(session.key);
-  const totalTrades = getTotalClosedTradeCount();
+  const trades = useTrades().data ?? [];
+  const stats = getSessionStats(trades, session.key);
+  const totalTrades = getTotalClosedTradeCount(trades);
   const pct = totalTrades > 0 ? stats.trade_count / totalTrades : 0;
 
   return (

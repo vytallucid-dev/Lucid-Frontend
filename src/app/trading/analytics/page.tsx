@@ -13,12 +13,13 @@ import {
   ReferenceArea,
 } from "recharts";
 import {
-  trades as allTrades,
-  accounts,
   formatCurrency,
   type Trade,
   type Conviction,
 } from "@/lib/demo-data";
+import { useTrades, useAccounts } from "@/hooks/useTrading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -428,11 +429,16 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRangePreset>("All Time");
   const [accountFilter, setAccountFilter] = useState<string>("all");
 
+  const tradesQuery = useTrades();
+  const accountsQuery = useAccounts();
+  const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
+  const accounts = accountsQuery.data ?? [];
+
   const filtered = useMemo(() => {
     let t = allTrades;
     if (accountFilter !== "all") t = t.filter((x) => x.account_id === accountFilter);
     return applyDateFilter(t, dateRange);
-  }, [accountFilter, dateRange]);
+  }, [allTrades, accountFilter, dateRange]);
 
   const stats = useMemo(() => computeStats(filtered), [filtered]);
   const curve = useMemo(() => buildPnlCurve(filtered), [filtered]);
@@ -544,6 +550,11 @@ export default function AnalyticsPage() {
 
       {/* ── TAB: Performance ────────────────────────────────────────────────── */}
       {tab === "Performance" && (
+        tradesQuery.isLoading ? (
+          <LoadingState message="Loading analytics…" />
+        ) : tradesQuery.isError ? (
+          <ErrorState error={tradesQuery.error} onRetry={() => tradesQuery.refetch()} title="Couldn't load analytics" />
+        ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* A — Overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1168,6 +1179,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* ── TAB: Fundamentals ────────────────────────────────────────────────── */}

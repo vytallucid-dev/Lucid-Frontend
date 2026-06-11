@@ -3,8 +3,6 @@
 import { useState, useMemo } from "react";
 import { Plus, LayoutList, LayoutGrid, ArrowLeftRight, Check } from "lucide-react";
 import {
-  accounts as initialAccounts,
-  trades as allTrades,
   type Account,
   type AccountType,
   type CashFlowType,
@@ -13,8 +11,18 @@ import {
   isPropAccount,
   accountSource,
   accountTypeLabel,
+  accountTradingPnl,
   ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
+import {
+  useAccounts,
+  useTrades,
+  useCreateAccount,
+  useAddCashFlow,
+} from "@/hooks/useTrading";
+import type { CreateAccountPayload } from "@/lib/api/trading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import {
   AccountDrawerContent,
@@ -70,7 +78,7 @@ function AccountGalleryCard({
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
   const { winRate, tradeCount } = calcAccountStats(accountTrades);
   const isPassed = account.status === "Passed";
-  const pnl = account.current_balance - account.account_size;
+  const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
   const pnlColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
   const ddColor = pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#10B981";
@@ -216,11 +224,12 @@ const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY"];
 
 interface AddAccountModalProps {
   existingSources: string[];
-  onAdd: (account: Account) => void;
+  onAdd: (account: CreateAccountPayload) => void;
   onClose: () => void;
+  saving?: boolean;
 }
 
-function AddAccountModal({ existingSources, onAdd, onClose }: AddAccountModalProps) {
+function AddAccountModal({ existingSources, onAdd, onClose, saving }: AddAccountModalProps) {
   const [type, setType] = useState<AccountType>("personal");
   const [name, setName] = useState("");
   const [source, setSource] = useState("");
@@ -239,18 +248,15 @@ function AddAccountModal({ existingSources, onAdd, onClose }: AddAccountModalPro
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const sizeNum = parseFloat(size) || 0;
-    const base = {
-      id: `acc_${Date.now()}`,
+    const base: CreateAccountPayload = {
+      account_type: type,
       account_name: name,
       account_size: sizeNum,
-      current_balance: sizeNum,
       currency,
-      status: "Active" as const,
+      status: "Active",
       starting_date: startingDate,
-      cash_flows: [],
-      payouts: [],
     };
-    const newAccount: Account = prop
+    const payload: CreateAccountPayload = prop
       ? {
           ...base,
           account_type: "prop_firm",
@@ -262,10 +268,10 @@ function AddAccountModal({ existingSources, onAdd, onClose }: AddAccountModalPro
       : {
           ...base,
           account_type: type,
-          broker: source || undefined,
+          broker: source || null,
           profit_goal_pct: goalPct ? parseFloat(goalPct) : null,
         };
-    onAdd(newAccount);
+    onAdd(payload);
     onClose();
   }
 
@@ -410,7 +416,7 @@ function AddAccountModal({ existingSources, onAdd, onClose }: AddAccountModalPro
 
           <div className="flex gap-3 pt-2">
             <button type="button" className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ color: "#64748B" }} onClick={onClose}>Cancel</button>
-            <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff" }}>Add Account</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Adding…" : "Add Account"}</button>
           </div>
         </form>
       </div>
@@ -530,34 +536,37 @@ const TABLE_MIN_WIDTH = 1080;
 const TABLE_HEADERS = ["Name", "Type", "Broker / Firm", "Balance", "Net P&L", "Win Rate", "Stage", "Target", "Drawdown", "Status"];
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
+  const accountsQuery = useAccounts();
+  const tradesQuery = useTrades();
+  const createAccountM = useCreateAccount();
+  const addCashFlowM = useAddCashFlow();
+
+  const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
+
   const [view, setView] = useState<"table" | "gallery">("table");
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCashFlowModal, setShowCashFlowModal] = useState(false);
 
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? null;
+
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.current_balance, 0), [accounts]);
-  const netPnl = useMemo(() => accounts.reduce((s, a) => s + (a.current_balance - a.account_size), 0), [accounts]);
+  const netPnl = useMemo(() => accounts.reduce((s, a) => s + accountTradingPnl(a), 0), [accounts]);
 
   function getAccountTrades(accountId: string): Trade[] {
     return allTrades.filter(t => t.account_id === accountId);
   }
 
-  function handleAddAccount(account: Account) {
-    setAccounts(prev => [account, ...prev]);
+  function handleAddAccount(payload: CreateAccountPayload) {
+    createAccountM.mutate(payload);
   }
 
   function handleCashFlow(accountId: string, flow: { type: CashFlowType; date: string; amount: number; note: string }) {
-    setAccounts(prev =>
-      prev.map(a => {
-        if (a.id !== accountId) return a;
-        if (flow.type === "payout") {
-          const runningTotal = a.payouts.reduce((s, p) => s + p.amount, 0) + flow.amount;
-          return { ...a, payouts: [...a.payouts, { date: flow.date, amount: flow.amount, running_total: runningTotal }] };
-        }
-        return { ...a, cash_flows: [...a.cash_flows, { date: flow.date, type: flow.type, amount: flow.amount, note: flow.note || undefined }] };
-      })
-    );
+    addCashFlowM.mutate({
+      id: accountId,
+      body: { type: flow.type, amount: flow.amount, date: flow.date, note: flow.note || null },
+    });
   }
 
   const pnlColor = netPnl >= 0 ? "var(--positive)" : "var(--negative)";
@@ -609,8 +618,12 @@ export default function AccountsPage() {
 
       {/* Content */}
       <div className="flex-1 px-4 sm:px-6 py-5">
+        {accountsQuery.isLoading && <LoadingState message="Loading accounts…" />}
+        {accountsQuery.isError && (
+          <ErrorState error={accountsQuery.error} onRetry={() => accountsQuery.refetch()} title="Couldn't load accounts" />
+        )}
         {/* TABLE VIEW */}
-        {view === "table" && (
+        {!accountsQuery.isLoading && !accountsQuery.isError && view === "table" && (
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.08)", background: "rgba(15,23,35,0.4)" }}>
             <div className="overflow-x-auto">
               {/* Table header */}
@@ -635,7 +648,7 @@ export default function AccountsPage() {
                   const { pct: goalPct } = calcGoalProgress(account);
                   const { winRate, tradeCount } = calcAccountStats(getAccountTrades(account.id));
                   const isPassed = account.status === "Passed";
-                  const pnl = account.current_balance - account.account_size;
+                  const pnl = accountTradingPnl(account);
                   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
                   const balColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
 
@@ -646,7 +659,7 @@ export default function AccountsPage() {
                       style={{ gridTemplateColumns: TABLE_COLS, background: idx % 2 === 0 ? "rgba(20,28,40,0.5)" : "rgba(15,23,35,0.3)", borderBottom: idx < accounts.length - 1 ? "1px solid rgba(148,163,184,0.05)" : "none", alignItems: "center", minHeight: 48, minWidth: TABLE_MIN_WIDTH }}
                       onMouseEnter={e => (e.currentTarget.style.background = "rgba(59,130,246,0.05)")}
                       onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "rgba(20,28,40,0.5)" : "rgba(15,23,35,0.3)")}
-                      onClick={() => setSelectedAccount(account)}
+                      onClick={() => setSelectedAccountId(account.id)}
                     >
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#E2E8F0" }}>{account.account_name}</span>
                       <span><AccountTypePill type={account.account_type} /></span>
@@ -667,7 +680,7 @@ export default function AccountsPage() {
         )}
 
         {/* GALLERY VIEW */}
-        {view === "gallery" &&
+        {!accountsQuery.isLoading && !accountsQuery.isError && view === "gallery" &&
           (accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <span style={{ fontSize: 40 }}>📊</span>
@@ -678,7 +691,7 @@ export default function AccountsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {accounts.map(account => (
-                <AccountGalleryCard key={account.id} account={account} accountTrades={getAccountTrades(account.id)} onClick={() => setSelectedAccount(account)} />
+                <AccountGalleryCard key={account.id} account={account} accountTrades={getAccountTrades(account.id)} onClick={() => setSelectedAccountId(account.id)} />
               ))}
             </div>
           ))}
@@ -687,7 +700,7 @@ export default function AccountsPage() {
       {/* Detail Drawer */}
       <DetailDrawer
         open={!!selectedAccount}
-        onClose={() => setSelectedAccount(null)}
+        onClose={() => setSelectedAccountId(null)}
         expandHref={selectedAccount ? `/trading/accounts/${selectedAccount.id}` : undefined}
         title={selectedAccount?.account_name ?? ""}
       >
@@ -700,6 +713,7 @@ export default function AccountsPage() {
           existingSources={[...new Set(accounts.map(accountSource))].filter(s => s !== "—")}
           onAdd={handleAddAccount}
           onClose={() => setShowAddModal(false)}
+          saving={createAccountM.isPending}
         />
       )}
 

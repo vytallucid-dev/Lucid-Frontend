@@ -11,14 +11,17 @@ import {
   isPropAccount,
   accountSource,
   accountTypeLabel,
+  accountTradingPnl,
   ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
+// Drawdown tracks realized trading losses (not equity dips from withdrawals/
+// payouts), so prop drawdown stays meaningful under the full-equity model.
 export function calcDrawdown(account: Account) {
   const ddPct = account.max_drawdown_pct ?? 0;
-  const drawdownUsed = Math.max(0, account.account_size - account.current_balance);
+  const drawdownUsed = Math.max(0, -accountTradingPnl(account));
   const drawdownLimit = (account.account_size * ddPct) / 100;
   const pctUsed = drawdownLimit > 0 ? Math.min(100, (drawdownUsed / drawdownLimit) * 100) : 0;
   return { drawdownUsed, drawdownLimit, pctUsed };
@@ -26,9 +29,11 @@ export function calcDrawdown(account: Account) {
 
 // Falls back across prop profit_target_pct → personal profit_goal_pct so the
 // same bar renders a firm-set target or a user-set goal depending on type.
+// Progress is measured against realized trading P&L, not equity (deposits don't
+// count toward a profit target).
 export function calcGoalProgress(account: Account, targetPct?: number) {
   const pctTarget = targetPct ?? account.profit_target_pct ?? account.profit_goal_pct ?? 0;
-  const profitAchieved = Math.max(0, account.current_balance - account.account_size);
+  const profitAchieved = Math.max(0, accountTradingPnl(account));
   const profitTarget = (account.account_size * pctTarget) / 100;
   const pct = profitTarget > 0 ? Math.min(100, (profitAchieved / profitTarget) * 100) : 0;
   return { profitAchieved, profitTarget, pct };
@@ -222,8 +227,8 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
 
   const isPassed = account.status === "Passed";
   const isActive = account.status === "Active";
-  const pnl = account.current_balance - account.account_size;
-  const pnlPct = (pnl / account.account_size) * 100;
+  const pnl = accountTradingPnl(account);
+  const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
   const pnlColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
 
   const remaining = profitTarget - profitAchieved;

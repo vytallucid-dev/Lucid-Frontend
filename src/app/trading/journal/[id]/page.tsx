@@ -1,27 +1,51 @@
 "use client";
 
-import { notFound } from "next/navigation";
-import { trades, pairs, formatCurrency, formatDate, formatTime, type Trade } from "@/lib/demo-data";
+import { useParams } from "next/navigation";
+import { formatCurrency, formatDate } from "@/lib/demo-data";
+import { useTrades, useAccounts, useTradingPairs } from "@/hooks/useTrading";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
+import { LoadingState } from "@/components/state/LoadingState";
 import { TradeDrawerContent } from "../TradeDrawerContent";
 
-function getPairDisplay(trade: Trade) {
-  return pairs.find(p => p.symbol === trade.pair)?.display_name ?? trade.pair;
-}
+export default function TradeDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const tradesQuery = useTrades();
+  const accountsQuery = useAccounts();
+  const pairsQuery = useTradingPairs();
 
-export default function TradeDetailPage({ params }: { params: { id: string } }) {
-  const trade = trades.find(t => t.id === params.id);
-  if (!trade) notFound();
+  const trade = (tradesQuery.data ?? []).find(t => t.id === id);
+  const config = (pairsQuery.data ?? []).find(p => p.symbol === trade?.pair);
+  const accountName =
+    (accountsQuery.data ?? []).find(a => a.id === trade?.account_id)?.account_name ?? trade?.account_id ?? "—";
+
+  if (tradesQuery.isLoading) {
+    return (
+      <DetailPageLayout backHref="/trading/journal" backLabel="Journal" title="Trade">
+        <LoadingState message="Loading trade…" />
+      </DetailPageLayout>
+    );
+  }
+
+  if (!trade) {
+    return (
+      <DetailPageLayout backHref="/trading/journal" backLabel="Journal" title="Trade not found">
+        <div className="py-16 text-center" style={{ color: "#64748B", fontSize: 14 }}>
+          This trade could not be found. It may have been deleted.
+        </div>
+      </DetailPageLayout>
+    );
+  }
 
   const isLive = !trade.date_closed;
-  const config = pairs.find(p => p.symbol === trade.pair);
   const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
+  const pairDisplay = config?.display_name ?? trade.pair;
 
   return (
     <DetailPageLayout
       backHref="/trading/journal"
       backLabel="Journal"
-      title={`Trade #${trade.id.replace("trd_", "")}`}
+      title={`Trade #${trade.id.slice(0, 8)}`}
     >
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
@@ -31,7 +55,7 @@ export default function TradeDetailPage({ params }: { params: { id: string } }) 
             <div className="flex flex-wrap items-center gap-2">
               {config && <span className="text-2xl">{config.flag_a}{config.flag_b}</span>}
               <h2 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>
-                {getPairDisplay(trade)}
+                {pairDisplay}
               </h2>
               <span
                 className="pill"
@@ -139,13 +163,13 @@ export default function TradeDetailPage({ params }: { params: { id: string } }) 
               Quick Stats
             </p>
             {[
-              ["Account", trade.account_id],
+              ["Account", accountName],
               ["Model", trade.model],
               ["Lot Size", trade.lot_size],
               ["Risk", `${trade.risk_pct}%`],
               ["Session", trade.session],
               ["Fundamental", trade.fundamental_score ? `${trade.fundamental_score}/10` : "—"],
-              ["Psychology", trade.psychology],
+              ["Psychology", trade.psychology || "—"],
             ].map(([label, value]) => (
               <div
                 key={label as string}

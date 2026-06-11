@@ -24,18 +24,25 @@ import {
   ReferenceArea,
 } from "recharts";
 import {
-  trades as allTrades,
-  plannedTrades as allPlanned,
-  accounts as allAccounts,
-  pairs,
   formatCurrency,
   getDistanceToEntry,
   isPropAccount,
   accountTypeLabel,
+  accountTradingPnl,
   type Trade,
   type PlannedTrade,
   type Account,
 } from "@/lib/demo-data";
+import {
+  useTrades,
+  usePlanned,
+  useAccounts,
+  useTradingPairs,
+  useAddCashFlow,
+} from "@/hooks/useTrading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
+import { useAuth } from "@/lib/auth/auth-context";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { TradeDrawerContent } from "@/app/trading/journal/TradeDrawerContent";
 import {
@@ -202,6 +209,34 @@ function PnlTooltip({ active, payload }: { active?: boolean; payload?: Array<{ p
 // ─── Cash Flow Modal (deposit / withdrawal / payout — context aware) ──────────
 
 function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const accountsQuery = useAccounts();
+  const addCashFlow = useAddCashFlow();
+  const accounts = accountsQuery.data ?? [];
+
+  const [accountId, setAccountId] = useState("");
+  const [type, setType] = useState<"deposit" | "withdrawal" | "payout">("deposit");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setAccountId(accounts[0]?.id ?? "");
+      setType("deposit");
+      setDate(new Date().toISOString().slice(0, 10));
+      setAmount("");
+      setNote("");
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (open && !accountId && accounts.length) setAccountId(accounts[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, accounts]);
+
   if (!open) return null;
 
   const inputStyle: React.CSSProperties = {
@@ -216,6 +251,19 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
   };
   const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 };
 
+  async function handleLog() {
+    setError(null);
+    const amt = parseFloat(amount);
+    if (!accountId) { setError("Select an account."); return; }
+    if (Number.isNaN(amt) || amt <= 0) { setError("Enter a valid amount."); return; }
+    try {
+      await addCashFlow.mutateAsync({ id: accountId, body: { type, amount: amt, date, note: note.trim() || null } });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to log cash flow.");
+    }
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} onClick={onClose} />
@@ -225,18 +273,23 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
             <h2 style={{ fontSize: 15, fontWeight: 600, color: "#E2E8F0" }}>Cash Flow</h2>
             <button onClick={onClose} style={{ color: "#64748B", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
+          {accounts.length === 0 ? (
+            <div className="px-6 py-8">
+              <p style={{ fontSize: 13, color: "#64748B", textAlign: "center" }}>No accounts yet. Add an account first.</p>
+            </div>
+          ) : (
           <div className="px-6 py-5 flex flex-col gap-4">
             <div>
               <label style={labelStyle}>Account</label>
-              <select style={inputStyle}>
-                {allAccounts.map((a) => (
+              <select style={inputStyle} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                 ))}
               </select>
             </div>
             <div>
               <label style={labelStyle}>Type</label>
-              <select style={inputStyle} defaultValue="deposit">
+              <select style={inputStyle} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
                 <option value="deposit">Deposit</option>
                 <option value="withdrawal">Withdrawal</option>
                 <option value="payout">Payout (prop accounts)</option>
@@ -244,25 +297,27 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
             </div>
             <div>
               <label style={labelStyle}>Date</label>
-              <input type="date" style={inputStyle} defaultValue={new Date().toISOString().slice(0, 10)} />
+              <input type="date" style={inputStyle} value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div>
               <label style={labelStyle}>Amount</label>
-              <input type="number" placeholder="0.00" min="0" style={inputStyle} />
+              <input type="number" placeholder="0.00" min="0" style={inputStyle} value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div>
               <label style={labelStyle}>Note (optional)</label>
-              <textarea rows={2} placeholder="Optional note..." style={{ ...inputStyle, resize: "none" }} />
+              <textarea rows={2} placeholder="Optional note..." style={{ ...inputStyle, resize: "none" }} value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
+            {error && <p style={{ fontSize: 12, color: "#FCA5A5" }}>{error}</p>}
             <div className="flex gap-3 pt-2">
               <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ background: "rgba(148,163,184,0.08)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.1)" }}>
                 Cancel
               </button>
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff" }}>
-                Log
+              <button onClick={handleLog} disabled={addCashFlow.isPending} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff", opacity: addCashFlow.isPending ? 0.6 : 1 }}>
+                {addCashFlow.isPending ? "Logging…" : "Log"}
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
     </>
@@ -274,7 +329,7 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
 function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: () => void }) {
   const prop = isPropAccount(account);
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
-  const pnl = account.current_balance - account.account_size;
+  const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
   const pnlColor = pnl > 0 ? "#10B981" : pnl < 0 ? "#EF4444" : "#94A3B8";
   const { pct: goalPct } = calcGoalProgress(account);
@@ -351,6 +406,9 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { dbUser } = useAuth();
+  // First name for the greeting; falls back gracefully when the name isn't set.
+  const firstName = dbUser?.name?.trim().split(/\s+/)[0] ?? "";
 
   // Drawer state
   const [tradeDrawer, setTradeDrawer] = useState<Trade | null>(null);
@@ -370,22 +428,36 @@ export default function DashboardPage() {
   const [rangeDropdown, setRangeDropdown] = useState(false);
   const rangeRef = useRef<HTMLDivElement>(null);
 
+  // Live data
+  const tradesQuery = useTrades();
+  const plannedQuery = usePlanned();
+  const accountsQuery = useAccounts();
+  const pairsQuery = useTradingPairs();
+
+  const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
+  const allPlanned = useMemo(() => plannedQuery.data ?? [], [plannedQuery.data]);
+  const allAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const pairs = useMemo(() => pairsQuery.data ?? [], [pairsQuery.data]);
+
+  const isLoading = tradesQuery.isLoading || accountsQuery.isLoading || plannedQuery.isLoading;
+  const loadError = tradesQuery.error || accountsQuery.error || plannedQuery.error;
+
   // Greeting (computed on render from IST time)
   const greeting = getGreeting();
 
   // Live and planned counts
-  const liveTrades = useMemo(() => allTrades.filter((t) => t.date_closed === ""), []);
+  const liveTrades = useMemo(() => allTrades.filter((t) => t.date_closed === ""), [allTrades]);
   const activePlanned = useMemo(
     () => allPlanned.filter((p) => p.status === "Watching" || p.status === "Ready"),
-    []
+    [allPlanned]
   );
-  const readyCount = useMemo(() => allPlanned.filter((p) => p.status === "Ready").length, []);
+  const readyCount = useMemo(() => allPlanned.filter((p) => p.status === "Ready").length, [allPlanned]);
 
   // Status line — type-agnostic, framed off whatever accounts exist
   const statusLine = useMemo(() => {
-    const totalBal = allAccounts.reduce((s, a) => s + a.current_balance, 0);
+    const totalPnl = allAccounts.reduce((s, a) => s + accountTradingPnl(a), 0);
     const totalStart = allAccounts.reduce((s, a) => s + a.account_size, 0);
-    const pct = totalStart > 0 ? ((totalBal - totalStart) / totalStart) * 100 : 0;
+    const pct = totalStart > 0 ? (totalPnl / totalStart) * 100 : 0;
     const inChallenge = allAccounts.filter(
       (a) => isPropAccount(a) && a.status === "Active" && (a.stage === "Stage 1" || a.stage === "Stage 2"),
     ).length;
@@ -405,13 +477,13 @@ export default function DashboardPage() {
       s += " Markets are quiet — time to plan or rest.";
     }
     return s;
-  }, [readyCount, liveTrades.length]);
+  }, [allAccounts, readyCount, liveTrades.length]);
 
   // Metric cards
   const metrics = useMemo(() => {
     const activeAccounts = allAccounts.filter((a) => a.status === "Active");
     const totalBalance = allAccounts.reduce((s, a) => s + a.current_balance, 0);
-    const overallPnl = allAccounts.reduce((s, a) => s + (a.current_balance - a.account_size), 0);
+    const overallPnl = allAccounts.reduce((s, a) => s + accountTradingPnl(a), 0);
     const activeCount = activeAccounts.length;
 
     const closedSorted = [...allTrades.filter((t) => t.date_closed !== "")].sort(
@@ -427,7 +499,7 @@ export default function DashboardPage() {
     const challengesActive = propAccounts.filter(
       (a) => a.status === "Active" && (a.stage === "Stage 1" || a.stage === "Stage 2"),
     ).length;
-    const pnlPct = (a: Account) => (a.account_size > 0 ? (a.current_balance - a.account_size) / a.account_size : 0);
+    const pnlPct = (a: Account) => (a.account_size > 0 ? accountTradingPnl(a) / a.account_size : 0);
     const best = [...allAccounts].sort((a, b) => pnlPct(b) - pnlPct(a))[0] ?? null;
 
     return {
@@ -441,13 +513,13 @@ export default function DashboardPage() {
       bestName: best?.account_name ?? "—",
       bestPct: best ? pnlPct(best) * 100 : 0,
     };
-  }, []);
+  }, [allAccounts, allTrades]);
 
   // P&L Curve
   const curveData = useMemo(() => {
     const filtered = applyDateFilter(allTrades, dateRange);
     return buildPnlCurve(filtered);
-  }, [dateRange]);
+  }, [allTrades, dateRange]);
 
   const drawdownWindows = useMemo(() => computeDrawdownWindows(curveData), [curveData]);
 
@@ -487,7 +559,7 @@ export default function DashboardPage() {
           {/* Greeting + status */}
           <div className="mb-6">
             <h1 style={{ fontSize: 28, fontWeight: 600, color: "#F1F5F9", lineHeight: 1.2, marginBottom: 8 }}>
-              {greeting}, Aman.
+              {greeting}{firstName ? `, ${firstName}` : ""}.
             </h1>
             <p style={{ fontSize: 14, color: "#94A3B8" }}>{statusLine}</p>
           </div>
@@ -593,6 +665,16 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {isLoading ? (
+          <LoadingState message="Loading your dashboard…" />
+        ) : loadError ? (
+          <ErrorState
+            error={loadError}
+            onRetry={() => { tradesQuery.refetch(); accountsQuery.refetch(); plannedQuery.refetch(); }}
+            title="Couldn't load your dashboard"
+          />
+        ) : (
+        <>
         {/* ── Section 3: Metric Cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Total Balance */}
@@ -1016,6 +1098,8 @@ export default function DashboardPage() {
             </Link>
           </p>
         </div>
+        </>
+        )}
 
       </div>
 
@@ -1029,7 +1113,7 @@ export default function DashboardPage() {
       <DetailDrawer
         open={tradeDrawer !== null}
         onClose={() => setTradeDrawer(null)}
-        title={tradeDrawer ? `Trade #${tradeDrawer.id.replace("trd_", "")}` : ""}
+        title={tradeDrawer ? `Trade #${tradeDrawer.id.slice(0, 8)}` : ""}
         expandHref={tradeDrawer ? `/trading/journal/${tradeDrawer.id}` : undefined}
       >
         {tradeDrawer && <TradeDrawerContent trade={tradeDrawer} />}

@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Camera } from "lucide-react";
-import { accounts, pairs, models, accountTypeLabel } from "@/lib/demo-data";
+import { accountTypeLabel, type Direction, type Conviction, type ExitType } from "@/lib/demo-data";
+import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade } from "@/hooks/useTrading";
+import type { CreateTradePayload } from "@/lib/api/trading";
+
+/** Optional pre-fill, e.g. when converting a planned trade into a live one. */
+export interface AddTradePrefill {
+  pair?: string;
+  model?: string;
+  direction?: Direction;
+  entry_price?: number;
+  sl_price?: number;
+  first_tp_price?: number | null;
+  main_tp_price?: number;
+  risk_pct?: number;
+  conviction?: Conviction;
+}
 
 interface AddTradeModalProps {
   open: boolean;
   onClose: () => void;
+  prefill?: AddTradePrefill;
+  /** Called after a trade is successfully created (before onClose). */
+  onSubmitted?: () => void;
 }
 
 const INPUT_STYLE: React.CSSProperties = {
@@ -64,7 +82,7 @@ function SegmentedControl<T extends string>({
   onChange,
   colorMap,
 }: {
-  options: T[];
+  options: readonly T[];
   value: T;
   onChange: (v: T) => void;
   colorMap?: Record<string, { active: string; bg: string }>;
@@ -97,18 +115,27 @@ function SegmentedControl<T extends string>({
   );
 }
 
-export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
-  const [pair, setPair] = useState<typeof pairs[0]["symbol"]>(pairs[0].symbol);
-  const [model, setModel] = useState(models[0].name);
-  const [direction, setDirection] = useState<"Buy" | "Sell">("Buy");
-  const [account, setAccount] = useState(accounts[0].id);
+export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeModalProps) {
+  const accountsQuery = useAccounts();
+  const modelsQuery = useTradingModels();
+  const pairsQuery = useTradingPairs();
+  const createTrade = useCreateTrade();
+
+  const accountList = accountsQuery.data ?? [];
+  const modelList = modelsQuery.data ?? [];
+  const pairList = pairsQuery.data ?? [];
+
+  const [pair, setPair] = useState("");
+  const [model, setModel] = useState("");
+  const [direction, setDirection] = useState<Direction>("Buy");
+  const [account, setAccount] = useState("");
   const [entryPrice, setEntryPrice] = useState("");
   const [sl, setSl] = useState("");
   const [firstTp, setFirstTp] = useState("");
   const [mainTp, setMainTp] = useState("");
   const [lotSize, setLotSize] = useState("");
   const [riskPct, setRiskPct] = useState("");
-  const [conviction, setConviction] = useState<"Low" | "Medium" | "High">("Medium");
+  const [conviction, setConviction] = useState<Conviction>("Medium");
   const [fundScore, setFundScore] = useState("");
   const [psychology, setPsychology] = useState("");
   const [notes, setNotes] = useState("");
@@ -117,9 +144,105 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
   const [partialPct, setPartialPct] = useState("");
   const [mainExit, setMainExit] = useState("");
   const [dateClosed, setDateClosed] = useState("");
-  const [exitType, setExitType] = useState("TP");
+  const [exitType, setExitType] = useState<ExitType>("TP");
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset the form each time the modal opens, seeding from prefill where present.
+  useEffect(() => {
+    if (!open) return;
+    setPair(prefill?.pair ?? "");
+    setModel(prefill?.model ?? "");
+    setAccount("");
+    setDirection(prefill?.direction ?? "Buy");
+    setEntryPrice(prefill?.entry_price != null ? String(prefill.entry_price) : "");
+    setSl(prefill?.sl_price != null ? String(prefill.sl_price) : "");
+    setFirstTp(prefill?.first_tp_price != null ? String(prefill.first_tp_price) : "");
+    setMainTp(prefill?.main_tp_price != null ? String(prefill.main_tp_price) : "");
+    setLotSize("");
+    setRiskPct(prefill?.risk_pct != null ? String(prefill.risk_pct) : "");
+    setConviction(prefill?.conviction ?? "Medium");
+    setFundScore("");
+    setPsychology("");
+    setNotes("");
+    setIsClosed(false);
+    setPartialExit("");
+    setPartialPct("");
+    setMainExit("");
+    setDateClosed("");
+    setExitType("TP");
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Fill the dropdown defaults once the lists have loaded (covers the race where
+  // the modal opens before queries resolve).
+  useEffect(() => {
+    if (!open) return;
+    if (!pair && pairList.length) setPair(prefill?.pair ?? pairList[0].symbol);
+    if (!model && modelList.length) setModel(prefill?.model ?? modelList[0].name);
+    if (!account && accountList.length) setAccount(accountList[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pairList, modelList, accountList]);
 
   if (!open) return null;
+
+  const noAccounts = !accountsQuery.isLoading && accountList.length === 0;
+
+  async function handleSubmit() {
+    setError(null);
+    if (!account) {
+      setError("Select an account first.");
+      return;
+    }
+    const entryNum = parseFloat(entryPrice);
+    const slNum = parseFloat(sl);
+    const mainTpNum = parseFloat(mainTp);
+    const lotNum = parseFloat(lotSize);
+    if ([entryNum, slNum, mainTpNum, lotNum].some(Number.isNaN)) {
+      setError("Entry, Stop Loss, Main TP and Lot Size are required numbers.");
+      return;
+    }
+    const mainExitNum = mainExit ? parseFloat(mainExit) : NaN;
+    if (isClosed && Number.isNaN(mainExitNum)) {
+      setError("Main Exit Price is required to log a closed trade.");
+      return;
+    }
+
+    const payload: CreateTradePayload = {
+      account_id: account,
+      model: model || (modelList[0]?.name ?? ""),
+      pair: pair || (pairList[0]?.symbol ?? ""),
+      direction,
+      entry_price: entryNum,
+      sl_price: slNum,
+      first_tp_price: firstTp ? parseFloat(firstTp) : null,
+      main_tp_price: mainTpNum,
+      lot_size: lotNum,
+      risk_pct: riskPct ? parseFloat(riskPct) : 0,
+      conviction,
+      fundamental_score: fundScore ? parseInt(fundScore, 10) : null,
+      psychology: psychology.trim() || null,
+      notes: notes.trim() || null,
+      is_closed: isClosed,
+      exit_type: exitType,
+      ...(isClosed
+        ? {
+            partial_exit_price: partialExit ? parseFloat(partialExit) : null,
+            partial_exit_lot_pct: partialPct ? parseFloat(partialPct) : null,
+            main_exit_price: mainExitNum,
+            date_closed: dateClosed ? new Date(dateClosed).toISOString() : null,
+          }
+        : {}),
+    };
+
+    try {
+      await createTrade.mutateAsync(payload);
+      onSubmitted?.();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save trade.");
+    }
+  }
 
   return (
     <>
@@ -187,6 +310,15 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
               </span>
             </div>
 
+            {noAccounts && (
+              <div
+                className="mb-6 rounded-lg px-4 py-3 text-sm"
+                style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "#F59E0B" }}
+              >
+                You need at least one account before logging a trade. Add one in the Accounts tab.
+              </div>
+            )}
+
             <div className="flex flex-col gap-6">
 
               {/* Group 1: Setup */}
@@ -196,10 +328,10 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                   <FieldGroup label="Pair">
                     <select
                       value={pair}
-                      onChange={e => setPair(e.target.value as typeof pair)}
+                      onChange={e => setPair(e.target.value)}
                       style={INPUT_STYLE}
                     >
-                      {pairs.map(p => (
+                      {pairList.map(p => (
                         <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
                       ))}
                     </select>
@@ -208,10 +340,10 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                   <FieldGroup label="Model">
                     <select
                       value={model}
-                      onChange={e => setModel(e.target.value as typeof model)}
+                      onChange={e => setModel(e.target.value)}
                       style={INPUT_STYLE}
                     >
-                      {models.map(m => (
+                      {modelList.map(m => (
                         <option key={m.id} value={m.name}>{m.name}</option>
                       ))}
                     </select>
@@ -235,7 +367,8 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                       onChange={e => setAccount(e.target.value)}
                       style={INPUT_STYLE}
                     >
-                      {accounts.map(a => (
+                      {accountList.length === 0 && <option value="">No accounts</option>}
+                      {accountList.map(a => (
                         <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                       ))}
                     </select>
@@ -248,64 +381,22 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                 <GroupHeader>Prices</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <FieldGroup label="Entry Price">
-                    <input
-                      type="number"
-                      step="any"
-                      value={entryPrice}
-                      onChange={e => setEntryPrice(e.target.value)}
-                      placeholder="1.0865"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input
-                      type="number"
-                      step="any"
-                      value={sl}
-                      onChange={e => setSl(e.target.value)}
-                      placeholder="1.0905"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input
-                      type="number"
-                      step="any"
-                      value={firstTp}
-                      onChange={e => setFirstTp(e.target.value)}
-                      placeholder="1.0825"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input
-                      type="number"
-                      step="any"
-                      value={mainTp}
-                      onChange={e => setMainTp(e.target.value)}
-                      placeholder="1.0780"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Lot Size">
-                    <input
-                      type="number"
-                      step="any"
-                      value={lotSize}
-                      onChange={e => setLotSize(e.target.value)}
-                      placeholder="0.45"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Risk %">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={riskPct}
-                      onChange={e => setRiskPct(e.target.value)}
-                      placeholder="1.0"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" style={INPUT_STYLE} />
                   </FieldGroup>
                 </div>
               </div>
@@ -328,26 +419,12 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                   </FieldGroup>
 
                   <FieldGroup label="Fundamental Score (1-10)">
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={fundScore}
-                      onChange={e => setFundScore(e.target.value)}
-                      placeholder="7"
-                      style={INPUT_STYLE}
-                    />
+                    <input type="number" min="1" max="10" value={fundScore} onChange={e => setFundScore(e.target.value)} placeholder="7" style={INPUT_STYLE} />
                   </FieldGroup>
 
                   <div className="col-span-2">
                     <FieldGroup label="Psychology">
-                      <input
-                        type="text"
-                        value={psychology}
-                        onChange={e => setPsychology(e.target.value)}
-                        placeholder="One word: confident, patient, eager, frustrated..."
-                        style={INPUT_STYLE}
-                      />
+                      <input type="text" value={psychology} onChange={e => setPsychology(e.target.value)} placeholder="One word: confident, patient, eager, frustrated..." style={INPUT_STYLE} />
                     </FieldGroup>
                   </div>
                 </div>
@@ -357,26 +434,13 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
               <div>
                 <GroupHeader>Notes &amp; Screenshots</GroupHeader>
                 <FieldGroup label="Notes">
-                  <textarea
-                    rows={3}
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="Setup notes, observations, things you noticed..."
-                    style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.6 }}
-                  />
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Setup notes, observations, things you noticed..." style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.6 }} />
                 </FieldGroup>
                 <div className="mt-4">
                   <label style={LABEL_STYLE}>Screenshots</label>
                   <div
                     className="flex items-center justify-center rounded-lg"
-                    style={{
-                      height: 64,
-                      border: "1.5px dashed rgba(148,163,184,0.15)",
-                      background: "rgba(148,163,184,0.02)",
-                      cursor: "pointer",
-                      color: "#475569",
-                      fontSize: 13,
-                    }}
+                    style={{ height: 64, border: "1.5px dashed rgba(148,163,184,0.15)", background: "rgba(148,163,184,0.02)", cursor: "pointer", color: "#475569", fontSize: 13 }}
                   >
                     Click to upload (Phase 2)
                   </div>
@@ -417,50 +481,21 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
                 {isClosed && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Partial Exit Price">
-                      <input
-                        type="number"
-                        step="any"
-                        value={partialExit}
-                        onChange={e => setPartialExit(e.target.value)}
-                        placeholder="Optional"
-                        style={INPUT_STYLE}
-                      />
+                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Partial Lot %">
-                      <input
-                        type="number"
-                        value={partialPct}
-                        onChange={e => setPartialPct(e.target.value)}
-                        placeholder="25"
-                        style={INPUT_STYLE}
-                      />
+                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Main Exit Price">
-                      <input
-                        type="number"
-                        step="any"
-                        value={mainExit}
-                        onChange={e => setMainExit(e.target.value)}
-                        placeholder="1.0820"
-                        style={INPUT_STYLE}
-                      />
+                      <input type="number" step="any" value={mainExit} onChange={e => setMainExit(e.target.value)} placeholder="1.0820" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Date Closed">
-                      <input
-                        type="datetime-local"
-                        value={dateClosed}
-                        onChange={e => setDateClosed(e.target.value)}
-                        style={INPUT_STYLE}
-                      />
+                      <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} style={INPUT_STYLE} />
                     </FieldGroup>
                     <div className="col-span-2">
                       <FieldGroup label="Exit Type">
-                        <select
-                          value={exitType}
-                          onChange={e => setExitType(e.target.value)}
-                          style={INPUT_STYLE}
-                        >
-                          {["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"].map(t => (
+                        <select value={exitType} onChange={e => setExitType(e.target.value as ExitType)} style={INPUT_STYLE}>
+                          {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
@@ -477,25 +512,25 @@ export function AddTradeModal({ open, onClose }: AddTradeModalProps) {
             className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
             style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
           >
+            {error && (
+              <span className="mr-auto text-sm" style={{ color: "#FCA5A5" }}>{error}</span>
+            )}
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm transition-colors"
               style={{ color: "#64748B" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94A3B8"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#64748B"; }}
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={createTrade.isPending || noAccounts}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: "#3B82F6", color: "#fff" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#3B82F6"; }}
-              onClick={onClose}
+              style={{ background: "#3B82F6", color: "#fff", opacity: createTrade.isPending || noAccounts ? 0.6 : 1 }}
+              onClick={handleSubmit}
             >
-              Add Trade
+              {createTrade.isPending ? "Saving…" : "Add Trade"}
             </button>
           </div>
         </div>

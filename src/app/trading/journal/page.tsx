@@ -3,13 +3,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { Plus, LayoutList, LayoutGrid, X, BookText, SlidersHorizontal } from "lucide-react";
 import {
-  trades as allTrades,
-  accounts,
-  pairs,
-  models,
   formatCurrency,
   type Trade,
 } from "@/lib/demo-data";
+import { useTrades, useAccounts, useTradingModels, useTradingPairs } from "@/hooks/useTrading";
+import { LoadingState } from "@/components/state/LoadingState";
+import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { JournalTable } from "./JournalTable";
 import { JournalGallery } from "./JournalGallery";
@@ -37,26 +36,19 @@ function calcSummary(tradeList: Trade[]) {
   return { count: tradeList.length, net };
 }
 
-const FILTER_OPTIONS: Record<FilterCategory, string[]> = {
-  Pair: pairs.map(p => p.symbol),
-  Model: models.map(m => m.name),
-  Direction: ["Buy", "Sell"],
-  Outcome: ["Win", "Loss", "BE"],
-  Session: ["Asian", "London", "London-NY Overlap", "New York"],
-  Conviction: ["High", "Medium", "Low"],
-};
-
 function FilterPopover({
   activeFilters,
+  filterOptions,
   onAdd,
   onClose,
 }: {
   activeFilters: ActiveFilter[];
+  filterOptions: Record<FilterCategory, string[]>;
   onAdd: (cat: FilterCategory, val: string) => void;
   onClose: () => void;
 }) {
   const [selectedCat, setSelectedCat] = useState<FilterCategory | null>(null);
-  const cats = Object.keys(FILTER_OPTIONS) as FilterCategory[];
+  const cats = Object.keys(filterOptions) as FilterCategory[];
 
   return (
     <div
@@ -85,7 +77,7 @@ function FilterPopover({
       </div>
       {selectedCat && (
         <div className="py-1" style={{ minWidth: 148 }}>
-          {FILTER_OPTIONS[selectedCat].map(val => {
+          {filterOptions[selectedCat].map(val => {
             const already = activeFilters.some(f => f.category === selectedCat && f.value === val);
             return (
               <button
@@ -119,9 +111,25 @@ export default function JournalPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
+  const tradesQuery = useTrades();
+  const accountsQuery = useAccounts();
+  const modelsQuery = useTradingModels();
+  const pairsQuery = useTradingPairs();
+
+  const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+
+  const filterOptions = useMemo<Record<FilterCategory, string[]>>(() => ({
+    Pair: (pairsQuery.data ?? []).map(p => p.symbol),
+    Model: (modelsQuery.data ?? []).map(m => m.name),
+    Direction: ["Buy", "Sell"],
+    Outcome: ["Win", "Loss", "BE"],
+    Session: ["Asian", "London", "London-NY Overlap", "New York"],
+    Conviction: ["High", "Medium", "Low"],
+  }), [pairsQuery.data, modelsQuery.data]);
+
   const sortedTrades = useMemo(
-    () => [...allTrades].sort((a, b) => new Date(b.date_opened).getTime() - new Date(a.date_opened).getTime()),
-    []
+    () => [...(tradesQuery.data ?? [])].sort((a, b) => new Date(b.date_opened).getTime() - new Date(a.date_opened).getTime()),
+    [tradesQuery.data]
   );
 
   const filteredTrades = useMemo(() => {
@@ -242,7 +250,7 @@ export default function JournalPage() {
               <SlidersHorizontal size={12} /> Add Filter
             </button>
             {filterOpen && (
-              <FilterPopover activeFilters={activeFilters} onAdd={addFilter} onClose={() => setFilterOpen(false)} />
+              <FilterPopover activeFilters={activeFilters} filterOptions={filterOptions} onAdd={addFilter} onClose={() => setFilterOpen(false)} />
             )}
           </div>
         </div>
@@ -269,7 +277,11 @@ export default function JournalPage() {
 
       {/* Content */}
       <div className="flex-1 px-4 sm:px-6 py-4">
-        {filteredTrades.length === 0 ? (
+        {tradesQuery.isLoading ? (
+          <LoadingState message="Loading trades…" />
+        ) : tradesQuery.isError ? (
+          <ErrorState error={tradesQuery.error} onRetry={() => tradesQuery.refetch()} title="Couldn't load trades" />
+        ) : filteredTrades.length === 0 ? (
           <EmptyState
             hasFilters={activeFilters.length > 0 || selectedAccount !== "all"}
             onClear={clearFilters}
@@ -286,7 +298,7 @@ export default function JournalPage() {
         open={!!selectedTrade}
         onClose={() => setSelectedTrade(null)}
         expandHref={selectedTrade ? `/trading/journal/${selectedTrade.id}` : undefined}
-        title={selectedTrade ? `${getPairDisplayName(selectedTrade.pair)} · Trade #${selectedTrade.id.replace("trd_", "")}` : ""}
+        title={selectedTrade ? `${getPairDisplayName(selectedTrade.pair, pairsQuery.data)} · Trade #${selectedTrade.id.slice(0, 8)}` : ""}
       >
         {selectedTrade && <TradeDrawerContent trade={selectedTrade} />}
       </DetailDrawer>
@@ -296,8 +308,8 @@ export default function JournalPage() {
   );
 }
 
-function getPairDisplayName(symbol: string) {
-  return pairs.find(p => p.symbol === symbol)?.display_name ?? symbol;
+function getPairDisplayName(symbol: string, pairs?: { symbol: string; display_name: string }[]) {
+  return pairs?.find(p => p.symbol === symbol)?.display_name ?? symbol;
 }
 
 function EmptyState({ hasFilters, onClear, onAdd }: { hasFilters: boolean; onClear: () => void; onAdd: () => void }) {
