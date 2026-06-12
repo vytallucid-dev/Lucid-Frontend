@@ -356,3 +356,48 @@ body {
 .compass-pulse-glow {
   animation: compass-glow-pulse 2s ease-in-out infinite;
 }
+
+/* =============================================
+   TOASTS — slide-in / out + lifetime progress
+   ============================================= */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(24px) scale(0.98); }
+}
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+.toast-enter { animation: toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.toast-leave { animation: toast-out 0.18s ease-in both; }
+.toast-progress { animation-name: toast-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+/* On small screens toasts enter from the top rather than the side. */
+@media (max-width: 640px) {
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes toast-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(-16px) scale(0.98); }
+  }
+}
+
+/* =============================================
+   MOBILE — prevent iOS Safari focus-zoom
+   Form controls under 16px trigger an auto-zoom on focus that visually
+   "breaks" modals/dropdowns on phones. Pinning controls to 16px on narrow
+   viewports disables the zoom without changing the desktop design.
+   ============================================= */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -54,6 +54,7 @@ import {
 } from "@/app/trading/accounts/AccountDrawerContent";
 import { PlannedDrawerContent } from "@/app/trading/planned/PlannedDrawerContent";
 import { AddTradeModal } from "@/app/trading/journal/AddTradeModal";
+import { toast } from "@/components/toast";
 
 // ─── Greeting ────────────────────────────────────────────────────────────────
 
@@ -258,9 +259,10 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
     if (Number.isNaN(amt) || amt <= 0) { setError("Enter a valid amount."); return; }
     try {
       await addCashFlow.mutateAsync({ id: accountId, body: { type, amount: amt, date, note: note.trim() || null } });
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} of $${amt.toFixed(2)} logged.`, { title: "Cash flow logged" });
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to log cash flow.");
+    } catch {
+      // The global mutation handler surfaces the error toast.
     }
   }
 
@@ -421,7 +423,6 @@ export default function DashboardPage() {
 
   // Chat input
   const [chatValue, setChatValue] = useState("");
-  const [showChatToast, setShowChatToast] = useState(false);
 
   // P&L curve date range
   const [dateRange, setDateRange] = useState<DateRangePreset>("All Time");
@@ -534,24 +535,15 @@ export default function DashboardPage() {
   }, [rangeDropdown]);
 
   function handleChatSubmit() {
-    setShowChatToast(true);
-    setTimeout(() => setShowChatToast(false), 3000);
+    toast.info("Lucid AI activates with full context of your trading system in Phase 3.", {
+      title: "✨ Coming in Phase 3",
+    });
   }
 
   const pairsConfig = pairs;
 
   return (
     <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
-      {/* Toast */}
-      {showChatToast && (
-        <div
-          className="fixed top-5 right-5 z-[100] rounded-xl px-4 py-3 text-sm font-medium shadow-2xl"
-          style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93C5FD", backdropFilter: "blur(12px)" }}
-        >
-          ✨ Lucid AI activates in Phase 3.
-        </div>
-      )}
-
       <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-350 mx-auto">
 
         {/* ── Section 1: Hero ────────────────────────────────────────────────── */}

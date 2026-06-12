@@ -5,6 +5,13 @@ import { X, Camera } from "lucide-react";
 import { accountTypeLabel, type Direction, type Conviction, type ExitType } from "@/lib/demo-data";
 import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade } from "@/hooks/useTrading";
 import type { CreateTradePayload } from "@/lib/api/trading";
+import { toast } from "@/components/toast";
+
+/** Formats a Date as the local `YYYY-MM-DDTHH:mm` string a datetime-local input expects. */
+function toLocalDatetimeInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /** Optional pre-fill, e.g. when converting a planned trade into a live one. */
 export interface AddTradePrefill {
@@ -47,6 +54,10 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 6,
   display: "block",
 };
+
+// Explicit dark background so the native dropdown list stays readable on
+// mobile (some browsers default the option panel to the page background).
+const OPTION_STYLE: React.CSSProperties = { background: "#0A0E14", color: "#E2E8F0" };
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -139,6 +150,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
   const [fundScore, setFundScore] = useState("");
   const [psychology, setPsychology] = useState("");
   const [notes, setNotes] = useState("");
+  const [dateOpened, setDateOpened] = useState("");
   const [isClosed, setIsClosed] = useState(false);
   const [partialExit, setPartialExit] = useState("");
   const [partialPct, setPartialPct] = useState("");
@@ -164,6 +176,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
     setFundScore("");
     setPsychology("");
     setNotes("");
+    setDateOpened(toLocalDatetimeInput(new Date()));
     setIsClosed(false);
     setPartialExit("");
     setPartialPct("");
@@ -223,6 +236,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
       fundamental_score: fundScore ? parseInt(fundScore, 10) : null,
       psychology: psychology.trim() || null,
       notes: notes.trim() || null,
+      ...(dateOpened ? { date_opened: new Date(dateOpened).toISOString() } : {}),
       is_closed: isClosed,
       exit_type: exitType,
       ...(isClosed
@@ -237,10 +251,14 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
 
     try {
       await createTrade.mutateAsync(payload);
+      toast.success(
+        `${pair || payload.pair} ${direction} ${isClosed ? "saved" : "is now live"} in your journal.`,
+        { title: isClosed ? "Trade logged" : "Trade opened" },
+      );
       onSubmitted?.();
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save trade.");
+    } catch {
+      // The global mutation handler surfaces the error toast.
     }
   }
 
@@ -332,7 +350,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                       style={INPUT_STYLE}
                     >
                       {pairList.map(p => (
-                        <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
+                        <option key={p.symbol} value={p.symbol} style={OPTION_STYLE}>{p.display_name}</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -344,7 +362,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                       style={INPUT_STYLE}
                     >
                       {modelList.map(m => (
-                        <option key={m.id} value={m.name}>{m.name}</option>
+                        <option key={m.id} value={m.name} style={OPTION_STYLE}>{m.name}</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -367,11 +385,20 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                       onChange={e => setAccount(e.target.value)}
                       style={INPUT_STYLE}
                     >
-                      {accountList.length === 0 && <option value="">No accounts</option>}
+                      {accountList.length === 0 && <option value="" style={OPTION_STYLE}>No accounts</option>}
                       {accountList.map(a => (
-                        <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
+                        <option key={a.id} value={a.id} style={OPTION_STYLE}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                       ))}
                     </select>
+                  </FieldGroup>
+
+                  <FieldGroup label="Date Opened">
+                    <input
+                      type="datetime-local"
+                      value={dateOpened}
+                      onChange={e => setDateOpened(e.target.value)}
+                      style={INPUT_STYLE}
+                    />
                   </FieldGroup>
                 </div>
               </div>
@@ -496,7 +523,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                       <FieldGroup label="Exit Type">
                         <select value={exitType} onChange={e => setExitType(e.target.value as ExitType)} style={INPUT_STYLE}>
                           {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
-                            <option key={t} value={t}>{t}</option>
+                            <option key={t} value={t} style={OPTION_STYLE}>{t}</option>
                           ))}
                         </select>
                       </FieldGroup>

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { PlannedTrade, Direction, Conviction } from "@/lib/demo-data";
 import { useTradingModels, useTradingPairs, useCreatePlanned, useUpdatePlanned } from "@/hooks/useTrading";
 import type { CreatePlannedPayload } from "@/lib/api/trading";
+import { toast } from "@/components/toast";
 
 interface AddPlannedTradeModalProps {
   open: boolean;
@@ -34,6 +35,15 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 6,
   display: "block",
 };
+
+// Explicit dark background so the native dropdown list stays readable on mobile.
+const OPTION_STYLE: React.CSSProperties = { background: "#0A0E14", color: "#E2E8F0" };
+
+/** Local `YYYY-MM-DD` string for a `date` input, defaulting to today. */
+function toDateInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -123,6 +133,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
   const [currentMarketPrice, setCurrentMarketPrice] = useState("");
   const [riskPct, setRiskPct] = useState("");
   const [conviction, setConviction] = useState<Conviction>("Medium");
+  const [datePlanned, setDatePlanned] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -138,6 +149,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
     setCurrentMarketPrice(prefill?.current_market_price != null ? String(prefill.current_market_price) : "");
     setRiskPct(prefill?.planned_risk_pct != null ? String(prefill.planned_risk_pct) : "");
     setConviction(prefill?.conviction ?? "Medium");
+    setDatePlanned(prefill?.date_added ? toDateInput(new Date(prefill.date_added)) : toDateInput(new Date()));
     setNotes(prefill?.notes ?? "");
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,17 +187,20 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
       planned_risk_pct: riskPct ? parseFloat(riskPct) : 1.0,
       conviction,
       notes: notes.trim() || null,
+      ...(datePlanned ? { date_added: datePlanned } : {}),
       ...(currentMarketPrice ? { current_market_price: parseFloat(currentMarketPrice) } : {}),
     };
     try {
       if (editId) {
         await updatePlanned.mutateAsync({ id: editId, body });
+        toast.success(`${body.pair} ${direction} setup updated.`, { title: "Planned trade updated" });
       } else {
         await createPlanned.mutateAsync(body);
+        toast.success(`${body.pair} ${direction} added to your watchlist.`, { title: "Setup planned" });
       }
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save planned trade.");
+    } catch {
+      // The global mutation handler surfaces the error toast.
     }
   }
 
@@ -242,7 +257,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                   <FieldGroup label="Pair">
                     <select value={pair} onChange={e => setPair(e.target.value)} style={INPUT_STYLE}>
                       {pairList.map(p => (
-                        <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
+                        <option key={p.symbol} value={p.symbol} style={OPTION_STYLE}>{p.display_name}</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -250,24 +265,31 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                   <FieldGroup label="Model">
                     <select value={model} onChange={e => setModel(e.target.value)} style={INPUT_STYLE}>
                       {modelList.map(m => (
-                        <option key={m.id} value={m.name}>{m.name}</option>
+                        <option key={m.id} value={m.name} style={OPTION_STYLE}>{m.name}</option>
                       ))}
                     </select>
                   </FieldGroup>
 
-                  <div className="col-span-2">
-                    <FieldGroup label="Direction">
-                      <SegmentedControl
-                        options={["Buy", "Sell"] as const}
-                        value={direction}
-                        onChange={setDirection}
-                        colorMap={{
-                          Buy: { active: "#10B981", bg: "rgba(16,185,129,0.12)" },
-                          Sell: { active: "#EF4444", bg: "rgba(239,68,68,0.1)" },
-                        }}
-                      />
-                    </FieldGroup>
-                  </div>
+                  <FieldGroup label="Direction">
+                    <SegmentedControl
+                      options={["Buy", "Sell"] as const}
+                      value={direction}
+                      onChange={setDirection}
+                      colorMap={{
+                        Buy: { active: "#10B981", bg: "rgba(16,185,129,0.12)" },
+                        Sell: { active: "#EF4444", bg: "rgba(239,68,68,0.1)" },
+                      }}
+                    />
+                  </FieldGroup>
+
+                  <FieldGroup label="Date Planned">
+                    <input
+                      type="date"
+                      value={datePlanned}
+                      onChange={e => setDatePlanned(e.target.value)}
+                      style={INPUT_STYLE}
+                    />
+                  </FieldGroup>
                 </div>
               </div>
 

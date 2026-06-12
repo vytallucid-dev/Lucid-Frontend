@@ -4,13 +4,20 @@ import { useState } from "react";
 import {
   QueryClient,
   QueryClientProvider,
+  MutationCache,
   keepPreviousData,
 } from "@tanstack/react-query";
+import { toast, toastErrorMessage } from "@/components/toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        // Any failed mutation surfaces an error toast app-wide, so every
+        // create/update/delete is covered without per-call wiring.
+        mutationCache: new MutationCache({
+          onError: (error) => toast.error(toastErrorMessage(error)),
+        }),
         defaultOptions: {
           queries: {
             staleTime: 5 * 60 * 1000,

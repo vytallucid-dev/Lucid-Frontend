@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { Providers } from "@/lib/providers";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { ToastViewport } from "@/components/toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -28,6 +29,7 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
           </AuthProvider>
         </Providers>
+        <ToastViewport />
       </body>
     </html>
   );

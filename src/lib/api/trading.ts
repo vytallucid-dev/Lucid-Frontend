@@ -90,6 +90,7 @@ export interface CreatePlannedPayload {
   notes?: string | null;
   screenshots?: string[];
   current_market_price?: number;
+  date_added?: string; // ISO datetime or YYYY-MM-DD; defaults to now server-side
 }
 export type UpdatePlannedPayload = Partial<CreatePlannedPayload>;
 

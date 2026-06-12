@@ -15,6 +15,7 @@ import { DetailDrawer } from "@/components/DetailDrawer";
 import { AddPlannedTradeModal } from "./AddPlannedTradeModal";
 import { PlannedDrawerContent, calcRR, ModelPill, ConvictionPill, DistanceBadge } from "./PlannedDrawerContent";
 import { AddTradeModal } from "../journal/AddTradeModal";
+import { toast } from "@/components/toast";
 
 // ── Status section config ─────────────────────────────────────────────────────
 const STATUS_ORDER: PlannedStatus[] = ["Ready", "Watching", "Invalidated", "Cancelled"];
@@ -384,11 +385,21 @@ export default function PlannedPage() {
   const invalidatedCount = trades.filter(t => t.status === "Invalidated").length;
 
   function updateStatus(id: string, status: PlannedStatus) {
-    updatePlannedM.mutate({ id, body: { status } });
+    updatePlannedM.mutate(
+      { id, body: { status } },
+      {
+        onSuccess: () => {
+          if (status === "Invalidated")
+            toast.warning("Setup invalidated — price action broke the plan.", { title: "Setup invalidated" });
+          else if (status === "Cancelled") toast.info("Setup cancelled.");
+          else toast.success(`Setup marked as ${status.toLowerCase()}.`);
+        },
+      },
+    );
   }
 
   function handleDelete(id: string) {
-    deletePlannedM.mutate(id);
+    deletePlannedM.mutate(id, { onSuccess: () => toast.success("Planned trade deleted.") });
     if (drawerId === id) setDrawerId(null);
   }
 

@@ -24,6 +24,7 @@ import type { CreateAccountPayload } from "@/lib/api/trading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { toast } from "@/components/toast";
 import {
   AccountDrawerContent,
   AccountTypePill,
@@ -559,14 +560,24 @@ export default function AccountsPage() {
   }
 
   function handleAddAccount(payload: CreateAccountPayload) {
-    createAccountM.mutate(payload);
+    createAccountM.mutate(payload, {
+      onSuccess: () => toast.success(`${payload.account_name} added to your accounts.`, { title: "Account added" }),
+    });
   }
 
   function handleCashFlow(accountId: string, flow: { type: CashFlowType; date: string; amount: number; note: string }) {
-    addCashFlowM.mutate({
-      id: accountId,
-      body: { type: flow.type, amount: flow.amount, date: flow.date, note: flow.note || null },
-    });
+    addCashFlowM.mutate(
+      {
+        id: accountId,
+        body: { type: flow.type, amount: flow.amount, date: flow.date, note: flow.note || null },
+      },
+      {
+        onSuccess: () =>
+          toast.success(`${flow.type.charAt(0).toUpperCase() + flow.type.slice(1)} of $${flow.amount.toFixed(2)} logged.`, {
+            title: "Cash flow logged",
+          }),
+      },
+    );
   }
 
   const pnlColor = netPnl >= 0 ? "var(--positive)" : "var(--negative)";

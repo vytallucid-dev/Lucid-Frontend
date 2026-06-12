@@ -20,6 +20,7 @@ import type { ApiPair } from "@/lib/api/trading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { toast } from "@/components/toast";
 
 // ─── Design helpers ──────────────────────────────────────────────────────────
 
@@ -587,16 +588,22 @@ function ModelsTab() {
 
   const handleSave = (data: Omit<Model, "id">) => {
     if (editTarget) {
-      updateModel.mutate({ id: editTarget.id, body: data });
+      updateModel.mutate({ id: editTarget.id, body: data }, {
+        onSuccess: () => toast.success(`${data.name} updated.`, { title: "Model saved" }),
+      });
     } else {
-      createModel.mutate(data);
+      createModel.mutate(data, {
+        onSuccess: () => toast.success(`${data.name} added to your models.`, { title: "Model added" }),
+      });
     }
     setEditTarget(null);
     setModalOpen(false);
   };
 
   const handleDelete = (model: Model) => {
-    deleteModel.mutate(model.id);
+    deleteModel.mutate(model.id, {
+      onSuccess: () => toast.success(`${model.name} deleted.`, { title: "Model deleted" }),
+    });
     setDrawerId(null);
   };
 
@@ -751,9 +758,13 @@ function PairsTab() {
       status: data.status,
     };
     if (editTarget) {
-      updatePair.mutate({ id: editTarget.id, body });
+      updatePair.mutate({ id: editTarget.id, body }, {
+        onSuccess: () => toast.success(`${data.display_name || data.symbol} updated.`, { title: "Pair saved" }),
+      });
     } else {
-      createPair.mutate(body);
+      createPair.mutate(body, {
+        onSuccess: () => toast.success(`${data.display_name || data.symbol} added to your pairs.`, { title: "Pair added" }),
+      });
     }
     setEditTarget(null);
     setModalOpen(false);
