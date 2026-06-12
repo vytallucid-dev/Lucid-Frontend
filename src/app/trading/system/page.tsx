@@ -934,7 +934,7 @@ export default function SystemPage() {
   const [activeTab, setActiveTab] = useState<Tab>("Models");
 
   return (
-    <div className="px-4 sm:px-8 py-5 sm:py-8 pb-12" style={{ maxWidth: 1100 }}>
+    <div className="px-4 sm:px-8 py-5 sm:py-8 pb-12">
       {/* Page Header */}
       <div className="mb-6">
         <h1 style={{ fontSize: 24, fontWeight: 600, color: "#E2E8F0", marginBottom: 4 }}>System</h1>
