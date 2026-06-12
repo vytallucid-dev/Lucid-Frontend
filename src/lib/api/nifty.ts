@@ -41,6 +41,9 @@ export interface PublicIndicator {
   value: string;
   magnitude: string;
   trajectory_3m_avg?: string;
+  /** Rolling aggregate (window avg / % change) the score was computed from —
+   *  set for window-scored indicators (Ind 6, 7, 10, 11, 12). */
+  score_basis?: { label: string; value: string };
   last_change_date: string;
   prev_score?: PublicIndicatorScore;
   outcome: 'scored' | 'carry_forward' | 'insufficient_data';

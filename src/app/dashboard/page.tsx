@@ -55,6 +55,11 @@ import {
 import { PlannedDrawerContent } from "@/app/trading/planned/PlannedDrawerContent";
 import { AddTradeModal } from "@/app/trading/journal/AddTradeModal";
 import { toast } from "@/components/toast";
+import { useQuery } from "@tanstack/react-query";
+import { Sparkline } from "@/components/Sparkline";
+import { bandColor, bandBg, netDisplay } from "@/app/nifty/nifty-utils";
+import { getAllFxPairs, getAllScorecardAssets, type AssetBias } from "@/lib/api/oracle";
+import { getLatestScorecard, getScorecardHistory, type PublicScorecard } from "@/lib/api/nifty";
 
 // ─── Greeting ────────────────────────────────────────────────────────────────
 
@@ -404,6 +409,103 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
   );
 }
 
+// ─── Fundamental Bias + NIFTY helpers ─────────────────────────────────────────
+
+/** Visual treatment for an Oracle asset/pair bias. */
+function biasVisual(bias: AssetBias | null): { color: string; bg: string; border: string; label: string } {
+  switch (bias) {
+    case "Strong Bullish": return { color: "#10B981", bg: "rgba(16,185,129,0.14)", border: "rgba(16,185,129,0.3)", label: "Strong Bull" };
+    case "Bullish":        return { color: "#34D399", bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.25)", label: "Bullish" };
+    case "Neutral":        return { color: "#94A3B8", bg: "rgba(148,163,184,0.1)",  border: "rgba(148,163,184,0.2)",  label: "Neutral" };
+    case "Bearish":        return { color: "#F97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.25)", label: "Bearish" };
+    case "Strong Bearish": return { color: "#EF4444", bg: "rgba(239,68,68,0.14)",  border: "rgba(239,68,68,0.3)",  label: "Strong Bear" };
+    default:               return { color: "#475569", bg: "rgba(20,28,40,0.6)",     border: "rgba(148,163,184,0.08)", label: "No data" };
+  }
+}
+
+interface PairBias {
+  bias: AssetBias | null;
+  score: number | null;
+  history: number[] | null;
+}
+
+function FundamentalBiasTile({
+  flagA, flagB, name, data, onClick,
+}: {
+  flagA: string; flagB: string; name: string; data: PairBias | undefined; onClick: () => void;
+}) {
+  const has = !!data && data.bias != null;
+  const v = biasVisual(data?.bias ?? null);
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all duration-150"
+      style={{ background: v.bg, border: `1px solid ${v.border}` }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = has ? v.color : "rgba(148,163,184,0.2)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = v.border; }}
+    >
+      <span style={{ fontSize: 18 }}>{flagA}{flagB}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8" }}>{name}</span>
+      {has ? (
+        <span style={{ fontSize: 20, fontWeight: 700, color: v.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          {data!.score != null ? `${data!.score > 0 ? "+" : ""}${data!.score}` : "—"}
+        </span>
+      ) : (
+        <span style={{ fontSize: 18, color: "#334155", lineHeight: 1 }}>—</span>
+      )}
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: has ? v.color : "#334155", letterSpacing: "0.02em" }}>
+        {v.label}
+      </span>
+    </button>
+  );
+}
+
+function NiftyMetric({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
+  return (
+    <div className="flex flex-col">
+      <span style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>{label}</span>
+      <span style={{ fontSize: big ? 24 : 16, fontWeight: 700, color: color ?? "#E2E8F0", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function NiftyPulseCard({ latest, history }: { latest: PublicScorecard; history: number[] }) {
+  const color = bandColor(latest.band);
+  return (
+    <Link
+      href="/nifty/scorecard"
+      className="block rounded-xl p-4 mb-5 transition-all duration-150"
+      style={{ background: bandBg(latest.band), border: `1px solid ${color}33`, textDecoration: "none" }}
+    >
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* Identity */}
+        <div className="flex items-center gap-2.5">
+          <span style={{ fontSize: 22 }}>🇮🇳</span>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#E2E8F0" }}>NIFTY 50 Macro</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color }}>{latest.band}</p>
+          </div>
+        </div>
+
+        {/* Composite metrics */}
+        <div className="flex items-center gap-5">
+          <NiftyMetric label="Net" value={netDisplay(latest.net_score)} color={color} big />
+          <NiftyMetric label="Domestic" value={netDisplay(latest.domestic_composite)} />
+          <NiftyMetric label="External" value={netDisplay(latest.external_composite)} />
+        </div>
+
+        {/* Trend + CTA */}
+        <div className="flex items-center gap-3 ml-auto">
+          {history.length >= 2 && <Sparkline data={history} width={100} height={32} />}
+          <span style={{ fontSize: 11, color: "#3B82F6", whiteSpace: "nowrap" }}>View scorecard →</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -435,10 +537,38 @@ export default function DashboardPage() {
   const accountsQuery = useAccounts();
   const pairsQuery = useTradingPairs();
 
+  // Fundamental bias (Oracle) + NIFTY macro pulse — independent of trading data.
+  const fxPairsQuery = useQuery({ queryKey: ["oracle", "fx-scorecard", "__all__"], queryFn: getAllFxPairs });
+  const oracleAssetsQuery = useQuery({ queryKey: ["oracle", "scorecard", "__all__"], queryFn: getAllScorecardAssets });
+  const niftyLatestQuery = useQuery({ queryKey: ["nifty", "scorecard", "latest"], queryFn: getLatestScorecard });
+  const niftyHistoryQuery = useQuery({
+    queryKey: ["nifty", "scorecard", "history-lite", 30],
+    queryFn: () => getScorecardHistory({ includeBreakdown: false, limit: 30 }),
+  });
+
   const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
   const allPlanned = useMemo(() => plannedQuery.data ?? [], [plannedQuery.data]);
   const allAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const pairs = useMemo(() => pairsQuery.data ?? [], [pairsQuery.data]);
+
+  // Map each tracked pair's symbol → its fundamental bias. FX majors come from
+  // the FX scorecard; XAUUSD maps to the Gold asset scorecard.
+  const biasByPair = useMemo(() => {
+    const map = new Map<string, PairBias>();
+    for (const fx of fxPairsQuery.data ?? []) {
+      map.set(fx.key, { bias: fx.bias, score: fx.totalScore, history: fx.scoreHistory });
+    }
+    const gold = (oracleAssetsQuery.data ?? []).find((a) => a.key === "Gold");
+    if (gold) map.set("XAUUSD", { bias: gold.bias, score: gold.totalScore, history: gold.scoreHistory });
+    return map;
+  }, [fxPairsQuery.data, oracleAssetsQuery.data]);
+
+  // NIFTY net-score trend (oldest → newest) for the pulse sparkline.
+  const niftyHistory = useMemo(
+    () => [...(niftyHistoryQuery.data ?? [])].map((s) => s.net_score).reverse(),
+    [niftyHistoryQuery.data],
+  );
+  const biasLoading = fxPairsQuery.isLoading || oracleAssetsQuery.isLoading;
 
   const isLoading = tradesQuery.isLoading || accountsQuery.isLoading || plannedQuery.isLoading;
   const loadError = tradesQuery.error || accountsQuery.error || plannedQuery.error;
@@ -1043,51 +1173,73 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Section 6: Fundamental Bias Placeholder ────────────────────────── */}
+        {/* ── Section 6: Fundamental Bias (FX + Gold) + NIFTY Macro ──────────── */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <h2 style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0" }}>Fundamental Bias</h2>
-              <span className="pill" style={{ background: "rgba(168,85,247,0.15)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.25)", fontSize: 10 }}>
-                Phase 2
+              <span
+                className="pill"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", fontSize: 10, display: "flex", alignItems: "center", gap: 4 }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", animation: "pulse 2s infinite" }} />
+                Live
               </span>
             </div>
-          </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3 mb-4">
-            {pairsConfig.map((pair) => (
-              <div
-                key={pair.symbol}
-                className="rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition-all duration-150 group"
-                style={{
-                  background: "rgba(20,28,40,0.6)",
-                  border: "1px solid rgba(148,163,184,0.08)",
-                }}
-                title="Fundamental scores activate in Phase 2 when Scanner is live."
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(28,38,54,0.8)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(148,163,184,0.14)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(20,28,40,0.6)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(148,163,184,0.08)";
-                }}
-              >
-                <span style={{ fontSize: 18 }}>{pair.flag_a}{pair.flag_b}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8" }}>{pair.display_name}</span>
-                <div className="flex items-center gap-1" style={{ color: "#334155" }}>
-                  <span>─</span><span>─</span><span>─</span>
-                </div>
-                <span style={{ fontSize: 10, color: "#334155" }}>Phase 2</span>
-              </div>
-            ))}
-          </div>
-
-          <p style={{ fontSize: 12, color: "#334155" }}>
-            Fundamental scores are coming in Phase 2.{" "}
-            <Link href="/oracle" style={{ color: "#3B82F6", textDecoration: "none" }}>
+            <Link href="/oracle" style={{ fontSize: 11, color: "#3B82F6", textDecoration: "none" }}>
               Open Scanner →
             </Link>
+          </div>
+
+          {/* NIFTY macro pulse */}
+          {niftyLatestQuery.isLoading ? (
+            <div className="rounded-xl p-4 mb-5" style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.08)" }}>
+              <p style={{ fontSize: 12, color: "#64748B" }}>Loading NIFTY macro…</p>
+            </div>
+          ) : niftyLatestQuery.data ? (
+            <NiftyPulseCard latest={niftyLatestQuery.data} history={niftyHistory} />
+          ) : (
+            <Link
+              href="/nifty/scorecard"
+              className="block rounded-xl p-4 mb-5"
+              style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.08)", textDecoration: "none" }}
+            >
+              <p style={{ fontSize: 12, color: "#64748B" }}>
+                🇮🇳 NIFTY macro scorecard not available yet — <span style={{ color: "#3B82F6" }}>open the scorecard →</span>
+              </p>
+            </Link>
+          )}
+
+          {/* FX + Gold bias for the user's tracked pairs */}
+          <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B", marginBottom: 10 }}>
+            Your pairs · fundamental bias
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
+            {pairsConfig.map((pair) => {
+              const data = biasByPair.get(pair.symbol);
+              const target =
+                pair.symbol === "XAUUSD"
+                  ? "/oracle/scorecard"
+                  : biasByPair.has(pair.symbol)
+                  ? "/oracle/fx-scorecard"
+                  : "/oracle";
+              return (
+                <FundamentalBiasTile
+                  key={pair.symbol}
+                  flagA={pair.flag_a}
+                  flagB={pair.flag_b}
+                  name={pair.display_name}
+                  data={data}
+                  onClick={() => router.push(target)}
+                />
+              );
+            })}
+          </div>
+
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 14 }}>
+            {biasLoading
+              ? "Loading fundamental bias…"
+              : "Bias blends fundamental scores and COT positioning from the Scanner."}
           </p>
         </div>
         </>

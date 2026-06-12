@@ -9,8 +9,6 @@ import {
   getScorecardHistory,
   getScorecardByDate,
   getIndicatorDetail,
-  type PublicScorecard,
-  type PublicIndicator,
 } from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { LoadingState } from "@/components/state/LoadingState";
@@ -312,6 +310,18 @@ function ScorecardPageInner() {
               </>
             )}
 
+            {/* Score basis — the rolling avg / % change that actually drives the
+                score, shown alongside the latest reading above (Ind 6,7,10,11,12). */}
+            {ind.outcome === "scored" && ind.score_basis && (
+              <div
+                className="text-xs mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded"
+                style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)" }}
+              >
+                <span style={{ color: "#64748B" }}>{ind.score_basis.label}:</span>
+                <span className="font-mono font-semibold" style={{ color: "#93C5FD" }}>{ind.score_basis.value}</span>
+              </div>
+            )}
+
             {/* Trajectory — Ind 3 only */}
             {ind.id === 3 && ind.trajectory_3m_avg && (
               <div className="text-xs mt-1.5" style={{ color: "#94A3B8" }}>
@@ -470,6 +480,12 @@ function ScorecardPageInner() {
                       <span style={{ color: "#475569" }}>Context:</span>
                       <span style={{ color: "#94A3B8" }}>{drawerInd.magnitude}</span>
                     </div>
+                    {drawerInd.score_basis && (
+                      <div className="flex gap-2 text-sm">
+                        <span style={{ color: "#475569" }}>{drawerInd.score_basis.label} (scored):</span>
+                        <span className="font-mono font-semibold" style={{ color: "#93C5FD" }}>{drawerInd.score_basis.value}</span>
+                      </div>
+                    )}
                     {drawerInd.trajectory_3m_avg && (
                       <div className="flex gap-2 text-sm">
                         <span style={{ color: "#475569" }}>Trajectory:</span>
