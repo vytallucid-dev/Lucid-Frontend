@@ -6,6 +6,7 @@ import type { PlannedTrade, Direction, Conviction } from "@/lib/demo-data";
 import { useTradingModels, useTradingPairs, useCreatePlanned, useUpdatePlanned } from "@/hooks/useTrading";
 import type { CreatePlannedPayload } from "@/lib/api/trading";
 import { toast } from "@/components/toast";
+import { ScreenshotUploader } from "@/components/ScreenshotUploader";
 
 interface AddPlannedTradeModalProps {
   open: boolean;
@@ -135,6 +136,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
   const [conviction, setConviction] = useState<Conviction>("Medium");
   const [datePlanned, setDatePlanned] = useState("");
   const [notes, setNotes] = useState("");
+  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -151,6 +153,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
     setConviction(prefill?.conviction ?? "Medium");
     setDatePlanned(prefill?.date_added ? toDateInput(new Date(prefill.date_added)) : toDateInput(new Date()));
     setNotes(prefill?.notes ?? "");
+    setScreenshots(prefill?.screenshots ?? []);
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editId]);
@@ -187,6 +190,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
       planned_risk_pct: riskPct ? parseFloat(riskPct) : 1.0,
       conviction,
       notes: notes.trim() || null,
+      screenshots,
       ...(datePlanned ? { date_added: datePlanned } : {}),
       ...(currentMarketPrice ? { current_market_price: parseFloat(currentMarketPrice) } : {}),
     };
@@ -340,12 +344,15 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Notes & Screenshots */}
               <div>
-                <GroupHeader>Notes</GroupHeader>
+                <GroupHeader>Notes &amp; Screenshots</GroupHeader>
                 <FieldGroup label="Setup Notes">
                   <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Describe the setup — key levels, conditions to watch..." rows={3} style={{ ...INPUT_STYLE, resize: "vertical" }} />
                 </FieldGroup>
+                <div className="mt-4">
+                  <ScreenshotUploader value={screenshots} onChange={setScreenshots} />
+                </div>
               </div>
             </div>
           </div>

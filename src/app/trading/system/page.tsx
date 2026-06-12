@@ -14,12 +14,13 @@ import {
 import {
   useTrades, useTradingModels, useTradingPairs,
   useCreateModel, useUpdateModel, useDeleteModel,
-  useCreatePair, useUpdatePair,
+  useCreatePair, useUpdatePair, useDeletePair,
 } from "@/hooks/useTrading";
 import type { ApiPair } from "@/lib/api/trading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/toast";
 
 // ─── Design helpers ──────────────────────────────────────────────────────────
@@ -420,7 +421,7 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
   );
 }
 
-function PairDrawerContent({ pair, onEdit }: { pair: PairConfig; onEdit: () => void }) {
+function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdit: () => void; onDelete: () => void }) {
   const trades = useTrades().data ?? [];
   const stats = getPairStats(trades, pair.symbol);
   const pairTrades = trades.filter((t) => t.pair === pair.symbol && t.date_closed !== "");
@@ -436,7 +437,10 @@ function PairDrawerContent({ pair, onEdit }: { pair: PairConfig; onEdit: () => v
           </div>
           <StatusPill status={pair.status} />
         </div>
-        <button onClick={onEdit} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
+        <div className="flex gap-2">
+          <button onClick={onEdit} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
+          <button onClick={onDelete} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16} /></button>
+        </div>
       </div>
 
       {/* Performance stats */}
@@ -583,6 +587,7 @@ function ModelsTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Model | null>(null);
   const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Model | null>(null);
 
   const drawerModel = modelList.find((m) => m.id === drawerId) ?? null;
 
@@ -600,11 +605,13 @@ function ModelsTab() {
     setModalOpen(false);
   };
 
-  const handleDelete = (model: Model) => {
+  const confirmDelete = () => {
+    const model = pendingDelete;
+    if (!model) return;
     deleteModel.mutate(model.id, {
-      onSuccess: () => toast.success(`${model.name} deleted.`, { title: "Model deleted" }),
+      onSuccess: () => { toast.success(`${model.name} deleted.`, { title: "Model deleted" }); setDrawerId(null); },
+      onSettled: () => setPendingDelete(null),
     });
-    setDrawerId(null);
   };
 
   const openEdit = (model: Model) => {
@@ -648,10 +655,20 @@ function ModelsTab() {
           <ModelDrawerContent
             model={drawerModel}
             onEdit={() => openEdit(drawerModel)}
-            onDelete={() => handleDelete(drawerModel)}
+            onDelete={() => setPendingDelete(drawerModel)}
           />
         )}
       </DetailDrawer>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete model?"
+        message={pendingDelete ? `"${pendingDelete.name}" will be removed. Trades already logged with this model keep their saved model name.` : undefined}
+        confirmLabel="Delete"
+        loading={deleteModel.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   );
 }
@@ -739,14 +756,25 @@ function PairsTab() {
   const pairsQuery = useTradingPairs();
   const createPair = useCreatePair();
   const updatePair = useUpdatePair();
+  const deletePair = useDeletePair();
 
   const pairList = pairsQuery.data ?? [];
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiPair | null>(null);
   const [drawerSymbol, setDrawerSymbol] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ApiPair | null>(null);
 
   const drawerPair = pairList.find((p) => p.symbol === drawerSymbol) ?? null;
+
+  const confirmDelete = () => {
+    const p = pendingDelete;
+    if (!p) return;
+    deletePair.mutate(p.id, {
+      onSuccess: () => { toast.success(`${p.display_name || p.symbol} deleted.`, { title: "Pair deleted" }); setDrawerSymbol(null); },
+      onSettled: () => setPendingDelete(null),
+    });
+  };
 
   const handleSave = (data: PairConfig) => {
     const body = {
@@ -809,9 +837,23 @@ function PairsTab() {
 
       <DetailDrawer open={!!drawerPair} onClose={() => setDrawerSymbol(null)} title={drawerPair?.display_name ?? ""}>
         {drawerPair && (
-          <PairDrawerContent pair={drawerPair} onEdit={() => openEdit(drawerPair)} />
+          <PairDrawerContent
+            pair={drawerPair}
+            onEdit={() => openEdit(drawerPair)}
+            onDelete={() => setPendingDelete(drawerPair)}
+          />
         )}
       </DetailDrawer>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete pair?"
+        message={pendingDelete ? `"${pendingDelete.display_name || pendingDelete.symbol}" will be removed from your tradable pairs.` : undefined}
+        confirmLabel="Delete"
+        loading={deletePair.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   );
 }

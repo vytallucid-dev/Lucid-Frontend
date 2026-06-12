@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import {
   type Account,
   type Trade,
@@ -216,9 +217,11 @@ interface AccountDrawerContentProps {
   account: Account;
   accountTrades: Trade[];
   onTradeClick?: (tradeId: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function AccountDrawerContent({ account, accountTrades, onTradeClick }: AccountDrawerContentProps) {
+export function AccountDrawerContent({ account, accountTrades, onTradeClick, onEdit, onDelete }: AccountDrawerContentProps) {
   const prop = isPropAccount(account);
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
@@ -246,6 +249,30 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick }: A
 
   return (
     <div className="flex flex-col gap-4 pb-6">
+
+      {/* Edit / Delete actions */}
+      {(onEdit || onDelete) && (
+        <div className="flex items-center justify-end gap-2">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
+              style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+            >
+              <Pencil size={14} /> Edit
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Section 1: Header ──────────────────────────────────── */}
       <Card>

@@ -1,18 +1,28 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/demo-data";
-import { useTrades, useAccounts, useTradingPairs } from "@/hooks/useTrading";
+import { useTrades, useAccounts, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import { LoadingState } from "@/components/state/LoadingState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { toast } from "@/components/toast";
 import { TradeDrawerContent } from "../TradeDrawerContent";
+import { AddTradeModal } from "../AddTradeModal";
 
 export default function TradeDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const tradesQuery = useTrades();
   const accountsQuery = useAccounts();
   const pairsQuery = useTradingPairs();
+  const deleteTrade = useDeleteTrade();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const trade = (tradesQuery.data ?? []).find(t => t.id === id);
   const config = (pairsQuery.data ?? []).find(p => p.symbol === trade?.pair);
@@ -41,11 +51,31 @@ export default function TradeDetailPage() {
   const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
   const pairDisplay = config?.display_name ?? trade.pair;
 
+  const actions = (
+    <>
+      <button
+        onClick={() => setEditOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
+        style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+      >
+        <Pencil size={14} /> Edit
+      </button>
+      <button
+        onClick={() => setConfirmDelete(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+      >
+        <Trash2 size={14} /> Delete
+      </button>
+    </>
+  );
+
   return (
     <DetailPageLayout
       backHref="/trading/journal"
       backLabel="Journal"
       title={`Trade #${trade.id.slice(0, 8)}`}
+      actions={actions}
     >
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
@@ -168,7 +198,7 @@ export default function TradeDetailPage() {
               ["Lot Size", trade.lot_size],
               ["Risk", `${trade.risk_pct}%`],
               ["Session", trade.session],
-              ["Fundamental", trade.fundamental_score ? `${trade.fundamental_score}/10` : "—"],
+              ["Lucid Score", trade.fundamental_score != null ? String(trade.fundamental_score) : "—"],
               ["Psychology", trade.psychology || "—"],
             ].map(([label, value]) => (
               <div
@@ -183,6 +213,23 @@ export default function TradeDetailPage() {
           </div>
         </div>
       </div>
+
+      <AddTradeModal open={editOpen} editTrade={trade} onClose={() => setEditOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete trade?"
+        message={`This ${trade.pair} ${trade.direction} trade will be permanently deleted. Account balances update accordingly.`}
+        confirmLabel="Delete"
+        loading={deleteTrade.isPending}
+        onConfirm={() =>
+          deleteTrade.mutate(trade.id, {
+            onSuccess: () => { toast.success("Trade deleted."); router.push("/trading/journal"); },
+            onSettled: () => setConfirmDelete(false),
+          })
+        }
+        onCancel={() => setConfirmDelete(false)}
+      />
     </DetailPageLayout>
   );
 }

@@ -18,8 +18,11 @@ import {
   useAccounts,
   useTrades,
   useCreateAccount,
+  useUpdateAccount,
+  useDeleteAccount,
   useAddCashFlow,
 } from "@/hooks/useTrading";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { CreateAccountPayload } from "@/lib/api/trading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -224,23 +227,34 @@ const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY"];
 // ── Add Account Modal (type-aware) ────────────────────────────────────────────
 
 interface AddAccountModalProps {
+  initial?: Account;
   existingSources: string[];
-  onAdd: (account: CreateAccountPayload) => void;
+  onSubmit: (account: CreateAccountPayload) => void;
   onClose: () => void;
   saving?: boolean;
 }
 
-function AddAccountModal({ existingSources, onAdd, onClose, saving }: AddAccountModalProps) {
-  const [type, setType] = useState<AccountType>("personal");
-  const [name, setName] = useState("");
-  const [source, setSource] = useState("");
-  const [size, setSize] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [goalPct, setGoalPct] = useState("");
-  const [stage, setStage] = useState<"Stage 1" | "Stage 2" | "Funded">("Stage 1");
-  const [profitTargetPct, setProfitTargetPct] = useState("");
-  const [maxDrawdownPct, setMaxDrawdownPct] = useState("");
-  const [startingDate, setStartingDate] = useState(new Date().toISOString().split("T")[0]);
+const STAGE_OPTS = ["Stage 1", "Stage 2", "Funded"] as const;
+type StageOpt = (typeof STAGE_OPTS)[number];
+
+export function AddAccountModal({ initial, existingSources, onSubmit, onClose, saving }: AddAccountModalProps) {
+  const isEdit = !!initial;
+  const initialSource = initial
+    ? (initial.account_type === "prop_firm" ? initial.prop_firm : initial.broker) ?? ""
+    : "";
+
+  const [type, setType] = useState<AccountType>(initial?.account_type ?? "personal");
+  const [name, setName] = useState(initial?.account_name ?? "");
+  const [source, setSource] = useState(initialSource);
+  const [size, setSize] = useState(initial ? String(initial.account_size) : "");
+  const [currency, setCurrency] = useState(initial?.currency ?? "USD");
+  const [goalPct, setGoalPct] = useState(initial?.profit_goal_pct != null ? String(initial.profit_goal_pct) : "");
+  const [stage, setStage] = useState<StageOpt>(
+    initial?.stage && (STAGE_OPTS as readonly string[]).includes(initial.stage) ? (initial.stage as StageOpt) : "Stage 1",
+  );
+  const [profitTargetPct, setProfitTargetPct] = useState(initial?.profit_target_pct != null ? String(initial.profit_target_pct) : "");
+  const [maxDrawdownPct, setMaxDrawdownPct] = useState(initial?.max_drawdown_pct != null ? String(initial.max_drawdown_pct) : "");
+  const [startingDate, setStartingDate] = useState(initial?.starting_date ?? new Date().toISOString().split("T")[0]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const prop = type === "prop_firm";
@@ -272,7 +286,7 @@ function AddAccountModal({ existingSources, onAdd, onClose, saving }: AddAccount
           broker: source || null,
           profit_goal_pct: goalPct ? parseFloat(goalPct) : null,
         };
-    onAdd(payload);
+    onSubmit(payload);
     onClose();
   }
 
@@ -284,7 +298,7 @@ function AddAccountModal({ existingSources, onAdd, onClose, saving }: AddAccount
         style={{ background: "rgba(10,14,20,0.98)", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)", maxHeight: "90vh" }}
       >
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(148,163,184,0.1)" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>Add Account</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>{isEdit ? "Edit Account" : "Add Account"}</h2>
           <button className="p-1.5 rounded-lg transition-colors" style={{ color: "#64748B" }} onClick={onClose}>✕</button>
         </div>
 
@@ -417,7 +431,7 @@ function AddAccountModal({ existingSources, onAdd, onClose, saving }: AddAccount
 
           <div className="flex gap-3 pt-2">
             <button type="button" className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ color: "#64748B" }} onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Adding…" : "Add Account"}</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Saving…" : isEdit ? "Save Changes" : "Add Account"}</button>
           </div>
         </form>
       </div>
@@ -540,6 +554,8 @@ export default function AccountsPage() {
   const accountsQuery = useAccounts();
   const tradesQuery = useTrades();
   const createAccountM = useCreateAccount();
+  const updateAccountM = useUpdateAccount();
+  const deleteAccountM = useDeleteAccount();
   const addCashFlowM = useAddCashFlow();
 
   const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
@@ -549,6 +565,8 @@ export default function AccountsPage() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCashFlowModal, setShowCashFlowModal] = useState(false);
+  const [editAccount, setEditAccount] = useState<Account | null>(null);
+  const [pendingDeleteAccount, setPendingDeleteAccount] = useState<Account | null>(null);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? null;
 
@@ -562,6 +580,22 @@ export default function AccountsPage() {
   function handleAddAccount(payload: CreateAccountPayload) {
     createAccountM.mutate(payload, {
       onSuccess: () => toast.success(`${payload.account_name} added to your accounts.`, { title: "Account added" }),
+    });
+  }
+
+  function handleUpdateAccount(payload: CreateAccountPayload) {
+    if (!editAccount) return;
+    updateAccountM.mutate({ id: editAccount.id, body: payload }, {
+      onSuccess: () => toast.success(`${payload.account_name} updated.`, { title: "Account saved" }),
+    });
+  }
+
+  function confirmDeleteAccount() {
+    const a = pendingDeleteAccount;
+    if (!a) return;
+    deleteAccountM.mutate(a.id, {
+      onSuccess: () => { toast.success(`${a.account_name} deleted.`, { title: "Account deleted" }); setSelectedAccountId(null); },
+      onSettled: () => setPendingDeleteAccount(null),
     });
   }
 
@@ -715,21 +749,50 @@ export default function AccountsPage() {
         expandHref={selectedAccount ? `/trading/accounts/${selectedAccount.id}` : undefined}
         title={selectedAccount?.account_name ?? ""}
       >
-        {selectedAccount && <AccountDrawerContent account={selectedAccount} accountTrades={getAccountTrades(selectedAccount.id)} />}
+        {selectedAccount && (
+          <AccountDrawerContent
+            account={selectedAccount}
+            accountTrades={getAccountTrades(selectedAccount.id)}
+            onEdit={() => { setEditAccount(selectedAccount); setSelectedAccountId(null); }}
+            onDelete={() => setPendingDeleteAccount(selectedAccount)}
+          />
+        )}
       </DetailDrawer>
 
       {/* Add Account Modal */}
       {showAddModal && (
         <AddAccountModal
           existingSources={[...new Set(accounts.map(accountSource))].filter(s => s !== "—")}
-          onAdd={handleAddAccount}
+          onSubmit={handleAddAccount}
           onClose={() => setShowAddModal(false)}
           saving={createAccountM.isPending}
         />
       )}
 
+      {/* Edit Account Modal */}
+      {editAccount && (
+        <AddAccountModal
+          initial={editAccount}
+          existingSources={[...new Set(accounts.map(accountSource))].filter(s => s !== "—")}
+          onSubmit={handleUpdateAccount}
+          onClose={() => setEditAccount(null)}
+          saving={updateAccountM.isPending}
+        />
+      )}
+
       {/* Cash Flow Modal */}
       {showCashFlowModal && <CashFlowModal accounts={accounts} onLog={handleCashFlow} onClose={() => setShowCashFlowModal(false)} />}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!pendingDeleteAccount}
+        title="Delete account?"
+        message={pendingDeleteAccount ? `"${pendingDeleteAccount.account_name}" and all of its trades and cash flows will be permanently deleted. This cannot be undone.` : undefined}
+        confirmLabel="Delete account"
+        loading={deleteAccountM.isPending}
+        onConfirm={confirmDeleteAccount}
+        onCancel={() => setPendingDeleteAccount(null)}
+      />
     </div>
   );
 }

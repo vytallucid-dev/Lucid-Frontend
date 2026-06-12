@@ -6,10 +6,12 @@ import {
   formatCurrency,
   type Trade,
 } from "@/lib/demo-data";
-import { useTrades, useAccounts, useTradingModels, useTradingPairs } from "@/hooks/useTrading";
+import { useTrades, useAccounts, useTradingModels, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { toast } from "@/components/toast";
 import { JournalTable } from "./JournalTable";
 import { JournalGallery } from "./JournalGallery";
 import { AddTradeModal } from "./AddTradeModal";
@@ -110,11 +112,23 @@ export default function JournalPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [editTrade, setEditTrade] = useState<Trade | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Trade | null>(null);
 
   const tradesQuery = useTrades();
   const accountsQuery = useAccounts();
   const modelsQuery = useTradingModels();
   const pairsQuery = useTradingPairs();
+  const deleteTrade = useDeleteTrade();
+
+  function confirmDelete() {
+    const t = pendingDelete;
+    if (!t) return;
+    deleteTrade.mutate(t.id, {
+      onSuccess: () => { toast.success("Trade deleted."); setSelectedTrade(null); },
+      onSettled: () => setPendingDelete(null),
+    });
+  }
 
   const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
 
@@ -300,10 +314,31 @@ export default function JournalPage() {
         expandHref={selectedTrade ? `/trading/journal/${selectedTrade.id}` : undefined}
         title={selectedTrade ? `${getPairDisplayName(selectedTrade.pair, pairsQuery.data)} · Trade #${selectedTrade.id.slice(0, 8)}` : ""}
       >
-        {selectedTrade && <TradeDrawerContent trade={selectedTrade} />}
+        {selectedTrade && (
+          <TradeDrawerContent
+            trade={selectedTrade}
+            onEdit={() => { setEditTrade(selectedTrade); setSelectedTrade(null); }}
+            onDelete={() => setPendingDelete(selectedTrade)}
+          />
+        )}
       </DetailDrawer>
 
       <AddTradeModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddTradeModal
+        open={!!editTrade}
+        editTrade={editTrade ?? undefined}
+        onClose={() => setEditTrade(null)}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete trade?"
+        message={pendingDelete ? `This ${pendingDelete.pair} ${pendingDelete.direction} trade will be permanently deleted. Account balances update accordingly.` : undefined}
+        confirmLabel="Delete"
+        loading={deleteTrade.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

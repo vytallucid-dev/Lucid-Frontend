@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 import {
   pairs,
   formatCurrency,
@@ -12,9 +13,13 @@ import {
   accountSource,
   accountTradingPnl,
 } from "@/lib/demo-data";
-import { useAccounts, useTrades } from "@/hooks/useTrading";
+import { useAccounts, useTrades, useUpdateAccount, useDeleteAccount } from "@/hooks/useTrading";
+import type { CreateAccountPayload } from "@/lib/api/trading";
 import { LoadingState } from "@/components/state/LoadingState";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { toast } from "@/components/toast";
+import { AddAccountModal } from "../page";
 import {
   StagePill,
   StatusPill,
@@ -162,10 +167,16 @@ function StatCard({ label, value, sub }: { label: string; value: React.ReactNode
 
 export default function AccountDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   const accountsQuery = useAccounts();
   const tradesQuery = useTrades();
+  const updateAccount = useUpdateAccount();
+  const deleteAccount = useDeleteAccount();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const account = (accountsQuery.data ?? []).find(a => a.id === id);
 
@@ -227,11 +238,31 @@ export default function AccountDetailPage() {
     amount: p.amount,
   }));
 
+  const actions = (
+    <>
+      <button
+        onClick={() => setEditOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
+        style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+      >
+        <Pencil size={14} /> Edit
+      </button>
+      <button
+        onClick={() => setConfirmDelete(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+      >
+        <Trash2 size={14} /> Delete
+      </button>
+    </>
+  );
+
   return (
     <DetailPageLayout
       backHref="/trading/accounts"
       backLabel="Accounts"
       title={account.account_name}
+      actions={actions}
     >
       {/* ── Account header ──────────────────────────────────────────── */}
       <div
@@ -625,6 +656,35 @@ export default function AccountDetailPage() {
           </div>
         )}
       </div>
+
+      {editOpen && (
+        <AddAccountModal
+          initial={account}
+          existingSources={[...new Set((accountsQuery.data ?? []).map(accountSource))].filter(s => s !== "—")}
+          onSubmit={(payload: CreateAccountPayload) =>
+            updateAccount.mutate({ id: account.id, body: payload }, {
+              onSuccess: () => toast.success(`${payload.account_name} updated.`, { title: "Account saved" }),
+            })
+          }
+          onClose={() => setEditOpen(false)}
+          saving={updateAccount.isPending}
+        />
+      )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete account?"
+        message={`"${account.account_name}" and all of its trades and cash flows will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete account"
+        loading={deleteAccount.isPending}
+        onConfirm={() =>
+          deleteAccount.mutate(account.id, {
+            onSuccess: () => { toast.success(`${account.account_name} deleted.`); router.push("/trading/accounts"); },
+            onSettled: () => setConfirmDelete(false),
+          })
+        }
+        onCancel={() => setConfirmDelete(false)}
+      />
     </DetailPageLayout>
   );
 }

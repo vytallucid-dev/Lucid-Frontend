@@ -1,11 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Camera } from "lucide-react";
-import { accountTypeLabel, type Direction, type Conviction, type ExitType } from "@/lib/demo-data";
-import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade } from "@/hooks/useTrading";
+import { useQuery } from "@tanstack/react-query";
+import { X, Camera, Loader2, Sparkles } from "lucide-react";
+import { accountTypeLabel, type Direction, type Conviction, type ExitType, type Trade } from "@/lib/demo-data";
+import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade, useUpdateTrade } from "@/hooks/useTrading";
 import type { CreateTradePayload } from "@/lib/api/trading";
+import { getFxPair, getScorecardAsset } from "@/lib/api/oracle";
 import { toast } from "@/components/toast";
+import { ScreenshotUploader } from "@/components/ScreenshotUploader";
+
+// Pairs the Oracle can produce a Lucid score for (5 FX majors via the FX
+// scorecard, Gold via the asset scorecard). Others have no score → field stays blank.
+const FX_LUCID_PAIRS = new Set(["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY"]);
+
+/** Fetch the current Lucid (Oracle) score for a pair symbol; null when unsupported. */
+async function fetchLucidScore(symbol: string): Promise<number | null> {
+  if (symbol === "XAUUSD") return (await getScorecardAsset("Gold")).totalScore;
+  if (FX_LUCID_PAIRS.has(symbol)) return (await getFxPair(symbol)).totalScore;
+  return null;
+}
 
 /** Formats a Date as the local `YYYY-MM-DDTHH:mm` string a datetime-local input expects. */
 function toLocalDatetimeInput(d: Date): string {
@@ -30,7 +44,9 @@ interface AddTradeModalProps {
   open: boolean;
   onClose: () => void;
   prefill?: AddTradePrefill;
-  /** Called after a trade is successfully created (before onClose). */
+  /** When set, the modal edits this trade instead of creating a new one. */
+  editTrade?: Trade;
+  /** Called after a trade is successfully created/updated (before onClose). */
   onSubmitted?: () => void;
 }
 
@@ -126,11 +142,14 @@ function SegmentedControl<T extends string>({
   );
 }
 
-export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeModalProps) {
+export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }: AddTradeModalProps) {
   const accountsQuery = useAccounts();
   const modelsQuery = useTradingModels();
   const pairsQuery = useTradingPairs();
   const createTrade = useCreateTrade();
+  const updateTrade = useUpdateTrade();
+
+  const isEdit = !!editTrade;
 
   const accountList = accountsQuery.data ?? [];
   const modelList = modelsQuery.data ?? [];
@@ -148,9 +167,13 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
   const [riskPct, setRiskPct] = useState("");
   const [conviction, setConviction] = useState<Conviction>("Medium");
   const [fundScore, setFundScore] = useState("");
+  // Whether the Lucid score should still auto-fill from the Oracle. Set false once
+  // the user types in the field; reset to true whenever the pair changes.
+  const [lucidAuto, setLucidAuto] = useState(true);
   const [psychology, setPsychology] = useState("");
   const [notes, setNotes] = useState("");
   const [dateOpened, setDateOpened] = useState("");
+  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [isClosed, setIsClosed] = useState(false);
   const [partialExit, setPartialExit] = useState("");
   const [partialPct, setPartialPct] = useState("");
@@ -159,47 +182,77 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
   const [exitType, setExitType] = useState<ExitType>("TP");
   const [error, setError] = useState<string | null>(null);
 
-  // Reset the form each time the modal opens, seeding from prefill where present.
+  // Lucid (Oracle) score for the selected pair — auto-prefills the field.
+  const lucidQuery = useQuery({
+    queryKey: ["lucid-score", pair],
+    queryFn: () => fetchLucidScore(pair),
+    enabled: open && !!pair,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: undefined, // don't carry the previous pair's score across
+  });
+
+  // Reset the form each time the modal opens, seeding from editTrade (edit mode)
+  // or prefill (create / convert-from-planned).
   useEffect(() => {
     if (!open) return;
-    setPair(prefill?.pair ?? "");
-    setModel(prefill?.model ?? "");
-    setAccount("");
-    setDirection(prefill?.direction ?? "Buy");
-    setEntryPrice(prefill?.entry_price != null ? String(prefill.entry_price) : "");
-    setSl(prefill?.sl_price != null ? String(prefill.sl_price) : "");
-    setFirstTp(prefill?.first_tp_price != null ? String(prefill.first_tp_price) : "");
-    setMainTp(prefill?.main_tp_price != null ? String(prefill.main_tp_price) : "");
-    setLotSize("");
-    setRiskPct(prefill?.risk_pct != null ? String(prefill.risk_pct) : "");
-    setConviction(prefill?.conviction ?? "Medium");
-    setFundScore("");
-    setPsychology("");
-    setNotes("");
-    setDateOpened(toLocalDatetimeInput(new Date()));
-    setIsClosed(false);
-    setPartialExit("");
-    setPartialPct("");
-    setMainExit("");
-    setDateClosed("");
-    setExitType("TP");
+    const e = editTrade;
+    setPair(e?.pair ?? prefill?.pair ?? "");
+    setModel(e?.model ?? prefill?.model ?? "");
+    setAccount(e?.account_id ?? "");
+    setDirection(e?.direction ?? prefill?.direction ?? "Buy");
+    setEntryPrice(e ? String(e.entry_price) : prefill?.entry_price != null ? String(prefill.entry_price) : "");
+    setSl(e ? String(e.sl_price) : prefill?.sl_price != null ? String(prefill.sl_price) : "");
+    setFirstTp(e?.first_tp_price != null ? String(e.first_tp_price) : prefill?.first_tp_price != null ? String(prefill.first_tp_price) : "");
+    setMainTp(e ? String(e.main_tp_price) : prefill?.main_tp_price != null ? String(prefill.main_tp_price) : "");
+    setLotSize(e ? String(e.lot_size) : "");
+    setRiskPct(e ? String(e.risk_pct) : prefill?.risk_pct != null ? String(prefill.risk_pct) : "");
+    setConviction(e?.conviction ?? prefill?.conviction ?? "Medium");
+    setFundScore(e?.fundamental_score != null ? String(e.fundamental_score) : "");
+    setLucidAuto(!e); // in edit mode keep the saved score; in create mode auto-fill
+    setPsychology(e?.psychology ?? "");
+    setNotes(e?.notes ?? "");
+    setDateOpened(toLocalDatetimeInput(e?.date_opened ? new Date(e.date_opened) : new Date()));
+    setScreenshots(e?.screenshots ?? []);
+    const closed = !!e?.date_closed;
+    setIsClosed(closed);
+    setPartialExit(e?.partial_exit_price != null ? String(e.partial_exit_price) : "");
+    setPartialPct(e?.partial_exit_lot_pct != null ? String(e.partial_exit_lot_pct) : "");
+    setMainExit(closed && e?.main_exit_price ? String(e.main_exit_price) : "");
+    setDateClosed(closed && e?.date_closed ? toLocalDatetimeInput(new Date(e.date_closed)) : "");
+    setExitType(e?.exit_type ?? "TP");
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Fill the dropdown defaults once the lists have loaded (covers the race where
-  // the modal opens before queries resolve).
+  // the modal opens before queries resolve). Skipped in edit mode (already seeded).
   useEffect(() => {
-    if (!open) return;
+    if (!open || isEdit) return;
     if (!pair && pairList.length) setPair(prefill?.pair ?? pairList[0].symbol);
     if (!model && modelList.length) setModel(prefill?.model ?? modelList[0].name);
     if (!account && accountList.length) setAccount(accountList[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pairList, modelList, accountList]);
 
+  // Auto-prefill the Lucid score when the pair's Oracle score resolves, unless
+  // the user has manually edited it. `isPlaceholderData` guards against filling
+  // with a stale pair's number mid-fetch.
+  useEffect(() => {
+    if (!open || !lucidAuto || lucidQuery.isPlaceholderData) return;
+    if (lucidQuery.data != null) setFundScore(String(lucidQuery.data));
+  }, [lucidQuery.data, lucidQuery.isPlaceholderData, lucidAuto, open]);
+
+  // Reset auto-fill intent whenever the pair changes (create mode only).
+  useEffect(() => {
+    if (!open || isEdit) return;
+    setLucidAuto(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair]);
+
   if (!open) return null;
 
   const noAccounts = !accountsQuery.isLoading && accountList.length === 0;
+  const saving = createTrade.isPending || updateTrade.isPending;
 
   async function handleSubmit() {
     setError(null);
@@ -233,9 +286,10 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
       lot_size: lotNum,
       risk_pct: riskPct ? parseFloat(riskPct) : 0,
       conviction,
-      fundamental_score: fundScore ? parseInt(fundScore, 10) : null,
+      fundamental_score: fundScore !== "" ? parseInt(fundScore, 10) : null,
       psychology: psychology.trim() || null,
       notes: notes.trim() || null,
+      screenshots,
       ...(dateOpened ? { date_opened: new Date(dateOpened).toISOString() } : {}),
       is_closed: isClosed,
       exit_type: exitType,
@@ -250,11 +304,16 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
     };
 
     try {
-      await createTrade.mutateAsync(payload);
-      toast.success(
-        `${pair || payload.pair} ${direction} ${isClosed ? "saved" : "is now live"} in your journal.`,
-        { title: isClosed ? "Trade logged" : "Trade opened" },
-      );
+      if (editTrade) {
+        await updateTrade.mutateAsync({ id: editTrade.id, body: payload });
+        toast.success(`${pair || payload.pair} ${direction} updated.`, { title: "Trade updated" });
+      } else {
+        await createTrade.mutateAsync(payload);
+        toast.success(
+          `${pair || payload.pair} ${direction} ${isClosed ? "saved" : "is now live"} in your journal.`,
+          { title: isClosed ? "Trade logged" : "Trade opened" },
+        );
+      }
       onSubmitted?.();
       onClose();
     } catch {
@@ -294,7 +353,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
             className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
             style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
           >
-            <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>Add Trade</h2>
+            <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>{isEdit ? "Edit Trade" : "Add Trade"}</h2>
             <button
               onClick={onClose}
               className="p-1.5 rounded-md transition-colors hover:bg-white/5"
@@ -445,9 +504,34 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                     />
                   </FieldGroup>
 
-                  <FieldGroup label="Fundamental Score (1-10)">
-                    <input type="number" min="1" max="10" value={fundScore} onChange={e => setFundScore(e.target.value)} placeholder="7" style={INPUT_STYLE} />
-                  </FieldGroup>
+                  <div>
+                    <label style={{ ...LABEL_STYLE, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Sparkles size={11} style={{ color: "#60A5FA" }} />
+                      Lucid Score
+                      {lucidQuery.isFetching && !lucidQuery.isPlaceholderData && (
+                        <span className="flex items-center gap-1" style={{ textTransform: "none", fontWeight: 400, color: "#60A5FA" }}>
+                          <Loader2 size={10} className="animate-spin" /> fetching…
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={fundScore}
+                      onChange={e => { setFundScore(e.target.value); setLucidAuto(false); }}
+                      placeholder={lucidQuery.isFetching ? "Fetching…" : "Auto from Oracle"}
+                      style={INPUT_STYLE}
+                    />
+                    <p style={{ fontSize: 10.5, color: "#475569", marginTop: 4 }}>
+                      {lucidAuto && lucidQuery.data != null
+                        ? "Auto-filled from the live Oracle score — edit to override."
+                        : !lucidAuto
+                        ? "Manually set."
+                        : pair && !lucidQuery.isFetching && lucidQuery.data == null
+                        ? "No Oracle score for this pair."
+                        : "Fetched from the Oracle when you pick a pair."}
+                    </p>
+                  </div>
 
                   <div className="col-span-2">
                     <FieldGroup label="Psychology">
@@ -464,13 +548,7 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
                   <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Setup notes, observations, things you noticed..." style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.6 }} />
                 </FieldGroup>
                 <div className="mt-4">
-                  <label style={LABEL_STYLE}>Screenshots</label>
-                  <div
-                    className="flex items-center justify-center rounded-lg"
-                    style={{ height: 64, border: "1.5px dashed rgba(148,163,184,0.15)", background: "rgba(148,163,184,0.02)", cursor: "pointer", color: "#475569", fontSize: 13 }}
-                  >
-                    Click to upload (Phase 2)
-                  </div>
+                  <ScreenshotUploader value={screenshots} onChange={setScreenshots} />
                 </div>
               </div>
 
@@ -552,12 +630,12 @@ export function AddTradeModal({ open, onClose, prefill, onSubmitted }: AddTradeM
             </button>
             <button
               type="button"
-              disabled={createTrade.isPending || noAccounts}
+              disabled={saving || noAccounts}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: "#3B82F6", color: "#fff", opacity: createTrade.isPending || noAccounts ? 0.6 : 1 }}
+              style={{ background: "#3B82F6", color: "#fff", opacity: saving || noAccounts ? 0.6 : 1 }}
               onClick={handleSubmit}
             >
-              {createTrade.isPending ? "Saving…" : "Add Trade"}
+              {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Trade"}
             </button>
           </div>
         </div>

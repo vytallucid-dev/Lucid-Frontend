@@ -1,6 +1,8 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { type Trade, pairs, formatCurrency, formatDate, formatTime } from "@/lib/demo-data";
+import { ScreenshotGallery } from "@/components/ScreenshotUploader";
 
 // ── Reusable pill/helpers ─────────────────────────────────────────────────────
 function ModelPill({ model }: { model: string }) {
@@ -131,7 +133,15 @@ function heldDuration(opened: string, closed: string): string {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function TradeDrawerContent({ trade }: { trade: Trade }) {
+export function TradeDrawerContent({
+  trade,
+  onEdit,
+  onDelete,
+}: {
+  trade: Trade;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   const isLive = !trade.date_closed;
   const config = pairs.find(p => p.symbol === trade.pair);
   const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
@@ -140,6 +150,30 @@ export function TradeDrawerContent({ trade }: { trade: Trade }) {
 
   return (
     <div className="flex flex-col gap-5">
+
+      {/* Edit / Delete actions */}
+      {(onEdit || onDelete) && (
+        <div className="flex items-center justify-end gap-2">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
+              style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+            >
+              <Pencil size={14} /> Edit
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Section 1: Outcome */}
       <Card>
@@ -247,12 +281,11 @@ export function TradeDrawerContent({ trade }: { trade: Trade }) {
       <div>
         <SectionTitle>Context</SectionTitle>
         <Card>
-          {kv("Fundamental Score",
+          {kv("Lucid Score",
             <span style={{ fontVariantNumeric: "tabular-nums" }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>
                 {trade.fundamental_score ?? "—"}
               </span>
-              <span style={{ color: "#64748B", fontSize: 12 }}>/10</span>
             </span>
           )}
           {kv("Psychology",
@@ -276,24 +309,7 @@ export function TradeDrawerContent({ trade }: { trade: Trade }) {
       <div>
         <SectionTitle>Screenshots</SectionTitle>
         <Card>
-          {trade.screenshots.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#334155", fontStyle: "italic" }}>No screenshots attached.</p>
-          ) : (
-            <div className="flex gap-2 overflow-x-auto">
-              {trade.screenshots.map((src, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg flex-shrink-0"
-                  style={{
-                    width: 120,
-                    height: 80,
-                    background: `url(${src}) center/cover, rgba(148,163,184,0.06)`,
-                    border: "1px solid rgba(148,163,184,0.1)",
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <ScreenshotGallery urls={trade.screenshots} tileHeight={150} />
         </Card>
       </div>
 

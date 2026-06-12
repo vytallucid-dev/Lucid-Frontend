@@ -39,7 +39,9 @@ import {
   useAccounts,
   useTradingPairs,
   useAddCashFlow,
+  useDeleteTrade,
 } from "@/hooks/useTrading";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -58,7 +60,7 @@ import { toast } from "@/components/toast";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkline } from "@/components/Sparkline";
 import { bandColor, bandBg, netDisplay } from "@/app/nifty/nifty-utils";
-import { getAllFxPairs, getAllScorecardAssets, type AssetBias } from "@/lib/api/oracle";
+import { getAllFxPairs, getScorecardAsset, type AssetBias } from "@/lib/api/oracle";
 import { getLatestScorecard, getScorecardHistory, type PublicScorecard } from "@/lib/api/nifty";
 
 // ─── Greeting ────────────────────────────────────────────────────────────────
@@ -522,6 +524,9 @@ export default function DashboardPage() {
   // Modal state
   const [showAddTrade, setShowAddTrade] = useState(false);
   const [showCashFlow, setShowCashFlow] = useState(false);
+  const [editTrade, setEditTrade] = useState<Trade | null>(null);
+  const [pendingDeleteTrade, setPendingDeleteTrade] = useState<Trade | null>(null);
+  const deleteTrade = useDeleteTrade();
 
   // Chat input
   const [chatValue, setChatValue] = useState("");
@@ -539,7 +544,9 @@ export default function DashboardPage() {
 
   // Fundamental bias (Oracle) + NIFTY macro pulse — independent of trading data.
   const fxPairsQuery = useQuery({ queryKey: ["oracle", "fx-scorecard", "__all__"], queryFn: getAllFxPairs });
-  const oracleAssetsQuery = useQuery({ queryKey: ["oracle", "scorecard", "__all__"], queryFn: getAllScorecardAssets });
+  // Gold is an asset (not an FX pair). The /scorecard endpoint is single-asset
+  // (asset= is required), so fetch Gold directly rather than as an "all" call.
+  const goldQuery = useQuery({ queryKey: ["oracle", "scorecard", "Gold"], queryFn: () => getScorecardAsset("Gold") });
   const niftyLatestQuery = useQuery({ queryKey: ["nifty", "scorecard", "latest"], queryFn: getLatestScorecard });
   const niftyHistoryQuery = useQuery({
     queryKey: ["nifty", "scorecard", "history-lite", 30],
@@ -558,17 +565,17 @@ export default function DashboardPage() {
     for (const fx of fxPairsQuery.data ?? []) {
       map.set(fx.key, { bias: fx.bias, score: fx.totalScore, history: fx.scoreHistory });
     }
-    const gold = (oracleAssetsQuery.data ?? []).find((a) => a.key === "Gold");
+    const gold = goldQuery.data;
     if (gold) map.set("XAUUSD", { bias: gold.bias, score: gold.totalScore, history: gold.scoreHistory });
     return map;
-  }, [fxPairsQuery.data, oracleAssetsQuery.data]);
+  }, [fxPairsQuery.data, goldQuery.data]);
 
   // NIFTY net-score trend (oldest → newest) for the pulse sparkline.
   const niftyHistory = useMemo(
     () => [...(niftyHistoryQuery.data ?? [])].map((s) => s.net_score).reverse(),
     [niftyHistoryQuery.data],
   );
-  const biasLoading = fxPairsQuery.isLoading || oracleAssetsQuery.isLoading;
+  const biasLoading = fxPairsQuery.isLoading || goldQuery.isLoading;
 
   const isLoading = tradesQuery.isLoading || accountsQuery.isLoading || plannedQuery.isLoading;
   const loadError = tradesQuery.error || accountsQuery.error || plannedQuery.error;
@@ -1249,7 +1256,25 @@ export default function DashboardPage() {
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <AddTradeModal open={showAddTrade} onClose={() => setShowAddTrade(false)} />
+      <AddTradeModal open={!!editTrade} editTrade={editTrade ?? undefined} onClose={() => setEditTrade(null)} />
       <CashFlowModal open={showCashFlow} onClose={() => setShowCashFlow(false)} />
+
+      <ConfirmDialog
+        open={!!pendingDeleteTrade}
+        title="Delete trade?"
+        message={pendingDeleteTrade ? `This ${pendingDeleteTrade.pair} ${pendingDeleteTrade.direction} trade will be permanently deleted.` : undefined}
+        confirmLabel="Delete"
+        loading={deleteTrade.isPending}
+        onConfirm={() => {
+          const t = pendingDeleteTrade;
+          if (!t) return;
+          deleteTrade.mutate(t.id, {
+            onSuccess: () => { toast.success("Trade deleted."); setTradeDrawer(null); },
+            onSettled: () => setPendingDeleteTrade(null),
+          });
+        }}
+        onCancel={() => setPendingDeleteTrade(null)}
+      />
 
       {/* ── DetailDrawers ────────────────────────────────────────────────────── */}
 
@@ -1260,7 +1285,13 @@ export default function DashboardPage() {
         title={tradeDrawer ? `Trade #${tradeDrawer.id.slice(0, 8)}` : ""}
         expandHref={tradeDrawer ? `/trading/journal/${tradeDrawer.id}` : undefined}
       >
-        {tradeDrawer && <TradeDrawerContent trade={tradeDrawer} />}
+        {tradeDrawer && (
+          <TradeDrawerContent
+            trade={tradeDrawer}
+            onEdit={() => { setEditTrade(tradeDrawer); setTradeDrawer(null); }}
+            onDelete={() => setPendingDeleteTrade(tradeDrawer)}
+          />
+        )}
       </DetailDrawer>
 
       {/* Planned Trade Drawer */}

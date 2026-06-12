@@ -1,6 +1,7 @@
 "use client";
 
 import { type PlannedTrade, pairs, getDistanceToEntry } from "@/lib/demo-data";
+import { ScreenshotGallery } from "@/components/ScreenshotUploader";
 
 // ── Helpers shared with table ─────────────────────────────────────────────────
 export function calcRR(t: PlannedTrade): number {
@@ -279,6 +280,14 @@ export function PlannedDrawerContent({
         <Card>
           <SectionTitle>Notes</SectionTitle>
           <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.notes}</p>
+        </Card>
+      )}
+
+      {/* Screenshots */}
+      {trade.screenshots.length > 0 && (
+        <Card>
+          <SectionTitle>Screenshots</SectionTitle>
+          <ScreenshotGallery urls={trade.screenshots} tileHeight={150} />
         </Card>
       )}
 

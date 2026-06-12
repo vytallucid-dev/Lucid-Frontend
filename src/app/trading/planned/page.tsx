@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import {
   pairs,
@@ -12,6 +13,7 @@ import { usePlanned, useUpdatePlanned, useDeletePlanned } from "@/hooks/useTradi
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AddPlannedTradeModal } from "./AddPlannedTradeModal";
 import { PlannedDrawerContent, calcRR, ModelPill, ConvictionPill, DistanceBadge } from "./PlannedDrawerContent";
 import { AddTradeModal } from "../journal/AddTradeModal";
@@ -45,15 +47,32 @@ function MoreMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  // Fixed-position coordinates for the portal-rendered menu, computed from the
+  // trigger's rect. Rendering into document.body (rather than absolutely inside
+  // the row) escapes the table's `overflow-x-auto` clip, which previously turned
+  // the menu into in-row vertical scroll instead of an overlay.
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const b = btnRef.current?.getBoundingClientRect();
+    if (b) setPos({ top: b.bottom + 6, right: window.innerWidth - b.right });
+
+    function onDoc(e: MouseEvent) {
+      if (menuRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    function close() { setOpen(false); }
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
 
   const items: Array<{ label: string; action: () => void; danger?: boolean }> = [
@@ -64,23 +83,28 @@ function MoreMenu({
   ];
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={btnRef}
         onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
         className="p-1.5 rounded-md transition-colors hover:bg-white/5"
         style={{ color: "#64748B" }}
       >
         <MoreHorizontal size={14} />
       </button>
-      {open && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
-          className="absolute right-0 top-8 z-30 rounded-xl py-1 min-w-43"
+          ref={menuRef}
+          className="fixed z-[120] rounded-xl py-1 min-w-44"
           style={{
+            top: pos.top,
+            right: pos.right,
             background: "rgba(15,23,36,0.98)",
             border: "1px solid rgba(148,163,184,0.12)",
             boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
             backdropFilter: "blur(12px)",
           }}
+          onClick={e => e.stopPropagation()}
         >
           {items.map(item => (
             <button
@@ -92,9 +116,10 @@ function MoreMenu({
               {item.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }
 
@@ -363,10 +388,12 @@ export default function PlannedPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [convertId, setConvertId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const drawerTrade = trades.find(t => t.id === drawerId) ?? null;
   const convertTrade = trades.find(t => t.id === convertId) ?? null;
   const editTrade = trades.find(t => t.id === editId) ?? null;
+  const pendingDeleteTrade = trades.find(t => t.id === pendingDeleteId) ?? null;
 
   const filteredTrades = useMemo(() =>
     statusFilter === "All" ? trades : trades.filter(t => t.status === statusFilter),
@@ -399,7 +426,16 @@ export default function PlannedPage() {
   }
 
   function handleDelete(id: string) {
-    deletePlannedM.mutate(id, { onSuccess: () => toast.success("Planned trade deleted.") });
+    setPendingDeleteId(id);
+  }
+
+  function confirmDelete() {
+    const id = pendingDeleteId;
+    if (!id) return;
+    deletePlannedM.mutate(id, {
+      onSuccess: () => toast.success("Planned trade deleted."),
+      onSettled: () => setPendingDeleteId(null),
+    });
     if (drawerId === id) setDrawerId(null);
   }
 
@@ -526,6 +562,7 @@ export default function PlannedPage() {
       <DetailDrawer
         open={!!drawerTrade}
         onClose={() => setDrawerId(null)}
+        expandHref={drawerTrade ? `/trading/planned/${drawerTrade.id}` : undefined}
         title={drawerTrade
           ? `${pairs.find(p => p.symbol === drawerTrade.pair)?.display_name ?? drawerTrade.pair} · ${drawerTrade.model}`
           : ""}
@@ -574,6 +611,19 @@ export default function PlannedPage() {
           onClose={() => setConvertId(null)}
         />
       )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!pendingDeleteTrade}
+        title="Delete planned trade?"
+        message={pendingDeleteTrade
+          ? `${pairs.find(p => p.symbol === pendingDeleteTrade.pair)?.display_name ?? pendingDeleteTrade.pair} ${pendingDeleteTrade.direction} will be permanently removed from your watchlist.`
+          : undefined}
+        confirmLabel="Delete"
+        loading={deletePlannedM.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }
