@@ -46,7 +46,7 @@ export default function LucidPage() {
           height: "min(600px, 90vw)",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)",
+            "radial-gradient(circle, var(--lucid-accent-bg) 0%, transparent 70%)",
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -73,20 +73,20 @@ export default function LucidPage() {
           style={{
             width: 72,
             height: 72,
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid rgba(59,130,246,0.2)",
-            boxShadow: "0 0 40px rgba(59,130,246,0.12)",
+            background: "var(--lucid-accent-bg)",
+            border: "1px solid var(--lucid-accent-bd)",
           }}
         >
-          <Sparkles size={32} style={{ color: "#3B82F6" }} />
+          <Sparkles size={32} style={{ color: "var(--lucid-accent)" }} />
         </div>
 
         {/* Heading */}
         <h1
+          className="lt-serif"
           style={{
             fontSize: 32,
             fontWeight: 700,
-            color: "#F1F5F9",
+            color: "var(--lucid-ink)",
             letterSpacing: "-0.02em",
             marginBottom: 12,
             lineHeight: 1.2,
@@ -99,7 +99,7 @@ export default function LucidPage() {
           className="px-1"
           style={{
             fontSize: 15,
-            color: "#64748B",
+            color: "var(--lucid-ink-2)",
             lineHeight: 1.7,
             marginBottom: 48,
             maxWidth: 480,
@@ -111,16 +111,7 @@ export default function LucidPage() {
         </p>
 
         {/* Mock chat input — non-functional, visual only */}
-        <div
-          className="w-full rounded-2xl p-1 mb-12"
-          style={{
-            background: "rgba(20,28,40,0.7)",
-            border: "1px solid rgba(59,130,246,0.18)",
-            boxShadow:
-              "0 0 32px rgba(59,130,246,0.06), 0 8px 40px rgba(0,0,0,0.4)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
+        <div className="lt-card w-full rounded-2xl p-1 mb-12">
           {/* Fake message history */}
           <div className="px-3 sm:px-5 pt-5 pb-4 flex flex-col gap-4">
             {/* User bubble */}
@@ -128,11 +119,11 @@ export default function LucidPage() {
               <div
                 className="rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] sm:max-w-xs text-left"
                 style={{
-                  background: "rgba(59,130,246,0.18)",
-                  border: "1px solid rgba(59,130,246,0.2)",
+                  background: "var(--lucid-accent-bg)",
+                  border: "1px solid var(--lucid-accent-bd)",
                 }}
               >
-                <p style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.5 }}>
+                <p style={{ fontSize: 13, color: "var(--lucid-ink)", lineHeight: 1.5 }}>
                   Should I enter EURUSD short right now?
                 </p>
               </div>
@@ -145,20 +136,14 @@ export default function LucidPage() {
                 style={{
                   width: 28,
                   height: 28,
-                  background: "rgba(59,130,246,0.12)",
-                  border: "1px solid rgba(59,130,246,0.2)",
+                  background: "var(--lucid-accent-bg)",
+                  border: "1px solid var(--lucid-accent-bd)",
                 }}
               >
-                <Sparkles size={13} style={{ color: "#3B82F6" }} />
+                <Sparkles size={13} style={{ color: "var(--lucid-accent)" }} />
               </div>
-              <div
-                className="rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[85%] sm:max-w-sm text-left"
-                style={{
-                  background: "rgba(28,38,54,0.8)",
-                  border: "1px solid rgba(148,163,184,0.1)",
-                }}
-              >
-                <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>
+              <div className="lt-card-2 rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[85%] sm:max-w-sm text-left">
+                <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>
                   Your Short model requires EMA rejection to be complete before
                   entry. Trade 21 is already running on this setup — you're
                   already in. No double-entry signal here.
@@ -172,15 +157,15 @@ export default function LucidPage() {
             className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 mx-1 mb-1 rounded-xl"
             style={{
               height: 50,
-              background: "rgba(10,14,20,0.6)",
-              border: "1px solid rgba(148,163,184,0.08)",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line)",
             }}
           >
-            <Sparkles size={15} style={{ color: "#334155" }} />
+            <Sparkles size={15} style={{ color: "var(--lucid-ink-3)" }} />
             <span
               style={{
                 fontSize: 13,
-                color: "#334155",
+                color: "var(--lucid-ink-3)",
                 flex: 1,
                 textAlign: "left",
               }}
@@ -192,11 +177,11 @@ export default function LucidPage() {
               style={{
                 width: 32,
                 height: 32,
-                background: "rgba(59,130,246,0.15)",
-                border: "1px solid rgba(59,130,246,0.2)",
+                background: "var(--lucid-accent-bg)",
+                border: "1px solid var(--lucid-accent-bd)",
               }}
             >
-              <span style={{ color: "#475569", fontSize: 14 }}>↵</span>
+              <span style={{ color: "var(--lucid-ink-2)", fontSize: 14 }}>↵</span>
             </div>
           </div>
         </div>
@@ -204,22 +189,15 @@ export default function LucidPage() {
         {/* Feature grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full mb-12">
           {features.map((f) => (
-            <div
-              key={f.title}
-              className="rounded-xl p-5 text-left"
-              style={{
-                background: "rgba(20,28,40,0.5)",
-                border: "1px solid rgba(148,163,184,0.08)",
-              }}
-            >
+            <div key={f.title} className="lt-card rounded-xl p-5 text-left">
               <div
                 className="flex items-center justify-center rounded-lg mb-3"
                 style={{
                   width: 32,
                   height: 32,
-                  background: "rgba(59,130,246,0.1)",
-                  border: "1px solid rgba(59,130,246,0.15)",
-                  color: "#3B82F6",
+                  background: "var(--lucid-accent-bg)",
+                  border: "1px solid var(--lucid-accent-bd)",
+                  color: "var(--lucid-accent)",
                 }}
               >
                 {f.icon}
@@ -228,13 +206,13 @@ export default function LucidPage() {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#E2E8F0",
+                  color: "var(--lucid-ink)",
                   marginBottom: 6,
                 }}
               >
                 {f.title}
               </p>
-              <p style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>
                 {f.desc}
               </p>
             </div>
@@ -242,9 +220,9 @@ export default function LucidPage() {
         </div>
 
         {/* Footer note */}
-        <p style={{ fontSize: 12, color: "#334155" }}>
+        <p style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
           Lucid AI activates after your journal reaches critical mass.{" "}
-          <span style={{ color: "#475569" }}>
+          <span style={{ color: "var(--lucid-ink-2)" }}>
             Keep logging trades in Phase 1.
           </span>
         </p>

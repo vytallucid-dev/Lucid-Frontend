@@ -1,10 +1,12 @@
 import type { Trade } from './demo-data';
 
-// Win rate excludes BE trades from denominator: WR = wins / (wins + losses)
+// Win rate excludes BE trades from denominator: WR = wins / (wins + losses).
+// Outcome is decided by the manual net P&L (blended_pnl) — the single source of
+// truth, matching the journal — NOT the price-derived R multiple (blended_rr).
 function calcWR(filteredTrades: Trade[]): number | null {
   const closed = filteredTrades.filter((t) => t.date_closed !== '');
-  const wins = closed.filter((t) => t.blended_rr > 0).length;
-  const losses = closed.filter((t) => t.blended_rr < 0).length;
+  const wins = closed.filter((t) => t.blended_pnl > 0).length;
+  const losses = closed.filter((t) => t.blended_pnl < 0).length;
   if (wins + losses === 0) return null;
   return wins / (wins + losses);
 }
@@ -39,7 +41,9 @@ export function getModelStats(allTrades: Trade[], modelName: string): ModelStats
 
   const wr = calcWR(modelTrades);
 
-  const closedWins = modelTrades.filter((t) => t.date_closed !== '' && t.blended_rr > 0);
+  // Avg R:R of winning trades. "Winner" is decided by net P&L (blended_pnl);
+  // the value we average is still the R multiple (blended_rr, a display metric).
+  const closedWins = modelTrades.filter((t) => t.date_closed !== '' && t.blended_pnl > 0);
   const rr =
     closedWins.length > 0
       ? closedWins.reduce((s, t) => s + t.blended_rr, 0) / closedWins.length

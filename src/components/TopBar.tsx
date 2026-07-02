@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +44,8 @@ function getInitials(fullName: string | undefined, email: string | undefined): s
 
 type Status = "idle" | "fetching" | "error";
 
+const SCROLL_THRESHOLD = 12;
+
 export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -63,25 +65,34 @@ export function TopBar() {
 
   const isFetching = useIsFetching();
   const queryClient = useQueryClient();
-  const [hasError, setHasError] = useState(false);
-  const [errorCount, setErrorCount] = useState(0);
 
-  useEffect(() => {
-    const cache = queryClient.getQueryCache();
-    const recompute = () => {
-      const queries = cache.getAll();
-      const errored = queries.filter((q) => q.state.status === "error").length;
-      setErrorCount(errored);
-      setHasError(errored > 0);
-    };
-    recompute();
-    return cache.subscribe(recompute);
-  }, [queryClient]);
+  // Number of errored queries, read via useSyncExternalStore so the cache
+  // subscription is render-safe: React schedules the update instead of us
+  // calling setState synchronously inside the cache's notify callback (which,
+  // when another component's render triggers a cache change, produced the
+  // "Cannot update TopBar while rendering …" warning under React 19).
+  const errorCount = useSyncExternalStore(
+    useCallback(
+      (onStoreChange) => queryClient.getQueryCache().subscribe(onStoreChange),
+      [queryClient],
+    ),
+    () =>
+      queryClient
+        .getQueryCache()
+        .getAll()
+        .filter((q) => q.state.status === "error").length,
+    () => 0,
+  );
+  const hasError = errorCount > 0;
 
   const status: Status = hasError ? "error" : isFetching > 0 ? "fetching" : "idle";
 
   const statusColor =
-    status === "error" ? "#EF4444" : status === "fetching" ? "#F59E0B" : "#10B981";
+    status === "error"
+      ? "var(--lucid-neg)"
+      : status === "fetching"
+        ? "var(--lucid-warn)"
+        : "var(--lucid-pos)";
   const statusLabel =
     status === "error" ? "Error" : status === "fetching" ? "Fetching" : "Idle";
   const statusTooltip =
@@ -118,6 +129,20 @@ export function TopBar() {
   const fullName = (user?.user_metadata?.full_name as string | undefined) ?? undefined;
   const initials = getInitials(fullName, user?.email);
 
+  // Scroll-reactive chrome: transparent at rest, translucent warm blur once the
+  // page has scrolled past the threshold. Attached to `window` — the app shell
+  // has no internal scroll container (MainContent/body have no overflow-y set,
+  // Sidebar is `fixed`), so the document itself is what actually scrolls.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > SCROLL_THRESHOLD);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   async function handleSignOut() {
     setMenuOpen(false);
     await signOut();
@@ -126,12 +151,10 @@ export function TopBar() {
 
   return (
     <header
-      className="h-14 flex items-center justify-between gap-3 px-4 sm:px-6 shrink-0 sticky top-0 z-30"
-      style={{
-        borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-        background: "rgba(2, 8, 23, 0.6)",
-        backdropFilter: "blur(12px)",
-      }}
+      className={[
+        "flex items-center justify-between gap-3 px-4 sm:px-6 shrink-0 sticky top-0 z-30",
+        scrolled ? "h-12 lt-topbar-scrolled" : "h-14 lt-topbar-rest",
+      ].join(" ")}
     >
       <div className="flex items-center gap-2 min-w-0">
         {/* Mobile menu toggle */}
@@ -139,22 +162,25 @@ export function TopBar() {
           type="button"
           onClick={toggleMobile}
           className="lg:hidden -ml-1 p-2 rounded-md hover:bg-white/5 transition-colors shrink-0"
-          style={{ color: "#94A3B8" }}
+          style={{ color: "var(--lucid-ink-3)" }}
           aria-label="Open navigation menu"
         >
           <Menu size={18} />
         </button>
-        <span className="text-sm font-semibold truncate" style={{ color: "#F1F5F9" }}>
+        <span
+          className="lt-serif text-base font-semibold truncate"
+          style={{ color: "var(--lucid-ink)" }}
+        >
           {section}
         </span>
-        <span className="hidden sm:inline" style={{ color: "#334155" }}>/</span>
-        <span className="hidden sm:inline text-sm" style={{ color: "#64748B" }}>
+        <span className="hidden sm:inline" style={{ color: "var(--lucid-ink-3)" }}>/</span>
+        <span className="hidden sm:inline text-xs" style={{ color: "var(--lucid-ink-3)" }}>
           Overview
         </span>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <span className="hidden md:inline text-xs" style={{ color: "#64748B" }}>
+        <span className="hidden md:inline text-xs lt-num" style={{ color: "var(--lucid-ink-3)" }}>
           {now ? formatIst(now) : ""}
         </span>
         <div className="flex items-center gap-1.5" title={statusTooltip}>
@@ -173,7 +199,7 @@ export function TopBar() {
         {loading ? (
           <div
             className="w-8 h-8 rounded-full"
-            style={{ background: "rgba(148, 163, 184, 0.08)" }}
+            style={{ background: "var(--lucid-surface-2)" }}
           />
         ) : user ? (
           <div className="relative" ref={menuRef}>
@@ -182,9 +208,9 @@ export function TopBar() {
               onClick={() => setMenuOpen((v) => !v)}
               className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors"
               style={{
-                background: "rgba(59, 130, 246, 0.12)",
-                color: "#93C5FD",
-                border: "1px solid rgba(59, 130, 246, 0.25)",
+                background: "var(--lucid-accent-bg)",
+                color: "var(--lucid-accent)",
+                border: "1px solid var(--lucid-accent-bd)",
               }}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
@@ -199,19 +225,17 @@ export function TopBar() {
                 className="absolute right-0 top-10 rounded-xl overflow-hidden"
                 style={{
                   zIndex: 9999,
-                  background: "rgba(10, 18, 30, 0.98)",
-                  border: "1px solid rgba(148, 163, 184, 0.12)",
-                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
-                  backdropFilter: "blur(16px)",
+                  background: "var(--lucid-surface-2)",
+                  border: "1px solid var(--lucid-line)",
                   minWidth: 220,
                 }}
               >
-                <div className="px-3 py-3" style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
-                  <div className="text-sm font-medium truncate" style={{ color: "#F1F5F9" }}>
+                <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+                  <div className="text-sm font-medium truncate" style={{ color: "var(--lucid-ink)" }}>
                     {fullName ?? user.email ?? "Account"}
                   </div>
                   {user.email && fullName && (
-                    <div className="text-[11px] truncate" style={{ color: "#64748B" }}>
+                    <div className="text-[11px] truncate" style={{ color: "var(--lucid-ink-3)" }}>
                       {user.email}
                     </div>
                   )}
@@ -220,8 +244,7 @@ export function TopBar() {
                   href="/settings"
                   role="menuitem"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition-colors"
-                  style={{ color: "#94A3B8" }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-(--lucid-ink-2) hover:text-(--lucid-ink) hover:bg-(--lucid-line) transition-colors"
                 >
                   <Settings size={14} />
                   Settings
@@ -230,8 +253,8 @@ export function TopBar() {
                   type="button"
                   role="menuitem"
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition-colors text-left"
-                  style={{ color: "#FCA5A5" }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-(--lucid-line) transition-colors text-left"
+                  style={{ color: "var(--lucid-neg)" }}
                 >
                   <LogOut size={14} />
                   Sign out

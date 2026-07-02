@@ -45,8 +45,7 @@ export function Sidebar() {
         aria-hidden="true"
         className="fixed inset-0 z-40 lg:hidden transition-opacity duration-300"
         style={{
-          background: "rgba(2, 8, 23, 0.6)",
-          backdropFilter: "blur(2px)",
+          background: "rgba(0, 0, 0, 0.6)",
           opacity: mobileOpen ? 1 : 0,
           pointerEvents: mobileOpen ? "auto" : "none",
         }}
@@ -64,21 +63,23 @@ export function Sidebar() {
           "lg:translate-x-0",
         ].join(" ")}
         style={{
-          background: "rgba(2, 8, 23, 0.92)",
-          backdropFilter: "blur(12px)",
-          borderRight: "1px solid rgba(255, 255, 255, 0.06)",
+          background: "var(--lucid-surface)",
+          borderRight: "1px solid var(--lucid-line)",
         }}
       >
         {/* Logo + collapse / close toggle */}
         <div className="flex items-center justify-between px-4 pt-6 pb-8">
           {/* Full wordmark — always on the mobile drawer; on desktop only when expanded */}
           <div className={collapsed ? "block lg:hidden" : "block"}>
-            <h1 className="text-xl font-bold tracking-tight" style={{ color: "#3B82F6" }}>
+            <h1
+              className="text-xl font-bold tracking-tight"
+              style={{ color: "var(--lucid-accent)", fontFamily: "var(--lucid-font-serif)" }}
+            >
               LUCID
             </h1>
             <span
               className="text-[11px] font-medium tracking-widest uppercase"
-              style={{ color: "#334155" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               Trading OS
             </span>
@@ -87,7 +88,7 @@ export function Sidebar() {
           {collapsed && (
             <h1
               className="hidden lg:block text-lg font-bold tracking-tight mx-auto"
-              style={{ color: "#3B82F6" }}
+              style={{ color: "var(--lucid-accent)", fontFamily: "var(--lucid-font-serif)" }}
             >
               L
             </h1>
@@ -97,7 +98,7 @@ export function Sidebar() {
           <button
             onClick={closeMobile}
             className="lg:hidden p-1.5 rounded hover:bg-white/5 transition-colors"
-            style={{ color: "#64748B" }}
+            style={{ color: "var(--lucid-ink-3)" }}
             aria-label="Close menu"
           >
             <X size={18} />
@@ -106,7 +107,7 @@ export function Sidebar() {
           <button
             onClick={toggle}
             className="hidden lg:block p-1 rounded hover:bg-white/5 transition-colors"
-            style={{ color: "#64748B" }}
+            style={{ color: "var(--lucid-ink-3)" }}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label="Toggle sidebar"
           >
@@ -116,6 +117,14 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto">
+          {/* Section label — only where there's room to render the eyebrow + hairline;
+              the collapsed lg+ rail is icon-only, so this hides there. */}
+          <div className={collapsed ? "hidden lg:hidden px-2 pb-2" : "flex lg:flex px-2 pb-2"}>
+            <span className="lt-eyebrow" style={{ width: "100%" }}>
+              Menu
+              <span className="lt-eyebrow-ln" />
+            </span>
+          </div>
           {visibleNavItems.map((item) => {
             const active = isActive(item.href);
             // Collapsed visuals apply only at lg+; the drawer is always full.
@@ -129,16 +138,18 @@ export function Sidebar() {
                   collapsed
                     ? "px-3 lg:px-0 py-2.5 justify-start lg:justify-center"
                     : "px-3 py-2.5 justify-start",
+                  active ? "" : "hover:bg-(--lucid-line)",
                 ].join(" ")}
                 style={{
-                  background: active ? "rgba(59, 130, 246, 0.08)" : "transparent",
-                  borderLeft: active ? "2px solid #3B82F6" : "2px solid transparent",
+                  background: active ? "var(--lucid-accent-bg)" : "transparent",
+                  borderLeft: active ? "2px solid var(--lucid-accent)" : "2px solid transparent",
                 }}
                 title={collapsed ? item.label : undefined}
               >
                 <item.icon
                   size={18}
-                  style={{ color: active ? "#3B82F6" : "#64748B", flexShrink: 0 }}
+                  className={active ? "" : "text-(--lucid-ink-3) group-hover:text-(--lucid-ink)"}
+                  style={active ? { color: "var(--lucid-ink)", flexShrink: 0 } : { flexShrink: 0 }}
                 />
                 <div
                   className={[
@@ -147,23 +158,20 @@ export function Sidebar() {
                   ].join(" ")}
                 >
                   <span
-                    className="text-sm font-medium leading-tight"
-                    style={{ color: active ? "#F1F5F9" : "#94A3B8" }}
+                    className={[
+                      "text-sm font-medium leading-tight",
+                      active ? "" : "text-(--lucid-ink-2) group-hover:text-(--lucid-ink)",
+                    ].join(" ")}
+                    style={active ? { color: "var(--lucid-ink)" } : undefined}
                   >
                     {item.label}
                   </span>
                   {item.sublabel && (
-                    <span className="text-[10px]" style={{ color: "#64748B" }}>
+                    <span className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                       {item.sublabel}
                     </span>
                   )}
                 </div>
-                {active && (
-                  <div
-                    className="absolute inset-0 rounded-lg pointer-events-none"
-                    style={{ boxShadow: "0 0 20px rgba(59, 130, 246, 0.1)" }}
-                  />
-                )}
               </Link>
             );
           })}
@@ -176,7 +184,7 @@ export function Sidebar() {
               "text-[10px] font-medium tracking-wider",
               collapsed ? "block lg:hidden" : "block",
             ].join(" ")}
-            style={{ color: "#334155" }}
+            style={{ color: "var(--lucid-ink-3)" }}
           >
             v1.0 Beta
           </span>

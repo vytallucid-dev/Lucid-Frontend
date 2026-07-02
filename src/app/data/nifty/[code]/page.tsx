@@ -76,16 +76,16 @@ function fetchSourceLabel(dataSource: string | undefined): string {
 
 function StatusBadge({ status }: { status: FetchLog["status"] }) {
   const config = {
-    success: { color: "#10B981", Icon: CheckCircle2, label: "Success" },
-    partial: { color: "#F59E0B", Icon: AlertCircle, label: "Partial" },
-    failed: { color: "#EF4444", Icon: XCircle, label: "Failed" },
-    running: { color: "#3B82F6", Icon: Loader2, label: "Running" },
+    success: { color: "var(--lucid-pos)", bg: "var(--lucid-pos-bg)", bd: "var(--lucid-pos-bd)", Icon: CheckCircle2, label: "Success" },
+    partial: { color: "var(--lucid-warn)", bg: "var(--lucid-warn-bg)", bd: "var(--lucid-warn-bd)", Icon: AlertCircle, label: "Partial" },
+    failed: { color: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)", bd: "var(--lucid-neg-bd)", Icon: XCircle, label: "Failed" },
+    running: { color: "var(--lucid-accent)", bg: "var(--lucid-accent-bg)", bd: "var(--lucid-accent-bd)", Icon: Loader2, label: "Running" },
   }[status];
 
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-      style={{ background: `${config.color}14`, color: config.color, border: `1px solid ${config.color}28` }}
+      style={{ background: config.bg, color: config.color, border: `1px solid ${config.bd}` }}
     >
       <config.Icon size={10} className={status === "running" ? "animate-spin" : ""} />
       {config.label}
@@ -98,19 +98,19 @@ function ResultBanner({ success, message, onDismiss }: { success: boolean; messa
     <div
       className="flex items-start gap-3 rounded-xl px-4 py-3"
       style={{
-        background: success ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
-        border: `1px solid ${success ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+        background: success ? "var(--lucid-pos-bg)" : "var(--lucid-neg-bg)",
+        border: `1px solid ${success ? "var(--lucid-pos-bd)" : "var(--lucid-neg-bd)"}`,
       }}
     >
       {success ? (
-        <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: "#10B981" }} />
+        <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-pos)" }} />
       ) : (
-        <XCircle size={16} className="mt-0.5 shrink-0" style={{ color: "#EF4444" }} />
+        <XCircle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-neg)" }} />
       )}
-      <p className="text-sm flex-1" style={{ color: success ? "#6EE7B7" : "#FCA5A5" }}>
+      <p className="text-sm flex-1" style={{ color: success ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
         {message}
       </p>
-      <button onClick={onDismiss} className="text-sm" style={{ color: "#475569" }}>
+      <button onClick={onDismiss} className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
         ✕
       </button>
     </div>
@@ -164,7 +164,7 @@ function ManualEntryPanel({
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#C4B5FD" }}
+        style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)", color: "var(--lucid-accent)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>This indicator requires manual data entry. Fill in the observed value for the desired date.</span>
@@ -172,27 +172,27 @@ function ManualEntryPanel({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-            Observation Date <span style={{ color: "#EF4444" }}>*</span>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
+            Observation Date <span style={{ color: "var(--lucid-neg)" }}>*</span>
           </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none focus:ring-1"
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none focus:ring-1"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#F1F5F9",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line-2)",
+              color: "var(--lucid-ink)",
               colorScheme: "dark",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-            Value <span style={{ color: "#EF4444" }}>*</span>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
+            Value <span style={{ color: "var(--lucid-neg)" }}>*</span>
           </label>
           <input
             type="number"
@@ -200,44 +200,44 @@ function ManualEntryPanel({
             placeholder="e.g. 54.6"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none focus:ring-1"
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none focus:ring-1"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#F1F5F9",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line-2)",
+              color: "var(--lucid-ink)",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
       </div>
 
       {isRbiRate && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-            RBI Cycle State <span style={{ color: "#EF4444" }}>*</span>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
+            RBI Cycle State <span style={{ color: "var(--lucid-neg)" }}>*</span>
           </label>
           <select
             value={cycleState}
             onChange={(e) => setCycleState(e.target.value)}
             className="rounded-lg px-3 py-2 text-sm outline-none"
             style={{
-              background: "#0f172a",
-              border: `1px solid ${cycleState === "" ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)"}`,
-              color: cycleState === "" ? "#64748B" : "#F1F5F9",
+              background: "var(--lucid-surface-2)",
+              border: `1px solid ${cycleState === "" ? "var(--lucid-neg-bd)" : "var(--lucid-line-2)"}`,
+              color: cycleState === "" ? "var(--lucid-ink-3)" : "var(--lucid-ink)",
               colorScheme: "dark",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
             onBlur={(e) =>
               (e.currentTarget.style.borderColor =
-                cycleState === "" ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)")
+                cycleState === "" ? "var(--lucid-neg-bd)" : "var(--lucid-line-2)")
             }
           >
-            <option value="" disabled style={{ background: "#0f172a", color: "#64748B" }}>
+            <option value="" disabled style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)" }}>
               Select cycle state...
             </option>
             {RBI_CYCLE_STATES.map((s) => (
-              <option key={s.value} value={s.value} style={{ background: "#0f172a", color: "#F1F5F9" }}>
+              <option key={s.value} value={s.value} style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink)" }}>
                 {s.label}
               </option>
             ))}
@@ -246,7 +246,7 @@ function ManualEntryPanel({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+        <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
           Notes (optional)
         </label>
         <textarea
@@ -256,12 +256,12 @@ function ManualEntryPanel({
           onChange={(e) => setNotes(e.target.value)}
           className="rounded-lg px-3 py-2 text-sm outline-none resize-none"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#F1F5F9",
+            background: "var(--lucid-surface-2)",
+            border: "1px solid var(--lucid-line-2)",
+            color: "var(--lucid-ink)",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
         />
       </div>
 
@@ -271,15 +271,15 @@ function ManualEntryPanel({
           checked={allowOverwrite}
           onChange={(e) => setAllowOverwrite(e.target.checked)}
           className="rounded"
-          style={{ accentColor: "#3B82F6" }}
+          style={{ accentColor: "var(--lucid-accent)" }}
         />
-        <span className="text-xs" style={{ color: "#64748B" }}>
+        <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
           Allow overwrite (creates new vintage even if value is identical)
         </span>
       </label>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -289,8 +289,8 @@ function ManualEntryPanel({
         disabled={mutation.isPending || !value || !date || (isRbiRate && !cycleState)}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
         style={{
-          background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6",
-          color: "#fff",
+          background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)",
+          color: "var(--lucid-bg)",
         }}
       >
         {mutation.isPending ? (
@@ -331,7 +331,7 @@ function FredFetchPanel({
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#93C5FD" }}
+        style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)", color: "var(--lucid-accent)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -341,47 +341,47 @@ function FredFetchPanel({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
             Date From (optional)
           </label>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none"
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#F1F5F9",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line-2)",
+              color: "var(--lucid-ink)",
               colorScheme: "dark",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
             Date To (optional)
           </label>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none"
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#F1F5F9",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line-2)",
+              color: "var(--lucid-ink)",
               colorScheme: "dark",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -390,7 +390,7 @@ function FredFetchPanel({
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
+        style={{ background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "var(--lucid-bg)" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Fetching...</>
@@ -423,7 +423,7 @@ function NseSimplePanel({
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#FCD34D" }}
+        style={{ background: "var(--lucid-warn-bg)", border: "1px solid var(--lucid-warn-bd)", color: "var(--lucid-warn)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -433,7 +433,7 @@ function NseSimplePanel({
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -442,7 +442,7 @@ function NseSimplePanel({
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(245,158,11,0.3)" : "#F59E0B", color: "#000" }}
+        style={{ background: mutation.isPending ? "var(--lucid-warn-bg)" : "var(--lucid-warn)", color: "var(--lucid-bg)" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Scraping...</>
@@ -473,7 +473,7 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#FCD34D" }}
+        style={{ background: "var(--lucid-warn-bg)", border: "1px solid var(--lucid-warn-bd)", color: "var(--lucid-warn)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>Scrapes NSE Participant Open Interest data. Choose today, a specific date, or a date range for backfill.</span>
@@ -487,9 +487,9 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
             onClick={() => setMode(m)}
             className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all capitalize"
             style={{
-              background: mode === m ? "#3B82F6" : "rgba(255,255,255,0.04)",
-              color: mode === m ? "#fff" : "#64748B",
-              border: mode === m ? "1px solid #3B82F6" : "1px solid rgba(255,255,255,0.08)",
+              background: mode === m ? "var(--lucid-accent)" : "var(--lucid-surface-2)",
+              color: mode === m ? "var(--lucid-bg)" : "var(--lucid-ink-3)",
+              border: mode === m ? "1px solid var(--lucid-accent)" : "1px solid var(--lucid-line)",
             }}
           >
             {m === "today" ? "Today" : m === "single" ? "Specific Date" : "Date Range"}
@@ -499,17 +499,17 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
 
       {mode === "single" && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
             Observation Date
           </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9", colorScheme: "dark" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)", colorScheme: "dark" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
       )}
@@ -521,17 +521,17 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
             { label: "Date To", value: dateTo, set: setDateTo },
           ].map(({ label, value, set }) => (
             <div key={label} className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+              <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
                 {label}
               </label>
               <input
                 type="date"
                 value={value}
                 onChange={(e) => set(e.target.value)}
-                className="rounded-lg px-3 py-2 text-sm outline-none"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9", colorScheme: "dark" }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+                className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+                style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)", colorScheme: "dark" }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
               />
             </div>
           ))}
@@ -539,7 +539,7 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
       )}
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -548,7 +548,7 @@ function NseParticipantOiPanel({ onSuccess }: { onSuccess: (msg: string) => void
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || (mode === "range" && (!dateFrom || !dateTo))}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(245,158,11,0.3)" : "#F59E0B", color: "#000" }}
+        style={{ background: mutation.isPending ? "var(--lucid-warn-bg)" : "var(--lucid-warn)", color: "var(--lucid-bg)" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Scraping...</>
@@ -633,14 +633,20 @@ function Ind9BridgePanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
 
   const isPending = mutation.isPending || isPolling;
   const statusColor =
-    lastLog?.status === "success" ? "#10B981" :
-    lastLog?.status === "failed"  ? "#EF4444" : "#F59E0B";
+    lastLog?.status === "success" ? "var(--lucid-pos)" :
+    lastLog?.status === "failed"  ? "var(--lucid-neg)" : "var(--lucid-warn)";
+  const statusBg =
+    lastLog?.status === "success" ? "var(--lucid-pos-bg)" :
+    lastLog?.status === "failed"  ? "var(--lucid-neg-bg)" : "var(--lucid-warn-bg)";
+  const statusBd =
+    lastLog?.status === "success" ? "var(--lucid-pos-bd)" :
+    lastLog?.status === "failed"  ? "var(--lucid-neg-bd)" : "var(--lucid-warn-bd)";
 
   return (
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", color: "#A5B4FC" }}
+        style={{ background: "var(--lucid-ctx-bg)", border: "1px solid var(--lucid-ctx-bd)", color: "var(--lucid-ctx)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -649,14 +655,14 @@ function Ind9BridgePanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
       </div>
 
       {triggerError && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>Error: {triggerError}</p>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>Error: {triggerError}</p>
       )}
 
       <button
         onClick={() => mutation.mutate()}
         disabled={isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: isPending ? "rgba(99,102,241,0.3)" : "#6366F1", color: "#fff" }}
+        style={{ background: isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "var(--lucid-bg)" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Triggering...</>
@@ -669,25 +675,25 @@ function Ind9BridgePanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
 
       {isPolling && !lastLog && (
         <div className="flex items-center gap-1.5">
-          <Clock size={13} style={{ color: "#64748B" }} />
-          <span className="text-xs" style={{ color: "#64748B" }}>Waiting for job to complete…</span>
+          <Clock size={13} style={{ color: "var(--lucid-ink-3)" }} />
+          <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>Waiting for job to complete…</span>
         </div>
       )}
 
       {lastLog && (
         <div
           className="rounded-lg px-3 py-2.5 flex flex-col gap-1"
-          style={{ background: `${statusColor}08`, border: `1px solid ${statusColor}20` }}
+          style={{ background: statusBg, border: `1px solid ${statusBd}` }}
         >
           <div className="flex items-center gap-1.5">
             {lastLog.status === "success"
-              ? <CheckCircle2 size={13} style={{ color: "#10B981" }} />
+              ? <CheckCircle2 size={13} style={{ color: "var(--lucid-pos)" }} />
               : lastLog.status === "failed"
-              ? <XCircle size={13} style={{ color: "#EF4444" }} />
-              : <AlertCircle size={13} style={{ color: "#F59E0B" }} />}
+              ? <XCircle size={13} style={{ color: "var(--lucid-neg)" }} />
+              : <AlertCircle size={13} style={{ color: "var(--lucid-warn)" }} />}
             <span className="text-xs font-semibold capitalize" style={{ color: statusColor }}>{lastLog.status}</span>
           </div>
-          <p className="text-xs" style={{ color: "#475569" }}>
+          <p className="lt-num text-xs" style={{ color: "var(--lucid-ink-3)" }}>
             {lastLog.durationMs != null
               ? lastLog.durationMs < 1000 ? `${lastLog.durationMs}ms` : `${(lastLog.durationMs / 1000).toFixed(1)}s`
               : "—"}
@@ -740,8 +746,8 @@ export default function NiftyIndicatorDetailPage() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle size={40} style={{ color: "#EF4444" }} />
-        <p className="text-lg font-medium" style={{ color: "#F1F5F9" }}>
+        <AlertCircle size={40} style={{ color: "var(--lucid-neg)" }} />
+        <p className="lt-serif text-lg font-medium" style={{ color: "var(--lucid-ink)" }}>
           Admin access required
         </p>
       </div>
@@ -755,43 +761,43 @@ export default function NiftyIndicatorDetailPage() {
   // when it's unavailable (e.g. still loading). Keeps the header chip consistent
   // with the list page (e.g. EODHD/teal for DXY/Brent/USD-INR, not FRED/blue).
   const sourceKey = indicator?.dataSource ?? pipeline;
-  const sourceColor = DATA_SOURCE_COLORS[sourceKey] ?? "#64748B";
+  const sourceColor = DATA_SOURCE_COLORS[sourceKey] ?? "var(--lucid-ink-3)";
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm flex-wrap" style={{ color: "#475569" }}>
-        <Link href="/data" className="hover:text-[#94A3B8] transition-colors">Data</Link>
+      <div className="flex items-center gap-2 mb-6 text-sm flex-wrap" style={{ color: "var(--lucid-ink-3)" }}>
+        <Link href="/data" className="hover:opacity-80 transition-colors" style={{ color: "var(--lucid-ink-2)" }}>Data</Link>
         <ChevronRight size={14} />
-        <Link href="/data/nifty" className="hover:text-[#94A3B8] transition-colors">NIFTY</Link>
+        <Link href="/data/nifty" className="hover:opacity-80 transition-colors" style={{ color: "var(--lucid-ink-2)" }}>NIFTY</Link>
         <ChevronRight size={14} />
-        <span style={{ color: "#94A3B8" }}>{latestLoading ? code : (indicator?.name ?? code)}</span>
+        <span style={{ color: "var(--lucid-ink-2)" }}>{latestLoading ? code : (indicator?.name ?? code)}</span>
       </div>
 
       {/* Header */}
       <div className="mb-6 min-w-0">
         {latestLoading ? (
-          <div className="flex items-center gap-2" style={{ color: "#475569" }}>
+          <div className="flex items-center gap-2" style={{ color: "var(--lucid-ink-3)" }}>
             <Loader2 size={16} className="animate-spin" />
             <span className="text-sm">Loading...</span>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <h1 className="text-xl font-bold wrap-break-word" style={{ color: "#F1F5F9" }}>
+            <h1 className="lt-serif text-xl font-bold wrap-break-word" style={{ color: "var(--lucid-ink)" }}>
               {indicator?.name ?? code}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="rounded-lg px-2 py-0.5 text-xs font-mono" style={{ background: "rgba(255,255,255,0.05)", color: "#64748B" }}>
+              <span className="lt-num rounded-lg px-2 py-0.5 text-xs" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)" }}>
                 {code}
               </span>
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-                style={{ background: `${sourceColor}14`, color: sourceColor, border: `1px solid ${sourceColor}28` }}
+                style={{ background: "var(--lucid-surface-2)", color: sourceColor, border: "1px solid var(--lucid-line-2)" }}
               >
                 {DATA_SOURCE_LABELS[sourceKey] ?? sourceKey}
               </span>
               {indicator?.frequency && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}>
                   {FREQUENCY_LABELS[indicator.frequency] ?? indicator.frequency}
                 </span>
               )}
@@ -816,14 +822,13 @@ export default function NiftyIndicatorDetailPage() {
         {/* Left: Pipeline panel */}
         <div className="lg:col-span-3">
           <div
-            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-            style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+            className="lt-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           >
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+              <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                 Data Pipeline
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+              <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
                 Trigger or submit data for this indicator
               </p>
             </div>
@@ -840,29 +845,28 @@ export default function NiftyIndicatorDetailPage() {
         {/* Right: Recent data points */}
         <div className="lg:col-span-2">
           <div
-            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-            style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+            className="lt-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+                <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   Recent Data Points
                 </h2>
-                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
                   Last 10 ingested values
                 </p>
               </div>
-              <button onClick={() => refetchLatest()} style={{ color: "#475569" }} title="Refresh">
+              <button onClick={() => refetchLatest()} style={{ color: "var(--lucid-ink-3)" }} title="Refresh">
                 <RefreshCw size={14} />
               </button>
             </div>
 
             {latestLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 size={18} className="animate-spin" style={{ color: "#3B82F6" }} />
+                <Loader2 size={18} className="animate-spin" style={{ color: "var(--lucid-accent)" }} />
               </div>
             ) : dataPoints.length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "#475569" }}>
+              <p className="text-sm text-center py-8" style={{ color: "var(--lucid-ink-3)" }}>
                 No data points yet
               </p>
             ) : (
@@ -872,30 +876,30 @@ export default function NiftyIndicatorDetailPage() {
                     key={dp.id}
                     className="flex items-center justify-between rounded-lg px-3 py-2"
                     style={{
-                      background: idx === 0 ? "rgba(59,130,246,0.07)" : "rgba(255,255,255,0.02)",
-                      border: idx === 0 ? "1px solid rgba(59,130,246,0.15)" : "1px solid rgba(255,255,255,0.04)",
+                      background: idx === 0 ? "var(--lucid-accent-bg)" : "var(--lucid-surface-2)",
+                      border: idx === 0 ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
                     }}
                   >
                     <div>
-                      <p className="text-xs font-medium" style={{ color: "#F1F5F9" }}>
+                      <p className="lt-num text-xs font-medium" style={{ color: "var(--lucid-ink)" }}>
                         {dp.value}
                         {idx === 0 && (
-                          <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "rgba(59,130,246,0.15)", color: "#60A5FA" }}>
+                          <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)" }}>
                             current
                           </span>
                         )}
                       </p>
-                      <p className="text-[10px]" style={{ color: "#475569" }}>
+                      <p className="lt-num text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                         {dp.observationDate}
                       </p>
                     </div>
                     <div className="text-right">
                       {dp.dataQualityFlag && (
-                        <p className="text-[9px] mb-0.5" style={{ color: "#F59E0B" }}>
+                        <p className="text-[9px] mb-0.5" style={{ color: "var(--lucid-warn)" }}>
                           {dp.dataQualityFlag}
                         </p>
                       )}
-                      <p className="text-[10px]" style={{ color: "#334155" }}>
+                      <p className="lt-num text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                         {formatRelativeDate(dp.fetchedAt)}
                       </p>
                     </div>
@@ -909,29 +913,28 @@ export default function NiftyIndicatorDetailPage() {
 
       {/* Fetch Logs */}
       <div
-        className="mt-6 rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-        style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+        className="lt-card mt-6 rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+            <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
               Recent Fetch Logs
             </h2>
-            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B" }}>
-              Job: <span className="font-mono" style={{ color: "#475569" }}>{logJobName}</span>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "var(--lucid-ink-3)" }}>
+              Job: <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>{logJobName}</span>
             </p>
           </div>
-          <button onClick={() => refetchLogs()} style={{ color: "#475569" }} title="Refresh">
+          <button onClick={() => refetchLogs()} style={{ color: "var(--lucid-ink-3)" }} title="Refresh">
             <RefreshCw size={14} />
           </button>
         </div>
 
         {logsLoading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 size={18} className="animate-spin" style={{ color: "#3B82F6" }} />
+            <Loader2 size={18} className="animate-spin" style={{ color: "var(--lucid-accent)" }} />
           </div>
         ) : logs.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: "#475569" }}>
+          <p className="text-sm text-center py-6" style={{ color: "var(--lucid-ink-3)" }}>
             No logs yet for this job
           </p>
         ) : (
@@ -943,7 +946,7 @@ export default function NiftyIndicatorDetailPage() {
                     <th
                       key={h}
                       className="text-left pb-2 text-[10px] uppercase tracking-wider font-medium"
-                      style={{ color: "#475569" }}
+                      style={{ color: "var(--lucid-ink-3)" }}
                     >
                       {h}
                     </th>
@@ -957,22 +960,22 @@ export default function NiftyIndicatorDetailPage() {
                       <StatusBadge status={log.status} />
                     </td>
                     <td className="py-1 pr-4">
-                      <span className="text-xs" style={{ color: "#64748B" }}>
+                      <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                         {log.triggerType}
                       </span>
                     </td>
                     <td className="py-1 pr-4">
                       <div>
-                        <p className="text-xs" style={{ color: "#94A3B8" }}>
+                        <p className="lt-num text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                           {new Date(log.startedAt).toLocaleDateString()}
                         </p>
-                        <p className="text-[10px]" style={{ color: "#475569" }}>
+                        <p className="lt-num text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                           {new Date(log.startedAt).toLocaleTimeString()}
                         </p>
                       </div>
                     </td>
                     <td className="py-1 pr-4">
-                      <span className="text-xs" style={{ color: "#64748B" }}>
+                      <span className="lt-num text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                         {log.durationMs != null
                           ? log.durationMs < 1000
                             ? `${log.durationMs}ms`
@@ -981,12 +984,12 @@ export default function NiftyIndicatorDetailPage() {
                       </span>
                     </td>
                     <td className="py-1 pr-4">
-                      <span className="text-xs font-medium" style={{ color: "#10B981" }}>
+                      <span className="lt-num text-xs font-medium" style={{ color: "var(--lucid-pos)" }}>
                         +{log.rowsInserted}
                       </span>
                     </td>
                     <td className="py-1">
-                      <span className="text-xs font-medium" style={{ color: "#F59E0B" }}>
+                      <span className="lt-num text-xs font-medium" style={{ color: "var(--lucid-warn)" }}>
                         ~{log.rowsUpdated}
                       </span>
                     </td>

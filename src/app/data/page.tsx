@@ -12,7 +12,6 @@ function ModuleCard({
   description,
   icon: Icon,
   iconColor,
-  glowColor,
   stats,
   href,
   indicators,
@@ -23,7 +22,6 @@ function ModuleCard({
   description: string;
   icon: React.ElementType;
   iconColor: string;
-  glowColor: string;
   stats: { label: string; value: string }[];
   href: string;
   indicators: AdminIndicator[];
@@ -47,35 +45,22 @@ function ModuleCard({
   return (
     <div
       onClick={() => router.push(href)}
-      className="cursor-pointer flex flex-col gap-5 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01] group"
-      style={{
-        background: "rgba(10, 22, 40, 0.7)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        boxShadow: `0 0 0 1px transparent`,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 40px ${glowColor}22, 0 0 0 1px ${glowColor}33`;
-        (e.currentTarget as HTMLDivElement).style.borderColor = `${glowColor}44`;
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px transparent`;
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
-      }}
+      className="lt-card lt-hover cursor-pointer flex flex-col gap-5 rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01] group"
     >
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div
             className="p-2.5 rounded-xl"
-            style={{ background: `${iconColor}18`, border: `1px solid ${iconColor}30` }}
+            style={{ background: `color-mix(in srgb, ${iconColor} 18%, transparent)`, border: `1px solid color-mix(in srgb, ${iconColor} 30%, transparent)` }}
           >
             <Icon size={22} style={{ color: iconColor }} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold" style={{ color: "#F1F5F9" }}>
+            <h2 className="lt-serif text-lg font-semibold" style={{ color: "var(--lucid-ink)" }}>
               {title}
             </h2>
-            <p className="text-xs" style={{ color: "#64748B" }}>
+            <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
               {subtitle}
             </p>
           </div>
@@ -83,12 +68,12 @@ function ModuleCard({
         <ChevronRight
           size={18}
           className="mt-1 transition-transform group-hover:translate-x-1"
-          style={{ color: "#334155" }}
+          style={{ color: "var(--lucid-ink-3)" }}
         />
       </div>
 
       {/* Description */}
-      <p className="text-sm leading-relaxed" style={{ color: "#94A3B8" }}>
+      <p className="text-sm leading-relaxed" style={{ color: "var(--lucid-ink-2)" }}>
         {description}
       </p>
 
@@ -100,13 +85,12 @@ function ModuleCard({
         {stats.map((s) => (
           <div
             key={s.label}
-            className="flex flex-col gap-1 rounded-xl px-2 sm:px-4 py-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+            className="lt-card-2 flex flex-col gap-1 rounded-xl px-2 sm:px-4 py-3"
           >
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider" style={{ color: "#475569" }}>
+            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider" style={{ color: "var(--lucid-ink-3)" }}>
               {s.label}
             </span>
-            <span className="text-base sm:text-lg font-bold" style={{ color: "#F1F5F9" }}>
+            <span className="lt-num text-base sm:text-lg font-bold" style={{ color: "var(--lucid-ink)" }}>
               {s.value}
             </span>
           </div>
@@ -115,28 +99,28 @@ function ModuleCard({
 
       {/* Data source breakdown */}
       {loading ? (
-        <div className="flex items-center gap-2" style={{ color: "#475569" }}>
+        <div className="flex items-center gap-2" style={{ color: "var(--lucid-ink-3)" }}>
           <Loader2 size={14} className="animate-spin" />
           <span className="text-xs">Loading indicators...</span>
         </div>
       ) : (
         <div className="flex items-center gap-3 flex-wrap">
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-            style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}
+            className="lt-num inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+            style={{ background: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "1px solid var(--lucid-pos-bd)" }}
           >
             {autoCount} auto-fetched
           </span>
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+            className="lt-num inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
             style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", border: "1px solid rgba(139,92,246,0.2)" }}
           >
             {manualCount} manual entry
           </span>
           {staleCount > 0 && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}
+              className="lt-num inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+              style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}
             >
               <AlertCircle size={11} />
               {staleCount} stale
@@ -144,8 +128,8 @@ function ModuleCard({
           )}
           {neverFetched > 0 && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
+              className="lt-num inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+              style={{ background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
             >
               {neverFetched} never fetched
             </span>
@@ -191,7 +175,7 @@ export default function DataPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 size={24} className="animate-spin" style={{ color: "#3B82F6" }} />
+        <Loader2 size={24} className="animate-spin" style={{ color: "var(--lucid-accent)" }} />
       </div>
     );
   }
@@ -199,11 +183,11 @@ export default function DataPage() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle size={40} style={{ color: "#EF4444" }} />
-        <p className="text-lg font-medium" style={{ color: "#F1F5F9" }}>
+        <AlertCircle size={40} style={{ color: "var(--lucid-neg)" }} />
+        <p className="lt-serif text-lg font-medium" style={{ color: "var(--lucid-ink)" }}>
           Admin access required
         </p>
-        <p className="text-sm" style={{ color: "#64748B" }}>
+        <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
           This page is only accessible to administrators.
         </p>
       </div>
@@ -219,15 +203,15 @@ export default function DataPage() {
       <div className="mb-8 flex flex-wrap items-center gap-3">
         <div
           className="p-2 rounded-lg"
-          style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
+          style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)" }}
         >
-          <Database size={20} style={{ color: "#3B82F6" }} />
+          <Database size={20} style={{ color: "var(--lucid-accent)" }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
+          <h1 className="lt-serif text-xl font-bold" style={{ color: "var(--lucid-ink)" }}>
             Data Management
           </h1>
-          <p className="text-sm" style={{ color: "#64748B" }}>
+          <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
             Trigger data pipelines, ingest manual values, and monitor fetch logs
           </p>
         </div>
@@ -240,8 +224,7 @@ export default function DataPage() {
           subtitle="India Fundamental Bias Scoring"
           description="13-indicator scoring system tracking India's macroeconomic health across domestic activity, equity flows, and external environment signals."
           icon={Activity}
-          iconColor="#10B981"
-          glowColor="#10B981"
+          iconColor="var(--lucid-pos)"
           stats={[
             { label: "Total Indicators", value: niftyLoading ? "—" : String(niftyIndicators.length || 13) },
             { label: "Domestic", value: niftyLoading ? "—" : String(niftyIndicators.filter((i) => i.compositeGroup === "domestic").length || 8) },
@@ -257,8 +240,7 @@ export default function DataPage() {
           subtitle="Forex & Asset Scoring Engine"
           description="41-indicator system scoring USD, EUR, GBP, JPY, Gold and FX pairs across growth, inflation, employment, sentiment, rates, and positioning data."
           icon={BarChart2}
-          iconColor="#3B82F6"
-          glowColor="#3B82F6"
+          iconColor="var(--lucid-accent)"
           stats={[
             { label: "Total Indicators", value: efLoading ? "—" : String(edgefinderIndicators.length || 41) },
             { label: "Countries", value: "4" },
@@ -273,12 +255,12 @@ export default function DataPage() {
       {/* Bottom info strip */}
       <div
         className="mt-6 rounded-xl px-5 py-4 flex items-start gap-3"
-        style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.12)" }}
+        style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)" }}
       >
-        <AlertCircle size={16} className="mt-0.5 shrink-0" style={{ color: "#3B82F6" }} />
-        <p className="text-sm leading-relaxed" style={{ color: "#94A3B8" }}>
+        <AlertCircle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-accent)" }} />
+        <p className="text-sm leading-relaxed" style={{ color: "var(--lucid-ink-2)" }}>
           Triggered jobs run asynchronously. After triggering a pipeline, check the{" "}
-          <span style={{ color: "#60A5FA" }}>Logs</span> tab on the indicator detail page to monitor
+          <span style={{ color: "var(--lucid-accent)" }}>Logs</span> tab on the indicator detail page to monitor
           status. Jobs that are already running will be skipped by the job guard.
         </p>
       </div>

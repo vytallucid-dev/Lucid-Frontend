@@ -40,7 +40,7 @@ export default function TradeDetailPage() {
   if (!trade) {
     return (
       <DetailPageLayout backHref="/trading/journal" backLabel="Journal" title="Trade not found">
-        <div className="py-16 text-center" style={{ color: "#64748B", fontSize: 14 }}>
+        <div className="py-16 text-center" style={{ color: "var(--lucid-ink-3)", fontSize: 14 }}>
           This trade could not be found. It may have been deleted.
         </div>
       </DetailPageLayout>
@@ -48,7 +48,7 @@ export default function TradeDetailPage() {
   }
 
   const isLive = !trade.date_closed;
-  const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
+  const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
   const pairDisplay = config?.display_name ?? trade.pair;
 
   const actions = (
@@ -56,14 +56,14 @@ export default function TradeDetailPage() {
       <button
         onClick={() => setEditOpen(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-        style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+        style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
       >
         <Pencil size={14} /> Edit
       </button>
       <button
         onClick={() => setConfirmDelete(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-        style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+        style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
       >
         <Trash2 size={14} /> Delete
       </button>
@@ -84,15 +84,15 @@ export default function TradeDetailPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               {config && <span className="text-2xl">{config.flag_a}{config.flag_b}</span>}
-              <h2 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>
+              <h2 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>
                 {pairDisplay}
               </h2>
               <span
                 className="pill"
                 style={{
-                  background: trade.direction === "Buy" ? "var(--positive-bg)" : "var(--negative-bg)",
-                  color: trade.direction === "Buy" ? "var(--positive)" : "var(--negative)",
-                  border: `1px solid ${trade.direction === "Buy" ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+                  background: trade.direction === "Buy" ? "var(--lucid-pos-bg)" : "var(--lucid-neg-bg)",
+                  color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)",
+                  border: `1px solid ${trade.direction === "Buy" ? "var(--lucid-pos-bd)" : "var(--lucid-neg-bd)"}`,
                   fontSize: 13,
                   padding: "3px 10px",
                 }}
@@ -100,12 +100,12 @@ export default function TradeDetailPage() {
                 {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
               </span>
             </div>
-            <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
+            <p className="mt-1 text-sm" style={{ color: "var(--lucid-ink-3)" }}>
               {formatDate(trade.date_opened)}
               {" · "}
               <span
                 style={{
-                  color: trade.conviction === "High" ? "var(--accent-blue)" : "#64748B",
+                  color: trade.conviction === "High" ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
                   fontWeight: trade.conviction === "High" ? 600 : 400,
                 }}
               >
@@ -119,16 +119,16 @@ export default function TradeDetailPage() {
         <div className="sm:text-right">
           {isLive ? (
             <div className="flex items-center gap-2 sm:justify-end">
-              <span className="pulse-live w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6", display: "inline-block" }} />
-              <span style={{ fontSize: 32, fontWeight: 700, color: "#93C5FD" }}>Live</span>
+              <span className="pulse-live w-2.5 h-2.5 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
+              <span className="lt-num" style={{ fontSize: 32, fontWeight: 700, color: "var(--lucid-accent)" }}>Live</span>
             </div>
           ) : (
-            <span style={{ fontSize: 32, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+            <span className="lt-num" style={{ fontSize: 32, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
               {formatCurrency(trade.blended_pnl)}
             </span>
           )}
           {!isLive && (
-            <p style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>
+            <p className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginTop: 4 }}>
               {trade.total_pips > 0 ? "+" : ""}{trade.total_pips} pips · {trade.blended_rr}R
             </p>
           )}
@@ -149,7 +149,7 @@ export default function TradeDetailPage() {
           <div>
             <p
               className="text-xs font-semibold uppercase mb-3"
-              style={{ color: "#64748B", letterSpacing: "0.08em" }}
+              style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}
             >
               Screenshots
             </p>
@@ -158,9 +158,9 @@ export default function TradeDetailPage() {
                 className="rounded-xl flex items-center justify-center"
                 style={{
                   height: 160,
-                  background: "var(--bg-card)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "#334155",
+                  background: "var(--lucid-surface)",
+                  border: "1px solid var(--lucid-line)",
+                  color: "var(--lucid-ink-3)",
                   fontSize: 13,
                   fontStyle: "italic",
                 }}
@@ -175,8 +175,8 @@ export default function TradeDetailPage() {
                     className="rounded-xl w-full"
                     style={{
                       height: 200,
-                      background: `url(${src}) center/cover, rgba(148,163,184,0.05)`,
-                      border: "1px solid var(--border-subtle)",
+                      background: `url(${src}) center/cover, var(--lucid-surface)`,
+                      border: "1px solid var(--lucid-line)",
                     }}
                   />
                 ))}
@@ -187,9 +187,9 @@ export default function TradeDetailPage() {
           {/* Quick stats card */}
           <div
             className="rounded-xl p-4"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+            style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}
           >
-            <p className="text-xs font-semibold uppercase mb-3" style={{ color: "#64748B", letterSpacing: "0.08em" }}>
+            <p className="text-xs font-semibold uppercase mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
               Quick Stats
             </p>
             {[
@@ -204,10 +204,10 @@ export default function TradeDetailPage() {
               <div
                 key={label as string}
                 className="flex items-center justify-between py-1.5"
-                style={{ borderBottom: "1px solid rgba(148,163,184,0.05)", fontSize: 13 }}
+                style={{ borderBottom: "1px solid var(--lucid-line)", fontSize: 13 }}
               >
-                <span style={{ color: "#64748B" }}>{label}</span>
-                <span style={{ color: "#94A3B8", fontVariantNumeric: "tabular-nums" }}>{value as string}</span>
+                <span style={{ color: "var(--lucid-ink-3)" }}>{label}</span>
+                <span style={{ color: "var(--lucid-ink-2)", fontVariantNumeric: "tabular-nums" }}>{value as string}</span>
               </div>
             ))}
           </div>

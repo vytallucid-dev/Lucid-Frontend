@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { Info } from "lucide-react";
+import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 
 const PAIR_KEYS = ["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY"] as const;
 type PairKey = (typeof PAIR_KEYS)[number];
@@ -36,22 +37,22 @@ const pairOptions: { key: PairKey; label: string }[] = [
 /* ─── Shared pills ─── */
 
 function ScorePill({ score }: { score: number }) {
-  const color = score > 0 ? "#10B981" : score < 0 ? "#EF4444" : "#64748B";
+  const color = score > 0 ? "var(--lucid-pos)" : score < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
   const bg =
     score > 0
-      ? "rgba(16, 185, 129, 0.15)"
+      ? "var(--lucid-pos-bg)"
       : score < 0
-        ? "rgba(239, 68, 68, 0.15)"
-        : "rgba(100, 116, 139, 0.15)";
+        ? "var(--lucid-neg-bg)"
+        : "var(--lucid-surface-3)";
   const border =
     score > 0
-      ? "rgba(16, 185, 129, 0.3)"
+      ? "var(--lucid-pos-bd)"
       : score < 0
-        ? "rgba(239, 68, 68, 0.3)"
-        : "rgba(100, 116, 139, 0.2)";
+        ? "var(--lucid-neg-bd)"
+        : "var(--lucid-line)";
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold lt-num"
       style={{ background: bg, color, border: `1px solid ${border}` }}
     >
       {score > 0 ? `+${score}` : score}
@@ -61,10 +62,10 @@ function ScorePill({ score }: { score: number }) {
 
 function ResultBadge({ result }: { result: FxResult }) {
   const styles: Record<FxResult, { bg: string; color: string; border: string; label: string }> = {
-    BEAT: { bg: "rgba(16,185,129,0.15)", color: "#10B981", border: "rgba(16,185,129,0.3)", label: "BEAT" },
-    MISS: { bg: "rgba(239,68,68,0.10)", color: "#EF4444", border: "rgba(239,68,68,0.25)", label: "MISS" },
-    MET: { bg: "rgba(100,116,139,0.12)", color: "#64748B", border: "rgba(100,116,139,0.2)", label: "MET" },
-    "N/A": { bg: "transparent", color: "#334155", border: "rgba(255,255,255,0.04)", label: "—" },
+    BEAT: { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)", label: "BEAT" },
+    MISS: { bg: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)", label: "MISS" },
+    MET: { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "var(--lucid-line)", label: "MET" },
+    "N/A": { bg: "transparent", color: "var(--lucid-ink-3)", border: "var(--lucid-line)", label: "—" },
   };
   const s = styles[result];
   return (
@@ -95,71 +96,70 @@ function IndicatorInfo({
       <Info
         size={13}
         className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help"
-        style={{ color: "#64748B" }}
+        style={{ color: "var(--lucid-ink-3)" }}
       />
       <div
         className="absolute z-50 left-5 top-1/2 -translate-y-1/2 p-3 rounded-lg text-xs shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
         style={{
-          background: "rgba(10, 22, 40, 0.97)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(16px)",
+          background: "var(--lucid-surface-2)",
+          border: "1px solid var(--lucid-line-2)",
           minWidth: 320,
         }}
       >
-        <p className="font-semibold mb-2" style={{ color: "#F1F5F9" }}>
+        <p className="font-semibold mb-2" style={{ color: "var(--lucid-ink)" }}>
           {ind.name}
         </p>
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
-            <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currAName}</span>
+            <span className="w-8 font-semibold" style={{ color: "var(--lucid-ink-2)" }}>{currAName}</span>
             {aInsufficient ? (
-              <span style={{ color: "#334155" }}>No data</span>
+              <span style={{ color: "var(--lucid-ink-3)" }}>No data</span>
             ) : (
               <>
-                <span style={{ color: "#64748B" }}>Actual: {ind.currA.actual ?? "—"}</span>
+                <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Actual: {ind.currA.actual ?? "—"}</span>
                 {ind.currA.forecast != null && (
-                  <span style={{ color: "#64748B" }}>Forecast: {ind.currA.forecast}</span>
+                  <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Forecast: {ind.currA.forecast}</span>
                 )}
                 {ind.currA.surprise != null && (
-                  <span style={{ color: "#64748B" }}>Surprise: {ind.currA.surprise}</span>
+                  <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Surprise: {ind.currA.surprise}</span>
                 )}
-                <span style={{ color: "#94A3B8" }}>→</span>
+                <span style={{ color: "var(--lucid-ink-2)" }}>→</span>
                 <ResultBadge result={ind.currA.result} />
               </>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-8 font-semibold" style={{ color: "#94A3B8" }}>{currBName}</span>
+            <span className="w-8 font-semibold" style={{ color: "var(--lucid-ink-2)" }}>{currBName}</span>
             {bInsufficient ? (
-              <span style={{ color: "#334155" }}>No data</span>
+              <span style={{ color: "var(--lucid-ink-3)" }}>No data</span>
             ) : (
               <>
-                <span style={{ color: "#64748B" }}>Actual: {ind.currB.actual ?? "—"}</span>
+                <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Actual: {ind.currB.actual ?? "—"}</span>
                 {ind.currB.forecast != null && (
-                  <span style={{ color: "#64748B" }}>Forecast: {ind.currB.forecast}</span>
+                  <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Forecast: {ind.currB.forecast}</span>
                 )}
                 {ind.currB.surprise != null && (
-                  <span style={{ color: "#64748B" }}>Surprise: {ind.currB.surprise}</span>
+                  <span className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>Surprise: {ind.currB.surprise}</span>
                 )}
-                <span style={{ color: "#94A3B8" }}>→</span>
+                <span style={{ color: "var(--lucid-ink-2)" }}>→</span>
                 <ResultBadge result={ind.currB.result} />
               </>
             )}
           </div>
         </div>
-        <div className="mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <span style={{ color: "#64748B" }}>
+        <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--lucid-line)" }}>
+          <span style={{ color: "var(--lucid-ink-3)" }}>
             Pair Score:{" "}
           </span>
           {ind.pairScore !== null ? (
             <span
-              className="font-semibold tabular-nums"
-              style={{ color: ind.pairScore > 0 ? "#10B981" : ind.pairScore < 0 ? "#EF4444" : "#64748B" }}
+              className="font-semibold lt-num"
+              style={{ color: ind.pairScore > 0 ? "var(--lucid-pos)" : ind.pairScore < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}
             >
               {ind.pairScore > 0 ? `+${ind.pairScore}` : ind.pairScore}
             </span>
           ) : (
-            <span style={{ color: "#334155" }}>Excluded</span>
+            <span style={{ color: "var(--lucid-ink-3)" }}>Excluded</span>
           )}
         </div>
       </div>
@@ -173,7 +173,7 @@ function SideCell({ side }: { side: PublicFxIndicatorRow["currA"] }) {
   if (side.outcome === "insufficient_data") {
     return (
       <div className="flex flex-col items-center gap-1">
-        <span className="text-[10px]" style={{ color: "#334155" }}>—</span>
+        <span className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>—</span>
       </div>
     );
   }
@@ -181,7 +181,7 @@ function SideCell({ side }: { side: PublicFxIndicatorRow["currA"] }) {
     <div className="flex flex-col items-center gap-1">
       <ResultBadge result={side.result} />
       {side.result !== "N/A" && (
-        <span className="text-[10px] tabular-nums" style={{ color: "#64748B" }}>
+        <span className="text-[10px] lt-num" style={{ color: "var(--lucid-ink-3)" }}>
           {side.actual ?? "—"}
         </span>
       )}
@@ -215,13 +215,13 @@ function CategoryCard({
   const subtotalBias = getBias(cat.subtotal);
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="lt-card lt-edge overflow-hidden">
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: `1px solid ${cat.color}33` }}
       >
-        <span className="label" style={{ color: cat.color }}>{cat.label}</span>
+        <span className="lt-eyebrow lt-serif" style={{ color: cat.color }}>{cat.label}</span>
         <div className="flex items-center gap-2">
           <ScorePill score={cat.subtotal} />
           <span
@@ -236,15 +236,15 @@ function CategoryCard({
       <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <th className="label text-left px-3 py-2" style={{ color: "#64748B" }}>INDICATOR</th>
-            <th className="label text-center px-3 py-2" style={{ color: "#64748B" }}>
+          <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+            <th className="lt-eyebrow text-left px-3 py-2" style={{ color: "var(--lucid-ink-3)" }}>INDICATOR</th>
+            <th className="lt-eyebrow text-center px-3 py-2" style={{ color: "var(--lucid-ink-3)" }}>
               {currAFlag} {currAName}
             </th>
-            <th className="label text-center px-3 py-2" style={{ color: "#64748B" }}>
+            <th className="lt-eyebrow text-center px-3 py-2" style={{ color: "var(--lucid-ink-3)" }}>
               {currBFlag} {currBName}
             </th>
-            <th className="label text-center px-3 py-2" style={{ color: "#64748B" }}>SCORE</th>
+            <th className="lt-eyebrow text-center px-3 py-2" style={{ color: "var(--lucid-ink-3)" }}>SCORE</th>
           </tr>
         </thead>
         <tbody>
@@ -252,12 +252,12 @@ function CategoryCard({
             <tr
               key={ind.name}
               className="relative transition-colors hover:bg-white/2"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
+              style={{ borderBottom: "1px solid var(--lucid-line)" }}
             >
               <td className="py-2.5 px-3">
                 <div className="flex items-center gap-1.5">
                   <IndicatorInfo ind={ind} currAName={currAName} currBName={currBName} />
-                  <span className="text-[13px] font-medium" style={{ color: "#F1F5F9" }}>
+                  <span className="text-[13px] font-medium" style={{ color: "var(--lucid-ink)" }}>
                     {ind.name}
                   </span>
                 </div>
@@ -272,7 +272,7 @@ function CategoryCard({
                 {ind.pairScore !== null ? (
                   <ScorePill score={ind.pairScore} />
                 ) : (
-                  <span className="text-[10px]" style={{ color: "#334155" }}>—</span>
+                  <span className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>—</span>
                 )}
               </td>
             </tr>
@@ -284,13 +284,13 @@ function CategoryCard({
       {/* Footer */}
       <div
         className="px-4 py-2.5 flex items-center gap-4 text-[10px] flex-wrap"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.04)", color: "#64748B" }}
+        style={{ borderTop: "1px solid var(--lucid-line)", color: "var(--lucid-ink-3)" }}
       >
         <span>
           Category Score:{" "}
           <span
             className="font-semibold"
-            style={{ color: cat.subtotal > 0 ? "#10B981" : cat.subtotal < 0 ? "#EF4444" : "#64748B" }}
+            style={{ color: cat.subtotal > 0 ? "var(--lucid-pos)" : cat.subtotal < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}
           >
             {subtotalBias}
           </span>
@@ -317,28 +317,28 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
   const cotB = pair.cotB;
 
   const renderChange = (val: string | undefined) => {
-    if (val == null) return <span style={{ color: "#334155" }}>—</span>;
+    if (val == null) return <span style={{ color: "var(--lucid-ink-3)" }}>—</span>;
     const isPos = val.startsWith("+");
     const isNeg = val.startsWith("-");
-    const color = isPos ? "#10B981" : isNeg ? "#EF4444" : "#64748B";
+    const color = isPos ? "var(--lucid-pos)" : isNeg ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
     return (
-      <span style={{ color }}>
+      <span className="lt-num" style={{ color }}>
         {val} {isPos ? "↑" : isNeg ? "↓" : ""}
       </span>
     );
   };
 
   const renderDirection = (dir: string | undefined) => {
-    if (dir == null) return <span style={{ color: "#334155" }}>—</span>;
+    if (dir == null) return <span style={{ color: "var(--lucid-ink-3)" }}>—</span>;
     const isBull = dir === "Bullish";
     const isBear = dir === "Bearish";
     return (
       <span
         className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold"
         style={{
-          background: isBull ? "rgba(16,185,129,0.15)" : isBear ? "rgba(239,68,68,0.15)" : "rgba(100,116,139,0.15)",
-          color: isBull ? "#10B981" : isBear ? "#EF4444" : "#64748B",
-          border: `1px solid ${isBull ? "rgba(16,185,129,0.3)" : isBear ? "rgba(239,68,68,0.3)" : "rgba(100,116,139,0.2)"}`,
+          background: isBull ? "var(--lucid-pos-bg)" : isBear ? "var(--lucid-neg-bg)" : "var(--lucid-surface-3)",
+          color: isBull ? "var(--lucid-pos)" : isBear ? "var(--lucid-neg)" : "var(--lucid-ink-3)",
+          border: `1px solid ${isBull ? "var(--lucid-pos-bd)" : isBear ? "var(--lucid-neg-bd)" : "var(--lucid-line)"}`,
         }}
       >
         {dir}
@@ -347,16 +347,16 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
   };
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="lt-card lt-edge overflow-hidden">
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: "1px solid rgba(130, 140, 248, 0.2)" }}
+        style={{ borderBottom: "1px solid var(--lucid-line)" }}
       >
-        <span className="label" style={{ color: "#818CF8" }}>COT REPORT</span>
+        <span className="lt-eyebrow lt-serif" style={{ color: "var(--lucid-ink-2)" }}>COT REPORT</span>
         <div className="flex items-center gap-2">
           {cotScore !== null ? <ScorePill score={cotScore} /> : (
-            <span className="text-[11px]" style={{ color: "#334155" }}>—</span>
+            <span className="text-[11px]" style={{ color: "var(--lucid-ink-3)" }}>—</span>
           )}
           {cotBias && (
             <span
@@ -372,46 +372,46 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
       <div className="px-4 py-4 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <th className="label text-left py-2 pr-3" style={{ color: "#64748B" }} />
-              <th className="label text-center py-2 px-3" style={{ color: "#64748B" }}>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+              <th className="lt-eyebrow text-left py-2 pr-3" style={{ color: "var(--lucid-ink-3)" }} />
+              <th className="lt-eyebrow text-center py-2 px-3" style={{ color: "var(--lucid-ink-3)" }}>
                 {pair.currAFlag} {pair.currAName}
               </th>
-              <th className="label text-center py-2 px-3" style={{ color: "#64748B" }}>
+              <th className="lt-eyebrow text-center py-2 px-3" style={{ color: "var(--lucid-ink-3)" }}>
                 {pair.currBFlag} {pair.currBName}
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td className="py-2 pr-3 text-[12px]" style={{ color: "#94A3B8" }}>Long %</td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold" style={{ color: "#10B981" }}>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+              <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--lucid-ink-2)" }}>Long %</td>
+              <td className="py-2 px-3 text-center lt-num font-semibold" style={{ color: "var(--lucid-pos)" }}>
                 {cotA?.longPct ?? "—"}
               </td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold" style={{ color: "#10B981" }}>
+              <td className="py-2 px-3 text-center lt-num font-semibold" style={{ color: "var(--lucid-pos)" }}>
                 {cotB?.longPct ?? "—"}
               </td>
             </tr>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td className="py-2 pr-3 text-[12px]" style={{ color: "#94A3B8" }}>Short %</td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold" style={{ color: "#EF4444" }}>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+              <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--lucid-ink-2)" }}>Short %</td>
+              <td className="py-2 px-3 text-center lt-num font-semibold" style={{ color: "var(--lucid-neg)" }}>
                 {cotA?.shortPct ?? "—"}
               </td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold" style={{ color: "#EF4444" }}>
+              <td className="py-2 px-3 text-center lt-num font-semibold" style={{ color: "var(--lucid-neg)" }}>
                 {cotB?.shortPct ?? "—"}
               </td>
             </tr>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td className="py-2 pr-3 text-[12px]" style={{ color: "#94A3B8" }}>Change %</td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold">
+            <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+              <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--lucid-ink-2)" }}>Change %</td>
+              <td className="py-2 px-3 text-center lt-num font-semibold">
                 {renderChange(cotA?.changePct)}
               </td>
-              <td className="py-2 px-3 text-center tabular-nums font-semibold">
+              <td className="py-2 px-3 text-center lt-num font-semibold">
                 {renderChange(cotB?.changePct)}
               </td>
             </tr>
             <tr>
-              <td className="py-2 pr-3 text-[12px]" style={{ color: "#94A3B8" }}>Direction</td>
+              <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--lucid-ink-2)" }}>Direction</td>
               <td className="py-2 px-3 text-center">
                 {renderDirection(cotA?.direction)}
               </td>
@@ -426,20 +426,20 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
       {/* Footer */}
       <div
         className="px-4 py-2.5 flex flex-wrap items-center justify-between gap-1 text-[10px]"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.04)", color: "#64748B" }}
+        style={{ borderTop: "1px solid var(--lucid-line)", color: "var(--lucid-ink-3)" }}
       >
         <span>Pair Rule: Change % A vs B head-to-head only</span>
         <span
-          className="font-semibold tabular-nums"
+          className="font-semibold lt-num"
           style={{
             color:
               cotScore === null
-                ? "#334155"
+                ? "var(--lucid-ink-3)"
                 : cotScore > 0
-                  ? "#10B981"
+                  ? "var(--lucid-pos)"
                   : cotScore < 0
-                    ? "#EF4444"
-                    : "#64748B",
+                    ? "var(--lucid-neg)"
+                    : "var(--lucid-ink-3)",
           }}
         >
           Pair COT Score:{" "}
@@ -451,7 +451,7 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
       {pair.cotNote && (
         <div
           className="px-4 py-2 text-[9px]"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.03)", color: "#334155" }}
+          style={{ borderTop: "1px solid var(--lucid-line)", color: "var(--lucid-ink-3)" }}
         >
           {pair.cotNote}
         </div>
@@ -465,6 +465,7 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
 export default function FxScorecardPage() {
   const [selectedKey, setSelectedKey] = useState<PairKey>("EURUSD");
   const { data: pair, isLoading, error, refetch } = useFxPair(selectedKey);
+  const { openScoreTrend } = useOracleTools();
 
   return (
     <div className="p-4 sm:p-6">
@@ -476,12 +477,11 @@ export default function FxScorecardPage() {
             <button
               key={opt.key}
               onClick={() => setSelectedKey(opt.key)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              className="lt-serif flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
               style={{
-                background: active ? "rgba(59, 130, 246, 0.15)" : "rgba(255,255,255,0.03)",
-                color: active ? "#F1F5F9" : "#64748B",
-                border: active ? "1px solid rgba(59, 130, 246, 0.3)" : "1px solid rgba(255,255,255,0.06)",
-                boxShadow: active ? "0 0 16px rgba(59, 130, 246, 0.1)" : "none",
+                background: active ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
+                color: active ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
+                border: active ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
               }}
             >
               {opt.label}
@@ -501,29 +501,29 @@ export default function FxScorecardPage() {
         /* ── Deferred state ─────────────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div
-            className="glass-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
-            style={{ borderColor: "rgba(100, 116, 139, 0.25)" }}
+            className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
+            style={{ borderColor: "var(--lucid-line-2)" }}
           >
             <span className="text-4xl">
               {pair.currAFlag} {pair.currBFlag}
             </span>
             <div>
-              <p className="text-base font-semibold mb-1" style={{ color: "#94A3B8" }}>
+              <p className="lt-serif text-base font-semibold mb-1" style={{ color: "var(--lucid-ink-2)" }}>
                 {pair.label}
               </p>
               <span
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                 style={{
-                  background: "rgba(100, 116, 139, 0.15)",
-                  color: "#64748B",
-                  border: "1px solid rgba(100, 116, 139, 0.3)",
+                  background: "var(--lucid-surface-3)",
+                  color: "var(--lucid-ink-3)",
+                  border: "1px solid var(--lucid-line)",
                 }}
               >
                 Scoring deferred
               </span>
             </div>
             {pair.reason && (
-              <p className="text-sm leading-relaxed max-w-sm" style={{ color: "#64748B" }}>
+              <p className="text-sm leading-relaxed max-w-sm" style={{ color: "var(--lucid-ink-3)" }}>
                 {pair.reason}
               </p>
             )}
@@ -533,32 +533,32 @@ export default function FxScorecardPage() {
         /* ── Insufficient data state ─────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div
-            className="glass-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
+            className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
             style={{
-              borderColor: "rgba(245, 158, 11, 0.25)",
-              background: "rgba(245, 158, 11, 0.03)",
+              borderColor: "var(--lucid-warn-bd)",
+              background: "var(--lucid-warn-bg)",
             }}
           >
             <span className="text-4xl">
               {pair.currAFlag} {pair.currBFlag}
             </span>
             <div>
-              <p className="text-base font-semibold mb-1" style={{ color: "#94A3B8" }}>
+              <p className="lt-serif text-base font-semibold mb-1" style={{ color: "var(--lucid-ink-2)" }}>
                 {pair.label}
               </p>
               <span
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                 style={{
-                  background: "rgba(245, 158, 11, 0.15)",
-                  color: "#F59E0B",
-                  border: "1px solid rgba(245, 158, 11, 0.3)",
+                  background: "var(--lucid-warn-bg)",
+                  color: "var(--lucid-warn)",
+                  border: "1px solid var(--lucid-warn-bd)",
                 }}
               >
                 Data unavailable
               </span>
             </div>
             {pair.reason && (
-              <p className="text-sm leading-relaxed max-w-sm" style={{ color: "#64748B" }}>
+              <p className="text-sm leading-relaxed max-w-sm" style={{ color: "var(--lucid-ink-3)" }}>
                 {pair.reason}
               </p>
             )}
@@ -570,7 +570,11 @@ export default function FxScorecardPage() {
           {/* LEFT PANEL */}
           <div className="w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
             {/* Score & Bias */}
-            <div className="glass-card p-5 text-center">
+            <button
+              onClick={() => openScoreTrend(pair.key)}
+              className="lt-card p-5 text-center w-full transition-opacity hover:opacity-90 cursor-pointer"
+              title="Open Score Trend"
+            >
               {pair.totalScore !== null && <ScoreGauge score={pair.totalScore} />}
               <div className="mb-2 -mt-1">
                 {pair.bias && (
@@ -581,74 +585,74 @@ export default function FxScorecardPage() {
                   </span>
                 )}
               </div>
-              <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>
+              <p className="lt-serif text-sm font-medium" style={{ color: "var(--lucid-ink-2)" }}>
                 {pair.currAFlag} {pair.currAName} / {pair.currBName} {pair.currBFlag}
               </p>
-            </div>
+            </button>
 
             {/* Score breakdown */}
-            <div className="glass-card p-4">
+            <div className="lt-card p-4">
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs" style={{ color: "#64748B" }}>COT Score</span>
+                <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>COT Score</span>
                 {pair.cotScore !== null ? (
                   <ScorePill score={pair.cotScore} />
                 ) : (
-                  <span className="text-xs" style={{ color: "#334155" }}>—</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>—</span>
                 )}
               </div>
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs" style={{ color: "#64748B" }}>Fundamentals</span>
+                <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>Fundamentals</span>
                 {pair.fundamentals !== null ? (
                   <ScorePill score={pair.fundamentals} />
                 ) : (
-                  <span className="text-xs" style={{ color: "#334155" }}>—</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>—</span>
                 )}
               </div>
-              <div className="my-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+              <div className="my-2" style={{ borderTop: "1px solid var(--lucid-line)" }} />
               <div className="flex items-center justify-between py-1">
-                <span className="text-xs font-semibold" style={{ color: "#94A3B8" }}>Total Score</span>
+                <span className="text-xs font-semibold" style={{ color: "var(--lucid-ink-2)" }}>Total Score</span>
                 {pair.totalScore !== null ? (
                   <span
-                    className="text-lg font-bold tabular-nums"
+                    className="text-lg font-bold lt-num"
                     style={{ color: getScoreColor(pair.totalScore) }}
                   >
                     {pair.totalScore > 0 ? `+${pair.totalScore}` : pair.totalScore}
                   </span>
                 ) : (
-                  <span className="text-xs" style={{ color: "#334155" }}>—</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>—</span>
                 )}
               </div>
             </div>
 
             {/* COT detail (left-panel mini) */}
-            <div className="glass-card p-4">
-              <p className="label mb-3" style={{ color: "#64748B" }}>
+            <div className="lt-card p-4">
+              <p className="lt-eyebrow mb-3" style={{ color: "var(--lucid-ink-3)" }}>
                 INSTITUTIONAL ACTIVITY (COT)
               </p>
               <table className="w-full text-[11px]">
                 <thead>
                   <tr>
                     <th />
-                    <th className="text-center pb-1 font-semibold" style={{ color: "#94A3B8" }}>
+                    <th className="text-center pb-1 font-semibold" style={{ color: "var(--lucid-ink-2)" }}>
                       {pair.currAName}
                     </th>
-                    <th className="text-center pb-1 font-semibold" style={{ color: "#94A3B8" }}>
+                    <th className="text-center pb-1 font-semibold" style={{ color: "var(--lucid-ink-2)" }}>
                       {pair.currBName}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="py-1" style={{ color: "#64748B" }}>Change %</td>
-                    <td className="py-1 text-center tabular-nums font-semibold" style={{
-                      color: pair.cotA?.changePct.startsWith("+") ? "#10B981" : pair.cotA?.changePct.startsWith("-") ? "#EF4444" : "#64748B",
+                    <td className="py-1" style={{ color: "var(--lucid-ink-3)" }}>Change %</td>
+                    <td className="py-1 text-center lt-num font-semibold" style={{
+                      color: pair.cotA?.changePct.startsWith("+") ? "var(--lucid-pos)" : pair.cotA?.changePct.startsWith("-") ? "var(--lucid-neg)" : "var(--lucid-ink-3)",
                     }}>
                       {pair.cotA
                         ? `${pair.cotA.changePct} ${pair.cotA.changePct.startsWith("+") ? "↑" : pair.cotA.changePct.startsWith("-") ? "↓" : ""}`
                         : "—"}
                     </td>
-                    <td className="py-1 text-center tabular-nums font-semibold" style={{
-                      color: pair.cotB?.changePct.startsWith("+") ? "#10B981" : pair.cotB?.changePct.startsWith("-") ? "#EF4444" : "#64748B",
+                    <td className="py-1 text-center lt-num font-semibold" style={{
+                      color: pair.cotB?.changePct.startsWith("+") ? "var(--lucid-pos)" : pair.cotB?.changePct.startsWith("-") ? "var(--lucid-neg)" : "var(--lucid-ink-3)",
                     }}>
                       {pair.cotB
                         ? `${pair.cotB.changePct} ${pair.cotB.changePct.startsWith("+") ? "↑" : pair.cotB.changePct.startsWith("-") ? "↓" : ""}`
@@ -656,51 +660,51 @@ export default function FxScorecardPage() {
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-1" style={{ color: "#64748B" }}>Direction</td>
+                    <td className="py-1" style={{ color: "var(--lucid-ink-3)" }}>Direction</td>
                     <td className="py-1 text-center font-semibold" style={{
-                      color: pair.cotA?.direction === "Bullish" ? "#10B981" : pair.cotA?.direction === "Bearish" ? "#EF4444" : "#64748B",
+                      color: pair.cotA?.direction === "Bullish" ? "var(--lucid-pos)" : pair.cotA?.direction === "Bearish" ? "var(--lucid-neg)" : "var(--lucid-ink-3)",
                     }}>
                       {pair.cotA?.direction ?? "—"}
                     </td>
                     <td className="py-1 text-center font-semibold" style={{
-                      color: pair.cotB?.direction === "Bullish" ? "#10B981" : pair.cotB?.direction === "Bearish" ? "#EF4444" : "#64748B",
+                      color: pair.cotB?.direction === "Bullish" ? "var(--lucid-pos)" : pair.cotB?.direction === "Bearish" ? "var(--lucid-neg)" : "var(--lucid-ink-3)",
                     }}>
                       {pair.cotB?.direction ?? "—"}
                     </td>
                   </tr>
                 </tbody>
               </table>
-              <div className="my-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+              <div className="my-2" style={{ borderTop: "1px solid var(--lucid-line)" }} />
               <div className="flex items-center justify-between">
-                <span className="text-[10px]" style={{ color: "#64748B" }}>Pair COT Score</span>
-                <span className="text-xs font-bold tabular-nums" style={{
+                <span className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>Pair COT Score</span>
+                <span className="text-xs font-bold lt-num" style={{
                   color:
                     pair.cotScore === null
-                      ? "#334155"
+                      ? "var(--lucid-ink-3)"
                       : pair.cotScore > 0
-                        ? "#10B981"
+                        ? "var(--lucid-pos)"
                         : pair.cotScore < 0
-                          ? "#EF4444"
-                          : "#64748B",
+                          ? "var(--lucid-neg)"
+                          : "var(--lucid-ink-3)",
                 }}>
                   {pair.cotScore === null ? "—" : pair.cotScore > 0 ? `+${pair.cotScore}` : pair.cotScore}
                 </span>
               </div>
               {pair.cotNote && (
-                <p className="text-[9px] mt-2" style={{ color: "#334155" }}>{pair.cotNote}</p>
+                <p className="text-[9px] mt-2" style={{ color: "var(--lucid-ink-3)" }}>{pair.cotNote}</p>
               )}
             </div>
 
             {/* Score History */}
             {pair.scoreHistory !== null && pair.scoreHistory.length > 0 && (
-              <div className="glass-card p-4">
-                <p className="label mb-3" style={{ color: "#64748B" }}>SCORE HISTORY (12 WEEKS)</p>
+              <div className="lt-card p-4">
+                <p className="lt-eyebrow mb-3" style={{ color: "var(--lucid-ink-3)" }}>SCORE HISTORY (12 WEEKS)</p>
                 <ScoreHistoryChart data={pair.scoreHistory} />
               </div>
             )}
 
             {/* Last updated */}
-            <p className="text-[10px] text-center" style={{ color: "#334155" }}>
+            <p className="text-[10px] text-center" style={{ color: "var(--lucid-ink-3)" }}>
               Last updated: {formatUpdated(pair.lastUpdated)}
             </p>
           </div>
@@ -722,19 +726,24 @@ export default function FxScorecardPage() {
               />
             ))}
 
+            {/* Per-indicator drilldown flag note */}
+            <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+              Per-indicator history drilldown pending a backend indicator-code field.
+            </p>
+
             {/* Lucid Outlook placeholder */}
             <div
-              className="glass-card p-4 sm:p-6"
+              className="lt-card p-4 sm:p-6"
               style={{
-                borderColor: "rgba(59, 130, 246, 0.3)",
-                boxShadow: "0 0 24px rgba(59, 130, 246, 0.1)",
+                background: "var(--lucid-accent-bg)",
+                borderColor: "var(--lucid-accent-bd)",
               }}
             >
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">🤖</span>
-                <span className="label" style={{ color: "#60A5FA" }}>LUCID OUTLOOK</span>
+                <span className="lt-eyebrow lt-serif" style={{ color: "var(--lucid-accent)" }}>LUCID OUTLOOK</span>
               </div>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: "#64748B" }}>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--lucid-ink-3)" }}>
                 AI-powered qualitative macro analysis for this asset — Fed commentary,
                 geopolitical developments, rate trajectory signals, and global risk
                 factors interpreted through your trading lens.
@@ -742,10 +751,9 @@ export default function FxScorecardPage() {
               <span
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
                 style={{
-                  background: "rgba(59, 130, 246, 0.12)",
-                  color: "#60A5FA",
-                  border: "1px solid rgba(59, 130, 246, 0.25)",
-                  boxShadow: "0 0 16px rgba(59, 130, 246, 0.1)",
+                  background: "var(--lucid-accent-bg)",
+                  color: "var(--lucid-accent)",
+                  border: "1px solid var(--lucid-accent-bd)",
                 }}
               >
                 ⚡ Coming in Phase 4

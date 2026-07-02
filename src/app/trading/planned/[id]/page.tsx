@@ -22,17 +22,17 @@ import {
 
 function kv(label: string, value: React.ReactNode) {
   return (
-    <div className="flex items-center justify-between py-2.5" style={{ borderBottom: "1px solid rgba(148,163,184,0.06)" }}>
-      <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
-      <span style={{ fontSize: 13, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>{value}</span>
+    <div className="flex items-center justify-between py-2.5" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+      <span style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{label}</span>
+      <span className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink)", fontVariantNumeric: "tabular-nums" }}>{value}</span>
     </div>
   );
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl p-4 sm:p-5" style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}>
-      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B", letterSpacing: "0.08em" }}>
+    <div className="lt-card rounded-xl p-4 sm:p-5" style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}>
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
         {title}
       </p>
       {children}
@@ -66,7 +66,7 @@ export default function PlannedDetailPage() {
   if (!trade) {
     return (
       <DetailPageLayout backHref="/trading/planned" backLabel="Planned" title="Planned trade not found">
-        <div className="py-16 text-center" style={{ color: "#64748B", fontSize: 14 }}>
+        <div className="py-16 text-center" style={{ color: "var(--lucid-ink-3)", fontSize: 14 }}>
           This planned trade could not be found. It may have been deleted or converted.
         </div>
       </DetailPageLayout>
@@ -105,14 +105,14 @@ export default function PlannedDetailPage() {
       <button
         onClick={() => setEditOpen(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-        style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+        style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
       >
         <Pencil size={14} /> Edit
       </button>
       <button
         onClick={() => setConfirmDelete(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-        style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+        style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
       >
         <Trash2 size={14} /> Delete
       </button>
@@ -129,9 +129,9 @@ export default function PlannedDetailPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {config && <span style={{ fontSize: 22 }}>{config.flag_a}{config.flag_b}</span>}
-        <h2 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>{config?.display_name ?? trade.pair}</h2>
+        <h2 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>{config?.display_name ?? trade.pair}</h2>
         <ModelPill model={trade.model} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: trade.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+        <span className="lt-num" style={{ fontSize: 14, fontWeight: 600, color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
           {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
         </span>
         <StatusPill status={trade.status} />
@@ -144,14 +144,14 @@ export default function PlannedDetailPage() {
           {kv("Stop Loss", trade.planned_sl)}
           {trade.planned_first_tp != null && kv("First TP", trade.planned_first_tp)}
           {kv("Main TP", trade.planned_main_tp)}
-          {kv("R:R Plan", <span style={{ color: rr >= 2 ? "#10B981" : "#E2E8F0", fontWeight: 600 }}>{rr.toFixed(2)}R</span>)}
+          {kv("R:R Plan", <span style={{ color: rr >= 2 ? "var(--lucid-pos)" : "var(--lucid-ink)", fontWeight: 600 }}>{rr.toFixed(2)}R</span>)}
           {kv("Planned Risk", `${trade.planned_risk_pct}%`)}
         </Card>
 
         <Card title="Distance to Entry">
           <div className="mb-3">
             <DistanceBadge trade={trade} large />
-            <p style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>
+            <p className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginTop: 6 }}>
               Current {trade.current_market_price} · Planned {trade.planned_entry} · {dist.direction === "at" ? "at entry" : `${dist.pips} pips ${dist.direction}`}
             </p>
           </div>
@@ -162,7 +162,7 @@ export default function PlannedDetailPage() {
       {trade.notes && (
         <div className="mt-5">
           <Card title="Notes">
-            <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.notes}</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.notes}</p>
           </Card>
         </div>
       )}
@@ -179,7 +179,7 @@ export default function PlannedDetailPage() {
           <button
             onClick={() => setConvertOpen(true)}
             className="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-            style={{ background: "rgba(59,130,246,0.9)", color: "#fff" }}
+            style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
           >
             Convert to Live Trade
           </button>
@@ -188,7 +188,7 @@ export default function PlannedDetailPage() {
           <button
             onClick={() => updateStatus("Invalidated")}
             className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-            style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+            style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
           >
             Mark Invalidated
           </button>

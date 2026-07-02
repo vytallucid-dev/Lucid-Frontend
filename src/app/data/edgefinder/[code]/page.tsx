@@ -56,16 +56,16 @@ function getEfLogJobName(code: string, dataSource: string, frequency: string) {
 
 function StatusBadge({ status }: { status: FetchLog["status"] }) {
   const config = {
-    success: { color: "#10B981", Icon: CheckCircle2, label: "Success" },
-    partial: { color: "#F59E0B", Icon: AlertCircle, label: "Partial" },
-    failed: { color: "#EF4444", Icon: XCircle, label: "Failed" },
-    running: { color: "#3B82F6", Icon: Loader2, label: "Running" },
+    success: { color: "var(--lucid-pos)", Icon: CheckCircle2, label: "Success" },
+    partial: { color: "var(--lucid-warn)", Icon: AlertCircle, label: "Partial" },
+    failed: { color: "var(--lucid-neg)", Icon: XCircle, label: "Failed" },
+    running: { color: "var(--lucid-accent)", Icon: Loader2, label: "Running" },
   }[status];
 
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-      style={{ background: `${config.color}14`, color: config.color, border: `1px solid ${config.color}28` }}
+      style={{ background: `color-mix(in srgb, ${config.color} 14%, transparent)`, color: config.color, border: `1px solid color-mix(in srgb, ${config.color} 28%, transparent)` }}
     >
       <config.Icon size={10} className={status === "running" ? "animate-spin" : ""} />
       {config.label}
@@ -86,19 +86,19 @@ function ResultBanner({
     <div
       className="flex items-start gap-3 rounded-xl px-4 py-3"
       style={{
-        background: success ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
-        border: `1px solid ${success ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+        background: success ? "var(--lucid-pos-bg)" : "var(--lucid-neg-bg)",
+        border: `1px solid ${success ? "var(--lucid-pos-bd)" : "var(--lucid-neg-bd)"}`,
       }}
     >
       {success ? (
-        <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: "#10B981" }} />
+        <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-pos)" }} />
       ) : (
-        <XCircle size={16} className="mt-0.5 shrink-0" style={{ color: "#EF4444" }} />
+        <XCircle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-neg)" }} />
       )}
-      <p className="text-sm flex-1" style={{ color: success ? "#6EE7B7" : "#FCA5A5" }}>
+      <p className="text-sm flex-1" style={{ color: success ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
         {message}
       </p>
-      <button onClick={onDismiss} className="text-sm" style={{ color: "#475569" }}>
+      <button onClick={onDismiss} className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
         ✕
       </button>
     </div>
@@ -118,7 +118,7 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#6EE7B7" }}
+        style={{ background: "var(--lucid-pos-bg)", border: "1px solid var(--lucid-pos-bd)", color: "var(--lucid-pos)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -128,7 +128,7 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -137,7 +137,7 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(16,185,129,0.3)" : "#10B981", color: "#000" }}
+        style={{ background: mutation.isPending ? "var(--lucid-pos-bg)" : "var(--lucid-pos)", color: "#000" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Fetching...</>
@@ -149,11 +149,11 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
       {/* Divider: the calendar fetch only covers the current week, so allow a
           manual entry for backfilling a missed release or correcting a value. */}
       <div className="flex items-center gap-3 pt-1">
-        <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: "#475569" }}>
+        <div className="h-px flex-1" style={{ background: "var(--lucid-line-2)" }} />
+        <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: "var(--lucid-ink-3)" }}>
           or enter a value manually
         </span>
-        <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
+        <div className="h-px flex-1" style={{ background: "var(--lucid-line-2)" }} />
       </div>
 
       <ManualEntryForm
@@ -165,7 +165,7 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
         instructions={
           <div
             className="flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-xs"
-            style={{ background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#CBD5E1" }}
+            style={{ background: "var(--lucid-ctx-bg)", border: "1px solid var(--lucid-ctx-bd)", color: "var(--lucid-ctx)" }}
           >
             <div className="flex items-start gap-2">
               <Info size={14} className="mt-0.5 shrink-0" />
@@ -175,7 +175,7 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
                 looks wrong — your entry supersedes it and the prior value is kept as history.
               </span>
             </div>
-            <ul className="list-disc pl-7 space-y-0.5" style={{ color: "#94A3B8" }}>
+            <ul className="list-disc pl-7 space-y-0.5" style={{ color: "var(--lucid-ink-2)" }}>
               <li><strong>Date</strong> = the release&apos;s date as shown in Recent Data Points (or on the Forex Factory calendar). Match that exact date so an override lands on the same row.</li>
               <li>
                 Enter the number <strong>unit-stripped</strong>, exactly as it reads on Forex Factory
@@ -203,7 +203,7 @@ function CftcPanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#C4B5FD" }}
+        style={{ background: "var(--lucid-ctx-bg)", border: "1px solid var(--lucid-ctx-bd)", color: "var(--lucid-ctx)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -213,7 +213,7 @@ function CftcPanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -222,7 +222,7 @@ function CftcPanel({ onSuccess }: { onSuccess: (msg: string) => void }) {
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(139,92,246,0.3)" : "#8B5CF6", color: "#fff" }}
+        style={{ background: mutation.isPending ? "var(--lucid-ctx-bg)" : "var(--lucid-ctx)", color: "#fff" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Fetching...</>
@@ -258,7 +258,7 @@ function FredFetchPanel({
     <div className="flex flex-col gap-4">
       <div
         className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-        style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#93C5FD" }}
+        style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)", color: "var(--lucid-accent)" }}
       >
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>
@@ -272,22 +272,22 @@ function FredFetchPanel({
           { label: "Date To (optional)", value: dateTo, set: setDateTo },
         ].map(({ label, value, set }) => (
           <div key={label} className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>{label}</label>
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>{label}</label>
             <input
               type="date"
               value={value}
               onChange={(e) => set(e.target.value)}
               className="rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9", colorScheme: "dark" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)", colorScheme: "dark" }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
             />
           </div>
         ))}
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -296,7 +296,7 @@ function FredFetchPanel({
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
+        style={{ background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "#fff" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Fetching...</>
@@ -359,23 +359,23 @@ function ManualEntryForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-            Date <span style={{ color: "#EF4444" }}>*</span>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
+            Date <span style={{ color: "var(--lucid-neg)" }}>*</span>
           </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="rounded-lg px-3 py-2 text-sm outline-none"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9", colorScheme: "dark" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)", colorScheme: "dark" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
             {actualLabel}{" "}
-            <span style={{ color: "#EF4444" }}>*</span>
+            <span style={{ color: "var(--lucid-neg)" }}>*</span>
           </label>
           <input
             type="number"
@@ -383,10 +383,10 @@ function ManualEntryForm({
             placeholder={actualPlaceholder}
             value={actual}
             onChange={(e) => setActual(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm outline-none"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
           />
         </div>
       </div>
@@ -397,37 +397,37 @@ function ManualEntryForm({
           { label: "Previous (optional)", value: previous, set: setPrevious },
         ].map(({ label, value, set }) => (
           <div key={label} className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>{label}</label>
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>{label}</label>
             <input
               type="number"
               step="any"
               value={value}
               onChange={(e) => set(e.target.value)}
-              className="rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
             />
           </div>
         ))}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>Notes (optional)</label>
+        <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Notes (optional)</label>
         <textarea
           rows={2}
           placeholder="Source or context..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="rounded-lg px-3 py-2 text-sm outline-none resize-none"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9" }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+          style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
         />
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: "#EF4444" }}>
+        <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
           Error: {(mutation.error as Error).message}
         </p>
       )}
@@ -436,7 +436,7 @@ function ManualEntryForm({
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || !actual || !date}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-        style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
+        style={{ background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "#fff" }}
       >
         {mutation.isPending ? (
           <><Loader2 size={14} className="animate-spin" /> Submitting...</>
@@ -460,7 +460,7 @@ function ManualRatePanel({
   const instructions = isRateDecision ? (
     <div
       className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-      style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", color: "#FDBA74" }}
+      style={{ background: "var(--lucid-warn-bg)", border: "1px solid var(--lucid-warn-bd)", color: "var(--lucid-warn)" }}
     >
       <Info size={14} className="mt-0.5 shrink-0" />
       <span>
@@ -472,7 +472,7 @@ function ManualRatePanel({
   ) : (
     <div
       className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm"
-      style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#C4B5FD" }}
+      style={{ background: "var(--lucid-ctx-bg)", border: "1px solid var(--lucid-ctx-bd)", color: "var(--lucid-ctx)" }}
     >
       <Info size={14} className="mt-0.5 shrink-0" />
       <span>This indicator requires manual data entry. Fill in the observed value (and optionally forecast/previous).</span>
@@ -556,8 +556,8 @@ export default function EdgefinderIndicatorDetailPage() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle size={40} style={{ color: "#EF4444" }} />
-        <p className="text-lg font-medium" style={{ color: "#F1F5F9" }}>
+        <AlertCircle size={40} style={{ color: "var(--lucid-neg)" }} />
+        <p className="text-lg font-medium" style={{ color: "var(--lucid-ink)" }}>
           Admin access required
         </p>
       </div>
@@ -572,43 +572,43 @@ export default function EdgefinderIndicatorDetailPage() {
     .slice(0, 8);
   const logJobLabel =
     pipeline === "forex_factory" ? `${logJobName} + ${manualJobName}` : logJobName;
-  const sourceColor = DATA_SOURCE_COLORS[dataSource] ?? "#64748B";
+  const sourceColor = DATA_SOURCE_COLORS[dataSource] ?? "var(--lucid-ink-2)";
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm flex-wrap" style={{ color: "#475569" }}>
-        <Link href="/data" className="hover:text-[#94A3B8] transition-colors">Data</Link>
+      <div className="flex items-center gap-2 mb-6 text-sm flex-wrap" style={{ color: "var(--lucid-ink-3)" }}>
+        <Link href="/data" className="hover:text-(--lucid-ink-2) transition-colors">Data</Link>
         <ChevronRight size={14} />
-        <Link href="/data/edgefinder" className="hover:text-[#94A3B8] transition-colors">EdgeFinder</Link>
+        <Link href="/data/edgefinder" className="hover:text-(--lucid-ink-2) transition-colors">EdgeFinder</Link>
         <ChevronRight size={14} />
-        <span style={{ color: "#94A3B8" }}>{latestLoading ? code : (indicator?.name ?? code)}</span>
+        <span style={{ color: "var(--lucid-ink-2)" }}>{latestLoading ? code : (indicator?.name ?? code)}</span>
       </div>
 
       {/* Header */}
       <div className="mb-6 min-w-0">
         {latestLoading ? (
-          <div className="flex items-center gap-2" style={{ color: "#475569" }}>
+          <div className="flex items-center gap-2" style={{ color: "var(--lucid-ink-3)" }}>
             <Loader2 size={16} className="animate-spin" />
             <span className="text-sm">Loading...</span>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <h1 className="text-xl font-bold wrap-break-word" style={{ color: "#F1F5F9" }}>
+            <h1 className="lt-serif text-xl font-bold wrap-break-word" style={{ color: "var(--lucid-ink)" }}>
               {indicator?.name ?? code}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="rounded-lg px-2 py-0.5 text-xs font-mono" style={{ background: "rgba(255,255,255,0.05)", color: "#64748B" }}>
+              <span className="lt-num rounded-lg px-2 py-0.5 text-xs font-mono" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)" }}>
                 {code}
               </span>
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-                style={{ background: `${sourceColor}14`, color: sourceColor, border: `1px solid ${sourceColor}28` }}
+                style={{ background: `color-mix(in srgb, ${sourceColor} 14%, transparent)`, color: sourceColor, border: `1px solid color-mix(in srgb, ${sourceColor} 28%, transparent)` }}
               >
                 {DATA_SOURCE_LABELS[dataSource] ?? dataSource}
               </span>
               {frequency && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)" }}>
                   {FREQUENCY_LABELS[frequency] ?? frequency}
                 </span>
               )}
@@ -628,14 +628,13 @@ export default function EdgefinderIndicatorDetailPage() {
         {/* Pipeline panel */}
         <div className="lg:col-span-3">
           <div
-            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-            style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+            className="lt-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           >
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+              <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                 Data Pipeline
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+              <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
                 Trigger or submit data for this indicator
               </p>
             </div>
@@ -656,21 +655,20 @@ export default function EdgefinderIndicatorDetailPage() {
         {/* Recent data points / COT data */}
         <div className="lg:col-span-2">
           <div
-            className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-            style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+            className="lt-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+                <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   {pipeline === "cftc" ? "COT Data" : "Recent Data Points"}
                 </h2>
-                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
                   {pipeline === "cftc" ? "Last 12 COT weekly reports" : "Last 10 ingested values"}
                 </p>
               </div>
               <button
                 onClick={() => pipeline === "cftc" ? refetchCot() : refetchLatest()}
-                style={{ color: "#475569" }}
+                style={{ color: "var(--lucid-ink-3)" }}
                 title="Refresh"
               >
                 <RefreshCw size={14} />
@@ -681,59 +679,59 @@ export default function EdgefinderIndicatorDetailPage() {
               // ── COT data display ──────────────────────────────────────────
               cotLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 size={18} className="animate-spin" style={{ color: "#8B5CF6" }} />
+                  <Loader2 size={18} className="animate-spin" style={{ color: "var(--lucid-ctx)" }} />
                 </div>
               ) : !cotData?.data?.length ? (
-                <p className="text-sm text-center py-8" style={{ color: "#475569" }}>No COT data yet</p>
+                <p className="text-sm text-center py-8" style={{ color: "var(--lucid-ink-3)" }}>No COT data yet</p>
               ) : (
                 <div className="flex flex-col gap-1.5 overflow-auto" style={{ maxHeight: 360 }}>
                   {cotData.data.map((row: CotDataPoint, idx: number) => {
                     const netLabel = row.netPositioningLabel ?? "—";
-                    const netColor = netLabel === "Bullish" ? "#10B981" : netLabel === "Bearish" ? "#EF4444" : "#64748B";
+                    const netColor = netLabel === "Bullish" ? "var(--lucid-pos)" : netLabel === "Bearish" ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
                     return (
                       <div
                         key={row.id}
                         className="rounded-lg px-3 py-2.5"
                         style={{
-                          background: idx === 0 ? "rgba(139,92,246,0.07)" : "rgba(255,255,255,0.02)",
-                          border: idx === 0 ? "1px solid rgba(139,92,246,0.2)" : "1px solid rgba(255,255,255,0.04)",
+                          background: idx === 0 ? "var(--lucid-ctx-bg)" : "var(--lucid-surface-2)",
+                          border: idx === 0 ? "1px solid var(--lucid-ctx-bd)" : "1px solid var(--lucid-line)",
                         }}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-medium" style={{ color: "#94A3B8" }}>
+                          <span className="text-[10px] font-medium" style={{ color: "var(--lucid-ink-2)" }}>
                             {row.reportDate}
                             {idx === 0 && (
-                              <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "rgba(139,92,246,0.2)", color: "#C4B5FD" }}>latest</span>
+                              <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)" }}>latest</span>
                             )}
                           </span>
-                          <span className="text-[9px] font-semibold rounded-full px-1.5 py-0.5" style={{ background: `${netColor}14`, color: netColor }}>
+                          <span className="lt-num text-[9px] font-semibold rounded-full px-1.5 py-0.5" style={{ background: `color-mix(in srgb, ${netColor} 14%, transparent)`, color: netColor }}>
                             {netLabel}
                           </span>
                         </div>
                         <div className="flex gap-3">
                           <div>
-                            <p className="text-[9px]" style={{ color: "#475569" }}>Long</p>
-                            <p className="text-xs font-semibold" style={{ color: "#10B981" }}>
+                            <p className="text-[9px]" style={{ color: "var(--lucid-ink-3)" }}>Long</p>
+                            <p className="lt-num text-xs font-semibold" style={{ color: "var(--lucid-pos)" }}>
                               {row.longPct != null ? `${row.longPct.toFixed(1)}%` : "—"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[9px]" style={{ color: "#475569" }}>Short</p>
-                            <p className="text-xs font-semibold" style={{ color: "#EF4444" }}>
+                            <p className="text-[9px]" style={{ color: "var(--lucid-ink-3)" }}>Short</p>
+                            <p className="lt-num text-xs font-semibold" style={{ color: "var(--lucid-neg)" }}>
                               {row.shortPct != null ? `${row.shortPct.toFixed(1)}%` : "—"}
                             </p>
                           </div>
                           {row.weeklyChangePct != null && (
                             <div>
-                              <p className="text-[9px]" style={{ color: "#475569" }}>Wk Chg</p>
-                              <p className="text-xs" style={{ color: row.weeklyChangePct >= 0 ? "#10B981" : "#EF4444" }}>
+                              <p className="text-[9px]" style={{ color: "var(--lucid-ink-3)" }}>Wk Chg</p>
+                              <p className="lt-num text-xs" style={{ color: row.weeklyChangePct >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                                 {row.weeklyChangePct >= 0 ? "+" : ""}{row.weeklyChangePct.toFixed(1)}%
                               </p>
                             </div>
                           )}
                         </div>
                         {row.changeLabel && (
-                          <p className="text-[9px] mt-1" style={{ color: "#64748B" }}>{row.changeLabel}</p>
+                          <p className="text-[9px] mt-1" style={{ color: "var(--lucid-ink-2)" }}>{row.changeLabel}</p>
                         )}
                       </div>
                     );
@@ -744,10 +742,10 @@ export default function EdgefinderIndicatorDetailPage() {
               // ── Regular data_points display ───────────────────────────────
               latestLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 size={18} className="animate-spin" style={{ color: "#3B82F6" }} />
+                  <Loader2 size={18} className="animate-spin" style={{ color: "var(--lucid-accent)" }} />
                 </div>
               ) : dataPoints.length === 0 ? (
-                <p className="text-sm text-center py-8" style={{ color: "#475569" }}>No data points yet</p>
+                <p className="text-sm text-center py-8" style={{ color: "var(--lucid-ink-3)" }}>No data points yet</p>
               ) : (
                 <div className="flex flex-col gap-1.5 overflow-auto" style={{ maxHeight: 360 }}>
                   {dataPoints.map((dp, idx) => (
@@ -755,31 +753,31 @@ export default function EdgefinderIndicatorDetailPage() {
                       key={dp.id}
                       className="flex items-center justify-between rounded-lg px-3 py-2"
                       style={{
-                        background: idx === 0 ? "rgba(59,130,246,0.07)" : "rgba(255,255,255,0.02)",
-                        border: idx === 0 ? "1px solid rgba(59,130,246,0.15)" : "1px solid rgba(255,255,255,0.04)",
+                        background: idx === 0 ? "var(--lucid-accent-bg)" : "var(--lucid-surface-2)",
+                        border: idx === 0 ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
                       }}
                     >
                       <div>
-                        <p className="text-xs font-medium" style={{ color: "#F1F5F9" }}>
+                        <p className="lt-num text-xs font-medium" style={{ color: "var(--lucid-ink)" }}>
                           {dp.value}
                           {dp.forecastValue != null && (
-                            <span className="ml-1 text-[9px]" style={{ color: "#64748B" }}>
+                            <span className="ml-1 text-[9px]" style={{ color: "var(--lucid-ink-2)" }}>
                               F: {dp.forecastValue}
                             </span>
                           )}
                           {idx === 0 && (
-                            <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "rgba(59,130,246,0.15)", color: "#60A5FA" }}>
+                            <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)" }}>
                               current
                             </span>
                           )}
                         </p>
-                        <p className="text-[10px]" style={{ color: "#475569" }}>{dp.observationDate}</p>
+                        <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>{dp.observationDate}</p>
                       </div>
                       <div className="text-right">
                         {dp.dataQualityFlag && (
-                          <p className="text-[9px] mb-0.5" style={{ color: "#F59E0B" }}>{dp.dataQualityFlag}</p>
+                          <p className="text-[9px] mb-0.5" style={{ color: "var(--lucid-warn)" }}>{dp.dataQualityFlag}</p>
                         )}
-                        <p className="text-[10px]" style={{ color: "#334155" }}>
+                        <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                           {formatRelativeDate(dp.fetchedAt)}
                         </p>
                       </div>
@@ -794,34 +792,33 @@ export default function EdgefinderIndicatorDetailPage() {
 
       {/* Fetch Logs */}
       <div
-        className="mt-6 rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
-        style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+        className="lt-card mt-6 rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>Recent Fetch Logs</h2>
-            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B" }}>
-              Job: <span className="font-mono" style={{ color: "#475569" }}>{logJobLabel}</span>
+            <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>Recent Fetch Logs</h2>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "var(--lucid-ink-2)" }}>
+              Job: <span className="font-mono" style={{ color: "var(--lucid-ink-3)" }}>{logJobLabel}</span>
             </p>
           </div>
-          <button onClick={() => refetchLogs()} style={{ color: "#475569" }} title="Refresh">
+          <button onClick={() => refetchLogs()} style={{ color: "var(--lucid-ink-3)" }} title="Refresh">
             <RefreshCw size={14} />
           </button>
         </div>
 
         {logsLoading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 size={18} className="animate-spin" style={{ color: "#3B82F6" }} />
+            <Loader2 size={18} className="animate-spin" style={{ color: "var(--lucid-accent)" }} />
           </div>
         ) : logs.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: "#475569" }}>No logs yet</p>
+          <p className="text-sm text-center py-6" style={{ color: "var(--lucid-ink-3)" }}>No logs yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: "0 4px" }}>
               <thead>
                 <tr>
                   {["Status", "Trigger", "Started", "Duration", "Rows In", "Rows Up"].map((h) => (
-                    <th key={h} className="text-left pb-2 text-[10px] uppercase tracking-wider font-medium" style={{ color: "#475569" }}>
+                    <th key={h} className="text-left pb-2 text-[10px] uppercase tracking-wider font-medium" style={{ color: "var(--lucid-ink-3)" }}>
                       {h}
                     </th>
                   ))}
@@ -831,20 +828,20 @@ export default function EdgefinderIndicatorDetailPage() {
                 {logs.map((log) => (
                   <tr key={log.id}>
                     <td className="py-1 pr-4"><StatusBadge status={log.status} /></td>
-                    <td className="py-1 pr-4"><span className="text-xs" style={{ color: "#64748B" }}>{log.triggerType}</span></td>
+                    <td className="py-1 pr-4"><span className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>{log.triggerType}</span></td>
                     <td className="py-1 pr-4">
                       <div>
-                        <p className="text-xs" style={{ color: "#94A3B8" }}>{new Date(log.startedAt).toLocaleDateString()}</p>
-                        <p className="text-[10px]" style={{ color: "#475569" }}>{new Date(log.startedAt).toLocaleTimeString()}</p>
+                        <p className="lt-num text-xs" style={{ color: "var(--lucid-ink-2)" }}>{new Date(log.startedAt).toLocaleDateString()}</p>
+                        <p className="lt-num text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>{new Date(log.startedAt).toLocaleTimeString()}</p>
                       </div>
                     </td>
                     <td className="py-1 pr-4">
-                      <span className="text-xs" style={{ color: "#64748B" }}>
+                      <span className="lt-num text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                         {log.durationMs != null ? (log.durationMs < 1000 ? `${log.durationMs}ms` : `${(log.durationMs / 1000).toFixed(1)}s`) : "—"}
                       </span>
                     </td>
-                    <td className="py-1 pr-4"><span className="text-xs font-medium" style={{ color: "#10B981" }}>+{log.rowsInserted}</span></td>
-                    <td className="py-1"><span className="text-xs font-medium" style={{ color: "#F59E0B" }}>~{log.rowsUpdated}</span></td>
+                    <td className="py-1 pr-4"><span className="lt-num text-xs font-medium" style={{ color: "var(--lucid-pos)" }}>+{log.rowsInserted}</span></td>
+                    <td className="py-1"><span className="lt-num text-xs font-medium" style={{ color: "var(--lucid-warn)" }}>~{log.rowsUpdated}</span></td>
                   </tr>
                 ))}
               </tbody>

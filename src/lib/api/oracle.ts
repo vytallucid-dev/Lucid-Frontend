@@ -338,3 +338,136 @@ export async function getCompass(): Promise<PublicCompassSnapshot | null> {
   const res = await apiFetch<CompassEnvelope>('/api/oracle/compass');
   return res.data;
 }
+
+// ─── Dated-history endpoints (Oracle Tools engine) ─────────────────────────────
+// Additive read endpoints exposing dated rows already stored in the backend.
+// Shapes mirror the backend oracle.types.ts exactly.
+
+export type HistoryRange = '1M' | '3M' | '6M' | '1Y';
+
+export interface ScoreHistoryBreakdownEntry {
+  indicatorCode: string;
+  score: number | null;
+  uiGroup: string | null;
+  isCot: boolean;
+  outcome: 'scored' | 'carry_forward' | 'insufficient_data' | 'absent';
+  reason: string | null;
+}
+
+export interface ScoreHistoryPoint {
+  date: string;
+  totalScore: number;
+  fundamentalsScore: number | null;
+  cotScore: number | null;
+  bias: AssetBias;
+  indicatorBreakdown: ScoreHistoryBreakdownEntry[];
+}
+
+export interface ScoreHistoryResponse {
+  subject: string;
+  kind: 'asset' | 'pair';
+  name: string;
+  flag: string;
+  range: HistoryRange;
+  from: string | null;
+  to: string | null;
+  points: ScoreHistoryPoint[];
+  outcome: 'scored' | 'insufficient_data';
+  reason: string | null;
+}
+
+export interface IndicatorHistoryPoint {
+  date: string;
+  value: number;
+  forecast: number | null;
+  previous: number | null;
+  surprise: number | null;
+}
+
+export interface IndicatorHistoryResponse {
+  code: string;
+  name: string;
+  range: HistoryRange;
+  from: string | null;
+  to: string | null;
+  points: IndicatorHistoryPoint[];
+  outcome: 'scored' | 'insufficient_data';
+  reason: string | null;
+}
+
+export interface CotHistoryPoint {
+  reportDate: string;
+  releaseDate: string;
+  longContracts: number | null;
+  shortContracts: number | null;
+  longPct: number | null;
+  shortPct: number | null;
+  netPct: number | null;
+  weeklyChangePct: number | null;
+  netPositioningLabel: 'Bullish' | 'Bearish' | 'Neutral' | null;
+  changeLabel: 'Bullish' | 'Bearish' | 'Neutral' | null;
+}
+
+export interface CotHistoryResponse {
+  asset: string;
+  flag: string;
+  range: HistoryRange;
+  from: string | null;
+  to: string | null;
+  points: CotHistoryPoint[];
+  outcome: 'scored' | 'insufficient_data';
+  reason: string | null;
+}
+
+export interface CycleStanceEntry {
+  currencyCode: string;
+  stance: 'CUTTING' | 'NEUTRAL' | 'HIKING';
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  notes: string | null;
+}
+
+export interface CycleStancesResponse {
+  stances: CycleStanceEntry[];
+}
+
+/** Dated total-score series for an asset (USD/EUR/GBP/JPY/Gold) or FX pair. */
+export async function getScoreHistory(
+  subject: string,
+  range: HistoryRange,
+): Promise<ScoreHistoryResponse> {
+  const res = await apiFetch<{ success: boolean; data: ScoreHistoryResponse }>(
+    `/api/oracle/score-history?subject=${encodeURIComponent(subject)}&range=${range}`,
+  );
+  return res.data;
+}
+
+/** Dated release series for a single indicator (value/forecast/previous/surprise). */
+export async function getIndicatorHistory(
+  code: string,
+  range: HistoryRange,
+): Promise<IndicatorHistoryResponse> {
+  const res = await apiFetch<{ success: boolean; data: IndicatorHistoryResponse }>(
+    `/api/oracle/indicator-history?code=${encodeURIComponent(code)}&range=${range}`,
+  );
+  return res.data;
+}
+
+/** Dated CFTC positioning series per asset (USD/EUR/GBP/JPY/Gold). */
+export async function getCotHistory(
+  asset: string,
+  range: HistoryRange,
+): Promise<CotHistoryResponse> {
+  const res = await apiFetch<{ success: boolean; data: CotHistoryResponse }>(
+    `/api/oracle/cot-history?asset=${encodeURIComponent(asset)}&range=${range}`,
+  );
+  return res.data;
+}
+
+/** Active central-bank cycle stance per currency (effective-dated). */
+export async function getCycleStances(): Promise<CycleStancesResponse> {
+  const res = await apiFetch<{ success: boolean; data: CycleStancesResponse }>(
+    '/api/oracle/cycle-stances',
+  );
+  return res.data;
+}

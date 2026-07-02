@@ -7,9 +7,9 @@ import { ScreenshotGallery } from "@/components/ScreenshotUploader";
 // ── Reusable pill/helpers ─────────────────────────────────────────────────────
 function ModelPill({ model }: { model: string }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    "4HPullBack": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    Breakout:    { bg: "rgba(168,85,247,0.12)",  color: "#C084FC", border: "rgba(168,85,247,0.2)" },
-    Short:       { bg: "rgba(148,163,184,0.1)",  color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    "4HPullBack": { bg: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "var(--lucid-ctx-bd)" },
+    Breakout:    { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
+    Short:       { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line)" },
   };
   const s = styles[model] ?? styles["Short"];
   return <span className="pill" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>{model}</span>;
@@ -17,16 +17,16 @@ function ModelPill({ model }: { model: string }) {
 
 function kv(label: string, value: React.ReactNode) {
   return (
-    <div className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid rgba(148,163,184,0.06)" }}>
-      <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
-      <span style={{ fontSize: 13, color: "#E2E8F0" }}>{value}</span>
+    <div className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+      <span style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{label}</span>
+      <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{value}</span>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B", letterSpacing: "0.08em" }}>
+    <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
       {children}
     </p>
   );
@@ -36,7 +36,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   return (
     <div
       className={`rounded-xl p-4 ${className ?? ""}`}
-      style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.08)" }}
+      style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
     >
       {children}
     </div>
@@ -71,15 +71,15 @@ function ExecutionLadder({ trade }: { trade: Trade }) {
   }
 
   function dotColor(item: LevelItem) {
-    if (item.type === "entry") return "#3B82F6";
-    if (item.type === "sl") return item.hit ? "var(--negative)" : "#475569";
-    return item.hit ? "var(--positive)" : "#475569";
+    if (item.type === "entry") return "var(--lucid-accent)";
+    if (item.type === "sl") return item.hit ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
+    return item.hit ? "var(--lucid-pos)" : "var(--lucid-ink-3)";
   }
 
   function labelColor(item: LevelItem) {
-    if (item.type === "entry") return "#93C5FD";
-    if (item.type === "sl") return item.hit ? "var(--negative)" : "#64748B";
-    return item.hit ? "var(--positive)" : "#64748B";
+    if (item.type === "entry") return "var(--lucid-accent)";
+    if (item.type === "sl") return item.hit ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
+    return item.hit ? "var(--lucid-pos)" : "var(--lucid-ink-3)";
   }
 
   return (
@@ -92,26 +92,26 @@ function ExecutionLadder({ trade }: { trade: Trade }) {
           </span>
           {/* Connector + dot */}
           <div className="flex flex-col items-center" style={{ width: 16 }}>
-            {i > 0 && <div style={{ width: 2, height: 14, background: "rgba(148,163,184,0.15)" }} />}
+            {i > 0 && <div style={{ width: 2, height: 14, background: "var(--lucid-line)" }} />}
             <div
               style={{
                 width: lvl.hit ? 10 : 8,
                 height: lvl.hit ? 10 : 8,
                 borderRadius: "50%",
                 background: dotColor(lvl),
-                border: lvl.hit ? "none" : "1px solid rgba(148,163,184,0.2)",
+                border: lvl.hit ? "none" : "1px solid var(--lucid-line-2)",
                 flexShrink: 0,
               }}
             />
-            {i < levels.length - 1 && <div style={{ width: 2, height: 14, background: "rgba(148,163,184,0.15)" }} />}
+            {i < levels.length - 1 && <div style={{ width: 2, height: 14, background: "var(--lucid-line)" }} />}
           </div>
           {/* Price */}
-          <span style={{ fontSize: 12, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>
+          <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink)", fontVariantNumeric: "tabular-nums" }}>
             {lvl.price}
           </span>
           {/* Partial note */}
           {lvl.type === "tp1" && trade.partial_exit_price && (
-            <span style={{ fontSize: 11, color: "#64748B", marginLeft: 4 }}>
+            <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginLeft: 4 }}>
               ({trade.partial_exit_lot_pct}% partial)
             </span>
           )}
@@ -144,9 +144,9 @@ export function TradeDrawerContent({
 }) {
   const isLive = !trade.date_closed;
   const config = pairs.find(p => p.symbol === trade.pair);
-  const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
-  const rrColor = trade.blended_rr > 0 ? "var(--positive)" : trade.blended_rr < 0 ? "var(--negative)" : "#94A3B8";
-  const pipsColor = trade.total_pips > 0 ? "var(--positive)" : trade.total_pips < 0 ? "var(--negative)" : "#94A3B8";
+  const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const rrColor = trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const pipsColor = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
 
   return (
     <div className="flex flex-col gap-5">
@@ -158,7 +158,7 @@ export function TradeDrawerContent({
             <button
               onClick={onEdit}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+              style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
             >
               <Pencil size={14} /> Edit
             </button>
@@ -167,7 +167,7 @@ export function TradeDrawerContent({
             <button
               onClick={onDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+              style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
             >
               <Trash2 size={14} /> Delete
             </button>
@@ -182,11 +182,11 @@ export function TradeDrawerContent({
           <div>
             {isLive ? (
               <div className="flex items-center gap-2">
-                <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "#3B82F6", display: "inline-block" }} />
-                <span style={{ fontSize: 28, fontWeight: 700, color: "#93C5FD" }}>Live</span>
+                <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
+                <span className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: "var(--lucid-accent)" }}>Live</span>
               </div>
             ) : (
-              <span style={{ fontSize: 28, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+              <span className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
                 {formatCurrency(trade.blended_pnl)}
               </span>
             )}
@@ -195,15 +195,15 @@ export function TradeDrawerContent({
           {/* Pips + R:R + pills */}
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <span className="pill pill-blue" style={{ color: isLive ? "#64748B" : undefined, background: isLive ? "rgba(148,163,184,0.08)" : undefined }}>
+              <span className="pill lt-num" style={{ color: isLive ? "var(--lucid-ink-3)" : pipsColor, background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line-2)" }}>
                 {isLive ? "— pips" : `${trade.total_pips > 0 ? "+" : ""}${trade.total_pips} pips`}
               </span>
               <span
-                className="pill"
+                className="pill lt-num"
                 style={{
-                  background: "rgba(148,163,184,0.08)",
-                  color: isLive ? "#64748B" : rrColor,
-                  border: "1px solid rgba(148,163,184,0.15)",
+                  background: "var(--lucid-surface-3)",
+                  color: isLive ? "var(--lucid-ink-3)" : rrColor,
+                  border: "1px solid var(--lucid-line-2)",
                 }}
               >
                 {isLive ? "—" : `${trade.blended_rr}R`}
@@ -213,13 +213,13 @@ export function TradeDrawerContent({
               <span
                 className="pill"
                 style={{
-                  background: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--positive-bg)"
-                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--negative-bg)"
-                    : trade.exit_type === "Manual" ? "var(--warning-bg)" : "rgba(148,163,184,0.1)",
-                  color: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--positive)"
-                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--negative)"
-                    : trade.exit_type === "Manual" ? "var(--warning)" : "#94A3B8",
-                  border: "1px solid rgba(148,163,184,0.1)",
+                  background: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--lucid-pos-bg)"
+                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--lucid-neg-bg)"
+                    : trade.exit_type === "Manual" ? "var(--lucid-warn-bg)" : "var(--lucid-surface-3)",
+                  color: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--lucid-pos)"
+                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--lucid-neg)"
+                    : trade.exit_type === "Manual" ? "var(--lucid-warn)" : "var(--lucid-ink-2)",
+                  border: "1px solid var(--lucid-line)",
                 }}
               >
                 {trade.exit_type}
@@ -227,9 +227,9 @@ export function TradeDrawerContent({
               <span
                 className="pill"
                 style={{
-                  background: trade.conviction === "High" ? "var(--accent-blue-glow)" : "rgba(148,163,184,0.1)",
-                  color: trade.conviction === "High" ? "var(--accent-blue)" : "#94A3B8",
-                  border: `1px solid ${trade.conviction === "High" ? "rgba(59,130,246,0.25)" : "rgba(148,163,184,0.2)"}`,
+                  background: trade.conviction === "High" ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
+                  color: trade.conviction === "High" ? "var(--lucid-accent)" : "var(--lucid-ink-2)",
+                  border: `1px solid ${trade.conviction === "High" ? "var(--lucid-accent-bd)" : "var(--lucid-line)"}`,
                 }}
               >
                 {trade.conviction} Conviction
@@ -252,7 +252,7 @@ export function TradeDrawerContent({
             )}
             {kv("Model", <ModelPill model={trade.model} />)}
             {kv("Direction",
-              <span style={{ color: trade.direction === "Buy" ? "var(--positive)" : "var(--negative)", fontWeight: 600 }}>
+              <span style={{ color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
                 {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
               </span>
             )}
@@ -267,10 +267,10 @@ export function TradeDrawerContent({
         <SectionTitle>Execution</SectionTitle>
         <Card>
           <ExecutionLadder trade={trade} />
-          <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(148,163,184,0.06)" }}>
+          <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--lucid-line)" }}>
             {kv("Opened", `${formatDate(trade.date_opened)} · ${formatTime(trade.date_opened)}`)}
             {isLive
-              ? kv("Closed", <span style={{ color: "#93C5FD" }}>Running</span>)
+              ? kv("Closed", <span style={{ color: "var(--lucid-pos)" }}>Running</span>)
               : kv("Closed", `${formatDate(trade.date_closed)} · ${formatTime(trade.date_closed)}`)}
             {kv("Held", heldDuration(trade.date_opened, trade.date_closed))}
           </div>
@@ -282,8 +282,8 @@ export function TradeDrawerContent({
         <SectionTitle>Context</SectionTitle>
         <Card>
           {kv("Lucid Score",
-            <span style={{ fontVariantNumeric: "tabular-nums" }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>
+            <span className="lt-num" style={{ fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>
                 {trade.fundamental_score ?? "—"}
               </span>
             </span>
@@ -291,14 +291,14 @@ export function TradeDrawerContent({
           {kv("Psychology",
             <span
               className="pill"
-              style={{ background: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.2)" }}
+              style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)" }}
             >
               {trade.psychology}
             </span>
           )}
           <div className="pt-2">
-            <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Notes</p>
-            <p style={{ fontSize: 13, color: trade.notes ? "#94A3B8" : "#334155", fontStyle: trade.notes ? "normal" : "italic", lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Notes</p>
+            <p style={{ fontSize: 13, color: trade.notes ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", fontStyle: trade.notes ? "normal" : "italic", lineHeight: 1.6 }}>
               {trade.notes || "No notes for this trade."}
             </p>
           </div>
@@ -321,11 +321,11 @@ export function TradeDrawerContent({
           {/* Card A — Pre-Trade Discussion */}
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0" }}>Pre-Trade Discussion</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--lucid-ink)" }}>Pre-Trade Discussion</p>
               {!trade.pre_trade_memory && (
                 <span
                   className="pill"
-                  style={{ background: "rgba(168,85,247,0.12)", color: "#C084FC", border: "1px solid rgba(168,85,247,0.2)", fontSize: 10 }}
+                  style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", fontSize: 10 }}
                 >
                   Phase 3
                 </span>
@@ -334,21 +334,21 @@ export function TradeDrawerContent({
             {trade.pre_trade_memory ? (
               <div className="flex flex-col gap-3">
                 <div>
-                  <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Setup</p>
-                  <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.pre_trade_memory.setup_description}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Setup</p>
+                  <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.pre_trade_memory.setup_description}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Fundamental Bias at Entry</p>
-                  <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.pre_trade_memory.fundamental_bias_at_entry}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Fundamental Bias at Entry</p>
+                  <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.pre_trade_memory.fundamental_bias_at_entry}</p>
                 </div>
                 {trade.pre_trade_memory.agreements.length > 0 && (
                   <div>
-                    <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Agreements</p>
+                    <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Agreements</p>
                     <ul className="flex flex-col gap-1">
                       {trade.pre_trade_memory.agreements.map((a, i) => (
-                        <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: "var(--positive)", lineHeight: 1.5 }}>
+                        <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: "var(--lucid-pos)", lineHeight: 1.5 }}>
                           <span style={{ marginTop: 2, flexShrink: 0 }}>●</span>
-                          <span style={{ color: "#94A3B8" }}>{a}</span>
+                          <span style={{ color: "var(--lucid-ink-2)" }}>{a}</span>
                         </li>
                       ))}
                     </ul>
@@ -356,12 +356,12 @@ export function TradeDrawerContent({
                 )}
                 {trade.pre_trade_memory.disagreements.length > 0 && (
                   <div>
-                    <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Disagreements</p>
+                    <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Disagreements</p>
                     <ul className="flex flex-col gap-1">
                       {trade.pre_trade_memory.disagreements.map((d, i) => (
-                        <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: "var(--warning)", lineHeight: 1.5 }}>
+                        <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: "var(--lucid-warn)", lineHeight: 1.5 }}>
                           <span style={{ marginTop: 2, flexShrink: 0 }}>●</span>
-                          <span style={{ color: "#94A3B8" }}>{d}</span>
+                          <span style={{ color: "var(--lucid-ink-2)" }}>{d}</span>
                         </li>
                       ))}
                     </ul>
@@ -369,7 +369,7 @@ export function TradeDrawerContent({
                 )}
               </div>
             ) : (
-              <p style={{ fontSize: 13, color: "#334155", fontStyle: "italic", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", fontStyle: "italic", lineHeight: 1.6 }}>
                 Lucid will save your pre-trade discussion here in Phase 3. You&apos;ll see your setup reasoning, fundamental bias at entry, and any disagreements with Lucid&apos;s analysis.
               </p>
             )}
@@ -378,22 +378,22 @@ export function TradeDrawerContent({
           {/* Card B — Decision Reasoning */}
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0" }}>Decision Reasoning</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--lucid-ink)" }}>Decision Reasoning</p>
               {!trade.pre_trade_memory && (
                 <span
                   className="pill"
-                  style={{ background: "rgba(168,85,247,0.12)", color: "#C084FC", border: "1px solid rgba(168,85,247,0.2)", fontSize: 10 }}
+                  style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", fontSize: 10 }}
                 >
                   Phase 3
                 </span>
               )}
             </div>
             {trade.pre_trade_memory?.decision_reasoning ? (
-              <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>
                 {trade.pre_trade_memory.decision_reasoning}
               </p>
             ) : (
-              <p style={{ fontSize: 13, color: "#334155", fontStyle: "italic", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", fontStyle: "italic", lineHeight: 1.6 }}>
                 Your decision reasoning will be saved here — why you took this trade, what the key variables were, and how confident you felt in the moment.
               </p>
             )}
@@ -402,11 +402,11 @@ export function TradeDrawerContent({
           {/* Card C — Debrief */}
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0" }}>Debrief</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--lucid-ink)" }}>Debrief</p>
               {!trade.debrief_memory && (
                 <span
                   className="pill"
-                  style={{ background: "rgba(168,85,247,0.12)", color: "#C084FC", border: "1px solid rgba(168,85,247,0.2)", fontSize: 10 }}
+                  style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", fontSize: 10 }}
                 >
                   Phase 3
                 </span>
@@ -415,32 +415,32 @@ export function TradeDrawerContent({
             {trade.debrief_memory ? (
               <div className="flex flex-col gap-3">
                 <div>
-                  <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Outcome Summary</p>
-                  <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.debrief_memory.outcome_summary}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Outcome Summary</p>
+                  <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.debrief_memory.outcome_summary}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Expectation vs Reality</p>
-                  <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.debrief_memory.expectation_vs_reality}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Expectation vs Reality</p>
+                  <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.debrief_memory.expectation_vs_reality}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Decision Quality</p>
-                  <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{trade.debrief_memory.decision_quality_note}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Decision Quality</p>
+                  <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.debrief_memory.decision_quality_note}</p>
                 </div>
               </div>
             ) : (
               <>
-                <p style={{ fontSize: 13, color: "#334155", fontStyle: "italic", lineHeight: 1.6 }}>
+                <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", fontStyle: "italic", lineHeight: 1.6 }}>
                   Debrief notes will appear here after the trade closes. What happened vs. what you expected, and what you&apos;d do differently.
                 </p>
                 <button
                   className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
-                    background: "rgba(148,163,184,0.08)",
-                    border: "1px solid rgba(148,163,184,0.15)",
-                    color: "#94A3B8",
+                    background: "var(--lucid-surface-3)",
+                    border: "1px solid var(--lucid-line-2)",
+                    color: "var(--lucid-ink-2)",
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(148,163,184,0.12)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(148,163,184,0.08)"; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-surface-2)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-surface-3)"; }}
                 >
                   Add Debrief Note
                 </button>

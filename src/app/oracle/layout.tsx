@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { OracleToolsProvider } from "@/components/oracle-tools/OracleToolsProvider";
+import { ToolsButton } from "@/components/oracle-tools/ToolsButton";
 
 const tabs = [
   { label: "Top Setups", href: "/oracle" },
@@ -20,40 +22,44 @@ export default function OracleLayout({
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-56px)]">
-      {/* Tab bar */}
-      <div
-        className="flex items-center gap-5 sm:gap-6 px-4 sm:px-6 h-11 shrink-0 overflow-x-auto no-scrollbar scroll-touch"
-        style={{
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-          background: "rgba(2, 8, 23, 0.4)",
-        }}
-      >
-        {tabs.map((tab) => {
-          const active = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className="relative h-full flex items-center text-sm font-medium transition-colors whitespace-nowrap shrink-0"
-              style={{
-                color: active ? "#F1F5F9" : "#64748B",
-              }}
-            >
-              {tab.label}
-              {active && (
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-0.5"
-                  style={{ background: "#3B82F6" }}
-                />
-              )}
-            </Link>
-          );
-        })}
-      </div>
+    <OracleToolsProvider>
+      <div className="flex flex-col min-h-[calc(100vh-56px)]">
+        {/* Tab bar */}
+        <div
+          className="flex items-center gap-5 sm:gap-6 px-4 sm:px-6 h-11 shrink-0 overflow-x-auto no-scrollbar scroll-touch"
+          style={{
+            borderBottom: "1px solid var(--lucid-line)",
+            background: "transparent",
+          }}
+        >
+          {tabs.map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className="relative h-full flex items-center text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+                style={{
+                  color: active ? "var(--lucid-ink)" : "var(--lucid-ink-3)",
+                }}
+              >
+                {tab.label}
+                {active && (
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-0.5"
+                    style={{ background: "var(--lucid-accent)" }}
+                  />
+                )}
+              </Link>
+            );
+          })}
+          <div className="flex-1" />
+          <ToolsButton />
+        </div>
 
-      {/* Content */}
-      <div className="flex-1">{children}</div>
-    </div>
+        {/* Content */}
+        <div className="flex-1">{children}</div>
+      </div>
+    </OracleToolsProvider>
   );
 }

@@ -4,9 +4,9 @@ import { type Trade, pairs, formatCurrency, formatDate } from "@/lib/demo-data";
 
 function ModelPill({ model }: { model: string }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    "4HPullBack": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    Breakout:    { bg: "rgba(168,85,247,0.12)",  color: "#C084FC", border: "rgba(168,85,247,0.2)" },
-    Short:       { bg: "rgba(148,163,184,0.1)",  color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    "4HPullBack": { bg: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "var(--lucid-accent-bd)" },
+    Breakout:    { bg: "var(--lucid-ctx-bg)",  color: "var(--lucid-ctx)", border: "var(--lucid-ctx-bd)" },
+    Short:       { bg: "var(--lucid-surface-3)",  color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = styles[model] ?? styles["Short"];
   return <span className="pill" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>{model}</span>;
@@ -18,9 +18,9 @@ function DirectionPill({ direction }: { direction: string }) {
     <span
       className="pill"
       style={{
-        background: isBuy ? "var(--positive-bg)" : "var(--negative-bg)",
-        color: isBuy ? "var(--positive)" : "var(--negative)",
-        border: `1px solid ${isBuy ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+        background: isBuy ? "var(--lucid-pos-bg)" : "var(--lucid-neg-bg)",
+        color: isBuy ? "var(--lucid-pos)" : "var(--lucid-neg)",
+        border: `1px solid ${isBuy ? "var(--lucid-pos-bd)" : "var(--lucid-neg-bd)"}`,
       }}
     >
       {isBuy ? "↑" : "↓"} {direction}
@@ -34,8 +34,8 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
       {trades.map(trade => {
         const isLive = !trade.date_closed;
         const config = pairs.find(p => p.symbol === trade.pair);
-        const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
-        const accentColor = isLive ? "#3B82F6" : trade.conviction === "High" ? "#3B82F6" : trade.conviction === "Medium" ? "#475569" : "transparent";
+        const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+        const accentColor = isLive ? "var(--lucid-accent)" : trade.conviction === "High" ? "var(--lucid-accent)" : trade.conviction === "Medium" ? "var(--lucid-ink-3)" : "transparent";
 
         return (
           <div
@@ -43,12 +43,12 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
             onClick={() => onCardClick(trade)}
             className="relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-transform"
             style={{
-              background: "var(--bg-card)",
-              border: "1px solid var(--border-subtle)",
+              background: "var(--lucid-surface)",
+              border: "1px solid var(--lucid-line)",
               height: 280,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(148,163,184,0.2)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(148,163,184,0.1)"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--lucid-line-3)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--lucid-line)"; }}
           >
             {/* Conviction accent strip */}
             <div
@@ -66,7 +66,7 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
             <div className="flex flex-col flex-1 pl-5 pr-4 pt-4 pb-4 ml-1">
               {/* Top: pair + direction */}
               <div className="flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: "#E2E8F0" }}>
+                <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   {config && <span>{config.flag_a}{config.flag_b}</span>}
                   {config?.display_name ?? trade.pair}
                 </span>
@@ -74,7 +74,7 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
               </div>
 
               {/* Date */}
-              <p className="text-xs mb-3" style={{ color: "#64748B" }}>
+              <p className="text-xs mb-3 lt-num" style={{ color: "var(--lucid-ink-3)" }}>
                 {formatDate(trade.date_opened)}
               </p>
 
@@ -84,33 +84,35 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                 style={{
                   background: trade.screenshots.length > 0
                     ? `url(${trade.screenshots[0]}) center/cover`
-                    : `linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(148,163,184,0.05) 100%)`,
-                  border: "1px solid rgba(148,163,184,0.06)",
+                    : `linear-gradient(135deg, var(--lucid-accent-bg) 0%, var(--lucid-surface-3) 100%)`,
+                  border: "1px solid var(--lucid-line)",
                   minHeight: 80,
                 }}
               >
                 {trade.screenshots.length === 0 && (
-                  <span style={{ fontSize: 11, color: "#334155" }}>No chart</span>
+                  <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>No chart</span>
                 )}
               </div>
 
               {/* Metrics row */}
               <div className="flex items-center gap-3 mb-2">
                 <span
+                  className="lt-num"
                   style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: isLive ? "#64748B" : (trade.total_pips > 0 ? "var(--positive)" : trade.total_pips < 0 ? "var(--negative)" : "#94A3B8"),
+                    color: isLive ? "var(--lucid-ink-3)" : (trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
                   {isLive ? "—" : (trade.total_pips > 0 ? `+${trade.total_pips}` : trade.total_pips) + " pips"}
                 </span>
                 <span
+                  className="lt-num"
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    color: isLive ? "#64748B" : (trade.blended_rr > 0 ? "var(--positive)" : trade.blended_rr < 0 ? "var(--negative)" : "#94A3B8"),
+                    color: isLive ? "var(--lucid-ink-3)" : (trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -121,12 +123,12 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
               {/* P&L */}
               <div className="mb-3">
                 {isLive ? (
-                  <span className="flex items-center gap-1.5" style={{ color: "#93C5FD", fontSize: 18, fontWeight: 700 }}>
-                    <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "#3B82F6", display: "inline-block" }} />
+                  <span className="flex items-center gap-1.5" style={{ color: "var(--lucid-accent)", fontSize: 18, fontWeight: 700 }}>
+                    <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
                     Live
                   </span>
                 ) : (
-                  <span style={{ fontSize: 18, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+                  <span className="lt-num" style={{ fontSize: 18, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
                     {formatCurrency(trade.blended_pnl)}
                   </span>
                 )}
@@ -139,14 +141,14 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                   className="pill"
                   style={{
                     background: trade.exit_type === "TP" || trade.exit_type === "Partial+TP"
-                      ? "var(--positive-bg)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
-                      ? "var(--negative-bg)" : trade.exit_type === "Manual"
-                      ? "var(--warning-bg)" : "rgba(148,163,184,0.1)",
+                      ? "var(--lucid-pos-bg)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
+                      ? "var(--lucid-neg-bg)" : trade.exit_type === "Manual"
+                      ? "var(--lucid-warn-bg)" : "var(--lucid-surface-3)",
                     color: trade.exit_type === "TP" || trade.exit_type === "Partial+TP"
-                      ? "var(--positive)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
-                      ? "var(--negative)" : trade.exit_type === "Manual"
-                      ? "var(--warning)" : "#94A3B8",
-                    border: "1px solid rgba(148,163,184,0.1)",
+                      ? "var(--lucid-pos)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
+                      ? "var(--lucid-neg)" : trade.exit_type === "Manual"
+                      ? "var(--lucid-warn)" : "var(--lucid-ink-2)",
+                    border: "1px solid var(--lucid-line)",
                   }}
                 >
                   {trade.exit_type}
@@ -154,9 +156,9 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                 <span
                   className="pill"
                   style={{
-                    background: trade.conviction === "High" ? "var(--accent-blue-glow)" : "rgba(148,163,184,0.1)",
-                    color: trade.conviction === "High" ? "var(--accent-blue)" : "#94A3B8",
-                    border: `1px solid ${trade.conviction === "High" ? "rgba(59,130,246,0.25)" : "rgba(148,163,184,0.2)"}`,
+                    background: trade.conviction === "High" ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
+                    color: trade.conviction === "High" ? "var(--lucid-accent)" : "var(--lucid-ink-2)",
+                    border: `1px solid ${trade.conviction === "High" ? "var(--lucid-accent-bd)" : "var(--lucid-line-2)"}`,
                   }}
                 >
                   {trade.conviction}

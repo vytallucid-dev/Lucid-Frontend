@@ -2,12 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
-import {
-  getBias,
-  getBiasPillClass,
-  getScoreColor,
-  type BiasType,
-} from "@/data/assets";
 import { useCompass } from "@/hooks/useCompass";
 import type {
   CompassBand,
@@ -156,34 +150,31 @@ const ASSET_META: Record<string, { flag: string; order: number }> = {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// ─── Visual tokens ───────────────────────────────────────────────────────────
+// ─── Visual tokens (warm "lucid" theme — see src/styles/lucid-theme.css) ─────
 
 const CLS: Record<CompassBand, { color: string; bg: string; border: string }> = {
-  GREEN: { color: "#10B981", bg: "rgba(16, 185, 129, 0.15)", border: "rgba(16, 185, 129, 0.3)" },
-  YELLOW: { color: "#F59E0B", bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.3)" },
-  RED: { color: "#EF4444", bg: "rgba(239, 68, 68, 0.15)", border: "rgba(239, 68, 68, 0.3)" },
+  GREEN: { color: "var(--lucid-pos)", bg: "var(--lucid-pos-bg)", border: "var(--lucid-pos-bd)" },
+  YELLOW: { color: "var(--lucid-warn)", bg: "var(--lucid-warn-bg)", border: "var(--lucid-warn-bd)" },
+  RED: { color: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)", border: "var(--lucid-neg-bd)" },
 };
 
-const REGIME_META: Record<CompassRegime, { color: string; glow: string; bg: string; border: string; desc: string }> = {
+const REGIME_META: Record<CompassRegime, { color: string; bg: string; border: string; desc: string }> = {
   "Risk-On": {
-    color: "#10B981",
-    glow: "rgba(16, 185, 129, 0.2)",
-    bg: "rgba(16, 185, 129, 0.15)",
-    border: "rgba(16, 185, 129, 0.3)",
+    color: "var(--lucid-pos)",
+    bg: "var(--lucid-pos-bg)",
+    border: "var(--lucid-pos-bd)",
     desc: "All base scoring rules active. Trade with full conviction.",
   },
   Caution: {
-    color: "#F59E0B",
-    glow: "rgba(245, 158, 11, 0.2)",
-    bg: "rgba(245, 158, 11, 0.15)",
-    border: "rgba(245, 158, 11, 0.3)",
+    color: "var(--lucid-warn)",
+    bg: "var(--lucid-warn-bg)",
+    border: "var(--lucid-warn-bd)",
     desc: "Mixed signals. No overrides active. Reduce conviction sizing manually.",
   },
   "Risk-Off": {
-    color: "#EF4444",
-    glow: "rgba(239, 68, 68, 0.2)",
-    bg: "rgba(239, 68, 68, 0.15)",
-    border: "rgba(239, 68, 68, 0.3)",
+    color: "var(--lucid-neg)",
+    bg: "var(--lucid-neg-bg)",
+    border: "var(--lucid-neg-bd)",
     desc: "Stress regime active. Scoring overrides applied. See details below.",
   },
 };
@@ -202,6 +193,16 @@ function formatAuditDate(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
   if (!m || !d) return iso;
   return `${MONTHS[m - 1]} ${d}`;
+}
+
+// Bias band → warm 5-step scale color + label (self-contained so this page has
+// no hardcoded hex and no dependency on the legacy score-color helpers).
+function scoreVisual(score: number): { color: string; bg: string; border: string; label: string } {
+  if (score >= 5) return { color: "var(--lucid-scale-4)", bg: "rgba(78,161,230,0.14)", border: "rgba(78,161,230,0.3)", label: "Strong Bullish" };
+  if (score >= 3) return { color: "var(--lucid-scale-3)", bg: "rgba(72,186,124,0.12)", border: "rgba(72,186,124,0.25)", label: "Bullish" };
+  if (score >= -2) return { color: "var(--lucid-scale-2)", bg: "rgba(205,167,79,0.1)", border: "rgba(205,167,79,0.2)", label: "Neutral" };
+  if (score >= -4) return { color: "var(--lucid-scale-1)", bg: "rgba(224,145,63,0.12)", border: "rgba(224,145,63,0.25)", label: "Bearish" };
+  return { color: "var(--lucid-scale-0)", bg: "rgba(226,88,77,0.14)", border: "rgba(226,88,77,0.3)", label: "Strong Bearish" };
 }
 
 type Current = PublicCompassSnapshot["current"];
@@ -230,7 +231,7 @@ function StatusDot({ c }: { c: CompassBand }) {
   return (
     <span
       className="inline-block rounded-full shrink-0"
-      style={{ width: 16, height: 16, background: m.color, boxShadow: `0 0 10px ${m.color}66` }}
+      style={{ width: 16, height: 16, background: m.color }}
     />
   );
 }
@@ -264,24 +265,31 @@ function RegimePill({ r, size = "md" }: { r: CompassRegime; size?: "sm" | "md" }
 }
 
 function WeightBadge({ w }: { w: number }) {
-  return <span className="pill pill-blue whitespace-nowrap">Weight: {fmt1(w)}</span>;
+  return (
+    <span
+      className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+      style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}
+    >
+      Weight: <span className="lt-num ml-1">{fmt1(w)}</span>
+    </span>
+  );
 }
 
 function StabilityPill({ current }: { current: Current }) {
   const cfg = current.crisisOverrideFired
-    ? { color: "#EF4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", text: "Crisis Override — Activated same-day", pulse: true }
+    ? { color: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)", border: "var(--lucid-neg-bd)", text: "Crisis Override — Activated same-day", pulse: true }
     : current.persistenceDaysCount > 0
       ? {
-          color: "#F59E0B",
-          bg: "rgba(245,158,11,0.12)",
-          border: "rgba(245,158,11,0.3)",
+          color: "var(--lucid-warn)",
+          bg: "var(--lucid-warn-bg)",
+          border: "var(--lucid-warn-bd)",
           text: `Pending — ${current.persistenceDaysCount} of 5 days confirmed`,
           pulse: false,
         }
       : {
-          color: "#10B981",
-          bg: "rgba(16,185,129,0.12)",
-          border: "rgba(16,185,129,0.3)",
+          color: "var(--lucid-pos)",
+          bg: "var(--lucid-pos-bg)",
+          border: "var(--lucid-pos-bd)",
           text: `Stable for ${current.daysStable} day${current.daysStable === 1 ? "" : "s"}`,
           pulse: false,
         };
@@ -307,13 +315,13 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       style={{
         width: 38,
         height: 22,
-        background: on ? "rgba(59,130,246,0.5)" : "rgba(100,116,139,0.25)",
-        border: `1px solid ${on ? "rgba(59,130,246,0.6)" : "rgba(100,116,139,0.3)"}`,
+        background: on ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
+        border: `1px solid ${on ? "var(--lucid-accent-bd)" : "var(--lucid-line-2)"}`,
       }}
     >
       <span
-        className="absolute rounded-full bg-white transition-transform"
-        style={{ top: 2, left: 2, width: 16, height: 16, transform: on ? "translateX(16px)" : "translateX(0)" }}
+        className="absolute rounded-full transition-transform"
+        style={{ top: 2, left: 2, width: 16, height: 16, background: on ? "var(--lucid-accent)" : "var(--lucid-ink-3)", transform: on ? "translateX(16px)" : "translateX(0)" }}
       />
     </button>
   );
@@ -321,7 +329,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 function MiniLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="label lg:hidden block mb-1" style={{ color: "#475569" }}>
+    <span className="lt-eyebrow lg:hidden block mb-1">
       {children}
     </span>
   );
@@ -337,11 +345,11 @@ function VoteBar({ label, value, max, color }: { label: string; value: number; m
         <span className="font-medium" style={{ color }}>
           {label}
         </span>
-        <span className="tabular-nums font-semibold" style={{ color }}>
+        <span className="lt-num font-semibold" style={{ color }}>
           {fmt1(value)}
         </span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--lucid-surface-3)" }}>
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -363,27 +371,27 @@ function VoteSummary({ current }: { current: Current }) {
   return (
     <div
       className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl p-4 sm:p-5"
-      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+      style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
     >
       <div className="flex items-center justify-between mb-4">
-        <span className="label" style={{ color: "#64748B" }}>
+        <span className="lt-eyebrow">
           Vote Breakdown
         </span>
-        <span className="text-[11px] tabular-nums" style={{ color: "#475569" }}>
+        <span className="text-[11px] lt-num" style={{ color: "var(--lucid-ink-3)" }}>
           Total {fmt1(w.total)}
         </span>
       </div>
-      <VoteBar label="GREEN" value={w.green} max={w.total} color="#10B981" />
-      <VoteBar label="YELLOW" value={w.yellow} max={w.total} color="#F59E0B" />
-      <VoteBar label="RED" value={w.red} max={w.total} color="#EF4444" />
-      <div className="mt-4 pt-3 flex items-start gap-1.5 text-xs" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <VoteBar label="GREEN" value={w.green} max={w.total} color="var(--lucid-pos)" />
+      <VoteBar label="YELLOW" value={w.yellow} max={w.total} color="var(--lucid-warn)" />
+      <VoteBar label="RED" value={w.red} max={w.total} color="var(--lucid-neg)" />
+      <div className="mt-4 pt-3 flex items-start gap-1.5 text-xs" style={{ borderTop: "1px solid var(--lucid-line)" }}>
         <span style={{ color: meta.color }}>✓</span>
-        <span style={{ color: "#94A3B8" }}>
+        <span style={{ color: "var(--lucid-ink-2)" }}>
           Vote →{" "}
           <span className="font-bold" style={{ color: meta.color }}>
             {regime.toUpperCase()}
           </span>{" "}
-          <span style={{ color: "#475569" }}>({rule})</span>
+          <span style={{ color: "var(--lucid-ink-3)" }}>({rule})</span>
         </span>
       </div>
     </div>
@@ -393,29 +401,39 @@ function VoteSummary({ current }: { current: Current }) {
 function RegimeHero({ current }: { current: Current }) {
   const regime = current.activeRegime;
   const meta = REGIME_META[regime];
-  const isRiskOff = regime === "Risk-Off";
   return (
-    <div className="glass-card p-6 sm:p-10">
+    <div className="lt-card lt-edge p-6 sm:p-10">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <span className="label block mb-3" style={{ color: "#64748B" }}>
+          <span className="lt-eyebrow block mb-3">
             Current Regime
           </span>
-          <div
-            className={`inline-block rounded-2xl ${isRiskOff ? "compass-pulse-glow" : ""}`}
-            style={isRiskOff ? undefined : { boxShadow: `0 0 40px ${meta.glow}` }}
-          >
-            <h2 className="text-4xl sm:text-5xl font-bold leading-none" style={{ color: meta.color, textShadow: `0 0 24px ${meta.glow}` }}>
-              {regime}
-            </h2>
-          </div>
-          <p className="mt-5 text-sm sm:text-base max-w-xl" style={{ color: "#94A3B8" }}>
+          <h2 className="lt-serif text-4xl sm:text-5xl font-bold leading-none" style={{ color: meta.color }}>
+            {regime}
+          </h2>
+          <p className="mt-5 text-sm sm:text-base max-w-xl" style={{ color: "var(--lucid-ink-2)" }}>
             {meta.desc}
+          </p>
+          <p className="mt-3 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+            Stable{" "}
+            <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>
+              {current.daysStable}
+            </span>{" "}
+            day{current.daysStable === 1 ? "" : "s"}
+            {current.persistenceDaysCount > 0 && (
+              <>
+                {" · "}
+                <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>
+                  {current.persistenceDaysCount}
+                </span>
+                /5 days toward pending change
+              </>
+            )}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <StabilityPill current={current} />
             {current.candidateRegime !== regime && (
-              <span className="text-[11px]" style={{ color: "#475569" }}>
+              <span className="text-[11px]" style={{ color: "var(--lucid-ink-3)" }}>
                 candidate trending to{" "}
                 <span style={{ color: REGIME_META[current.candidateRegime].color }}>{current.candidateRegime}</span>
               </span>
@@ -433,11 +451,11 @@ function RegimeHero({ current }: { current: Current }) {
 function SubCheckRow({ sc }: { sc: PublicCompassSubCheck }) {
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 text-xs">
-      <span className="sm:w-44 shrink-0 font-medium" style={{ color: "#CBD5E1" }}>
+      <span className="sm:w-44 shrink-0 font-medium" style={{ color: "var(--lucid-ink-3)" }}>
         {sc.name}
       </span>
-      <span className="sm:w-48 shrink-0 tabular-nums text-white">{sc.value}</span>
-      <span className="sm:flex-1" style={{ color: "#64748B" }}>
+      <span className="sm:w-48 shrink-0 lt-num" style={{ color: "var(--lucid-ink)" }}>{sc.value}</span>
+      <span className="sm:flex-1" style={{ color: "var(--lucid-ink-3)" }}>
         {sc.detail}
       </span>
       <ClassPill c={sc.colorBand} size="sm" />
@@ -463,7 +481,7 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
   const value = input.displayValue + (input.displayDetail ? ` · ${input.displayDetail}` : "");
 
   return (
-    <div className="rounded-xl p-3 sm:p-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="rounded-xl p-3 sm:p-4" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
       <div className="flex items-start gap-3 sm:gap-4">
         <div className="pt-1">
           <StatusDot c={input.colorBand} />
@@ -473,32 +491,32 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
             <div className="lg:flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-white">{meta.name}</span>
+                <span className="font-semibold" style={{ color: "var(--lucid-ink)" }}>{meta.name}</span>
                 {expandable && (
                   <button
                     type="button"
                     onClick={onToggle}
-                    className="inline-flex items-center justify-center rounded-md transition-colors hover:bg-white/5"
-                    style={{ width: 22, height: 22, color: "#64748B" }}
+                    className="inline-flex items-center justify-center rounded-md transition-colors hover:bg-(--lucid-line)"
+                    style={{ width: 22, height: 22, color: "var(--lucid-ink-3)" }}
                     aria-label={expanded ? "Collapse sub-checks" : "Expand sub-checks"}
                   >
                     {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
                 )}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+              <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
                 {meta.description}
               </div>
             </div>
 
             <div className="lg:w-44 shrink-0">
               <MiniLabel>Current</MiniLabel>
-              <div className="font-semibold tabular-nums text-white text-sm">{value}</div>
+              <div className="font-semibold lt-num text-sm" style={{ color: "var(--lucid-ink)" }}>{value}</div>
             </div>
 
             <div className="lg:w-80 shrink-0">
               <MiniLabel>Threshold</MiniLabel>
-              <div className="text-[11px] leading-relaxed" style={{ color: "#64748B" }}>
+              <div className="text-[11px] leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>
                 {meta.threshold}
               </div>
             </div>
@@ -510,12 +528,12 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
           </div>
 
           {expandable && expanded && (
-            <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: "1px solid var(--lucid-line)" }}>
               {subChecks.map((sc) => (
                 <SubCheckRow key={sc.name} sc={sc} />
               ))}
-              <div className="text-xs pt-2" style={{ color: "#94A3B8" }}>
-                <span style={{ color: "#475569" }}>Aggregation: </span>
+              <div className="text-xs pt-2" style={{ color: "var(--lucid-ink-2)" }}>
+                <span style={{ color: "var(--lucid-ink-3)" }}>Aggregation: </span>
                 {stackAggLine(subChecks, input.colorBand)}
               </div>
             </div>
@@ -530,7 +548,7 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
 
 function LogicCell({ active, value, color }: { active: boolean; value: number; color: string }) {
   return (
-    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: active ? color : "#334155" }}>
+    <td className="px-3 py-2.5 text-right lt-num" style={{ color: active ? color : "var(--lucid-ink-3)" }}>
       {active ? fmt1(value) : "—"}
     </td>
   );
@@ -550,68 +568,68 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
         : `Neither threshold met — GREEN ${fmt1(w.green)} < 5.0 and RED ${fmt1(w.red)} < 4.0 → CAUTION`;
 
   return (
-    <div className="glass-card p-4 sm:p-5">
-      <h2 className="label mb-4" style={{ color: "#64748B" }}>
+    <div className="lt-card lt-edge p-4 sm:p-5">
+      <h2 className="lt-eyebrow mb-4">
         Classification Result
       </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-xs" style={{ minWidth: 560 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Input</th>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Classification</th>
-              <th className="px-3 py-2.5 text-right label" style={{ color: "#64748B" }}>Weight</th>
-              <th className="px-3 py-2.5 text-right label" style={{ color: "#10B981" }}>Green</th>
-              <th className="px-3 py-2.5 text-right label" style={{ color: "#F59E0B" }}>Yellow</th>
-              <th className="px-3 py-2.5 text-right label" style={{ color: "#EF4444" }}>Red</th>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line-2)" }}>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Input</th>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Classification</th>
+              <th className="px-3 py-2.5 text-right lt-eyebrow">Weight</th>
+              <th className="px-3 py-2.5 text-right lt-eyebrow" style={{ color: "var(--lucid-pos)" }}>Green</th>
+              <th className="px-3 py-2.5 text-right lt-eyebrow" style={{ color: "var(--lucid-warn)" }}>Yellow</th>
+              <th className="px-3 py-2.5 text-right lt-eyebrow" style={{ color: "var(--lucid-neg)" }}>Red</th>
             </tr>
           </thead>
           <tbody>
             {inputs.map((i) => {
               const name = (INPUT_META[i.code]?.name ?? i.code).replace(/ \(.*\)$/, "");
               return (
-                <tr key={i.code} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <td className="px-3 py-2.5 font-medium text-white whitespace-nowrap">{name}</td>
+                <tr key={i.code} style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+                  <td className="px-3 py-2.5 font-medium whitespace-nowrap" style={{ color: "var(--lucid-ink)" }}>{name}</td>
                   <td className="px-3 py-2.5">
                     <ClassPill c={i.colorBand} size="sm" />
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: "#94A3B8" }}>
+                  <td className="px-3 py-2.5 text-right lt-num" style={{ color: "var(--lucid-ink-2)" }}>
                     {fmt1(i.weight)}
                   </td>
-                  <LogicCell active={i.colorBand === "GREEN"} value={i.weight} color="#10B981" />
-                  <LogicCell active={i.colorBand === "YELLOW"} value={i.weight} color="#F59E0B" />
-                  <LogicCell active={i.colorBand === "RED"} value={i.weight} color="#EF4444" />
+                  <LogicCell active={i.colorBand === "GREEN"} value={i.weight} color="var(--lucid-pos)" />
+                  <LogicCell active={i.colorBand === "YELLOW"} value={i.weight} color="var(--lucid-warn)" />
+                  <LogicCell active={i.colorBand === "RED"} value={i.weight} color="var(--lucid-neg)" />
                 </tr>
               );
             })}
-            <tr style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-              <td className="px-3 py-2.5 label" style={{ color: "#94A3B8" }}>Totals</td>
+            <tr style={{ borderTop: "1px solid var(--lucid-line-3)" }}>
+              <td className="px-3 py-2.5 lt-eyebrow" style={{ color: "var(--lucid-ink-2)" }}>Totals</td>
               <td className="px-3 py-2.5" />
-              <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-white">{fmt1(w.total)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: "#10B981" }}>{fmt1(w.green)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: "#F59E0B" }}>{fmt1(w.yellow)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: "#EF4444" }}>{fmt1(w.red)}</td>
+              <td className="px-3 py-2.5 text-right lt-num font-semibold" style={{ color: "var(--lucid-ink)" }}>{fmt1(w.total)}</td>
+              <td className="px-3 py-2.5 text-right lt-num font-semibold" style={{ color: "var(--lucid-pos)" }}>{fmt1(w.green)}</td>
+              <td className="px-3 py-2.5 text-right lt-num font-semibold" style={{ color: "var(--lucid-warn)" }}>{fmt1(w.yellow)}</td>
+              <td className="px-3 py-2.5 text-right lt-num font-semibold" style={{ color: "var(--lucid-neg)" }}>{fmt1(w.red)}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="mt-4 space-y-1.5 text-xs" style={{ color: "#64748B" }}>
+      <div className="mt-4 space-y-1.5 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
         <p>
-          <span style={{ color: "#10B981" }}>RISK-ON</span> requires: Green ≥ 5.0 AND Red ≤ 1.0
+          <span style={{ color: "var(--lucid-pos)" }}>RISK-ON</span> requires: Green ≥ 5.0 AND Red ≤ 1.0
         </p>
         <p>
-          <span style={{ color: "#EF4444" }}>RISK-OFF</span> requires: Red ≥ 4.0 OR Crisis Override (VIX &gt; 30 AND HY OAS &gt; 700bp)
+          <span style={{ color: "var(--lucid-neg)" }}>RISK-OFF</span> requires: Red ≥ 4.0 OR Crisis Override (VIX &gt; 30 AND HY OAS &gt; 700bp)
         </p>
         <p>
-          <span style={{ color: "#F59E0B" }}>CAUTION</span> otherwise. Regime changes need a 5-day persistence streak before they take effect.
+          <span style={{ color: "var(--lucid-warn)" }}>CAUTION</span> otherwise. Regime changes need a 5-day persistence streak before they take effect.
         </p>
       </div>
 
       <div className="mt-3 rounded-lg px-3 py-2.5 text-xs font-semibold" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
         RESULT: {result}
         {current.candidateRegime !== current.activeRegime && (
-          <span style={{ color: "#94A3B8", fontWeight: 400 }}>
+          <span style={{ color: "var(--lucid-ink-2)", fontWeight: 400 }}>
             {" "}
             · active regime still {current.activeRegime} ({current.persistenceDaysCount}/5 days toward change)
           </span>
@@ -628,8 +646,8 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
     <div
       className="rounded-xl p-4"
       style={{
-        background: on ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.015)",
-        border: `1px solid ${on ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.05)"}`,
+        background: on ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
+        border: `1px solid ${on ? "var(--lucid-neg-bd)" : "var(--lucid-line)"}`,
         opacity: on ? 1 : 0.6,
       }}
     >
@@ -639,17 +657,17 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
             className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 mt-0.5"
             style={
               on
-                ? { background: "rgba(239,68,68,0.15)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.3)" }
-                : { background: "rgba(100,116,139,0.15)", color: "#64748B", border: "1px solid rgba(100,116,139,0.3)" }
+                ? { background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }
+                : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }
             }
           >
             {on ? "ACTIVE" : "DISABLED"}
           </span>
           <div className="min-w-0">
-            <div className="font-semibold text-white" style={on ? undefined : { textDecoration: "line-through", color: "#64748B" }}>
+            <div className="font-semibold" style={on ? { color: "var(--lucid-ink)" } : { textDecoration: "line-through", color: "var(--lucid-ink-3)" }}>
               Override {o.id}: {o.name}
             </div>
-            <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>
+            <p className="text-xs mt-1" style={{ color: "var(--lucid-ink-2)" }}>
               {o.summary}
             </p>
           </div>
@@ -658,7 +676,7 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 mt-3">
-        <span className="label mr-1" style={{ color: "#475569" }}>
+        <span className="lt-eyebrow mr-1">
           Affected
         </span>
         {o.affected.map((a) => (
@@ -667,8 +685,8 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
             className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium"
             style={
               on
-                ? { background: "rgba(59,130,246,0.12)", color: "#60A5FA", border: "1px solid rgba(59,130,246,0.25)" }
-                : { background: "rgba(100,116,139,0.1)", color: "#475569", border: "1px solid rgba(100,116,139,0.2)" }
+                ? { background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }
+                : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }
             }
           >
             {a}
@@ -680,8 +698,8 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
         {o.changes.map((c) => (
           <span
             key={c}
-            className="inline-flex items-center rounded-md px-2 py-1 text-[11px] tabular-nums"
-            style={{ background: "rgba(255,255,255,0.03)", color: on ? "#CBD5E1" : "#475569", border: "1px solid rgba(255,255,255,0.06)" }}
+            className="inline-flex items-center rounded-md px-2 py-1 text-[11px] lt-num"
+            style={{ background: "var(--lucid-surface-3)", color: on ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}
           >
             {c}
           </span>
@@ -689,7 +707,7 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
       </div>
 
       {o.note && (
-        <p className="text-[11px] mt-3" style={{ color: "#475569" }}>
+        <p className="text-[11px] mt-3" style={{ color: "var(--lucid-ink-3)" }}>
           Note: {o.note}
         </p>
       )}
@@ -707,9 +725,9 @@ function OverridesSection({
   onToggle: (id: number) => void;
 }) {
   return (
-    <div className="glass-card p-4 sm:p-6">
+    <div className="lt-card lt-edge p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="label" style={{ color: "#64748B" }}>
+        <h2 className="lt-eyebrow">
           Scoring Overrides
         </h2>
         <RegimePill r={regime} />
@@ -717,8 +735,8 @@ function OverridesSection({
 
       {regime === "Risk-On" && (
         <div className="flex flex-col items-center text-center gap-3 py-8">
-          <CheckCircle2 size={32} style={{ color: "#10B981" }} />
-          <p className="text-sm max-w-md" style={{ color: "#94A3B8" }}>
+          <CheckCircle2 size={32} style={{ color: "var(--lucid-pos)" }} />
+          <p className="text-sm max-w-md" style={{ color: "var(--lucid-ink-2)" }}>
             No overrides active. All base scoring rules apply. Lucid scores reflect pure fundamental analysis.
           </p>
         </div>
@@ -726,8 +744,8 @@ function OverridesSection({
 
       {regime === "Caution" && (
         <div className="flex flex-col items-center text-center gap-3 py-8">
-          <AlertCircle size={32} style={{ color: "#F59E0B" }} />
-          <p className="text-sm max-w-md" style={{ color: "#94A3B8" }}>
+          <AlertCircle size={32} style={{ color: "var(--lucid-warn)" }} />
+          <p className="text-sm max-w-md" style={{ color: "var(--lucid-ink-2)" }}>
             No overrides active. Warning: fundamental signals have reduced reliability in mixed regimes. Consider reducing
             position conviction sizing.
           </p>
@@ -736,7 +754,7 @@ function OverridesSection({
 
       {regime === "Risk-Off" && (
         <div className="space-y-3">
-          <p className="text-xs mb-1" style={{ color: "#64748B" }}>
+          <p className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>
             Toggle any override off to preview its effect on the score impact table below. Toggle state is session-only.
           </p>
           {OVERRIDES.map((o) => (
@@ -751,14 +769,17 @@ function OverridesSection({
 // ─── Section 5 — Score impact table ──────────────────────────────────────────
 
 function ScorePill({ score }: { score: number }) {
-  const bias: BiasType = getBias(score);
+  const v = scoreVisual(score);
   return (
     <div className="flex items-center gap-2 whitespace-nowrap">
-      <span className="tabular-nums font-bold text-sm" style={{ color: getScoreColor(score) }}>
+      <span className="lt-num font-bold text-sm" style={{ color: v.color }}>
         {signed(score)}
       </span>
-      <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${getBiasPillClass(bias)}`}>
-        {bias}
+      <span
+        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold"
+        style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}
+      >
+        {v.label}
       </span>
     </div>
   );
@@ -778,19 +799,19 @@ function ScoreImpactTable({
   );
 
   return (
-    <div className="glass-card p-4 sm:p-6">
-      <h2 className="label mb-4" style={{ color: "#64748B" }}>
+    <div className="lt-card lt-edge p-4 sm:p-6">
+      <h2 className="lt-eyebrow mb-4">
         Score Impact — Base vs Compass-Adjusted
       </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-xs" style={{ minWidth: 640 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Asset</th>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Base Score</th>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Compass Adj</th>
-              <th className="px-3 py-2.5 text-left label" style={{ color: "#64748B" }}>Final Score</th>
-              <th className="px-3 py-2.5 text-center label" style={{ color: "#64748B" }}>Change</th>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line-2)" }}>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Asset</th>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Base Score</th>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Compass Adj</th>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Final Score</th>
+              <th className="px-3 py-2.5 text-center lt-eyebrow">Change</th>
             </tr>
           </thead>
           <tbody>
@@ -806,29 +827,29 @@ function ScoreImpactTable({
                     ? "0 (overrides off)"
                     : `${signed(adj)} · Ov ${ids.join("+")}`;
               const arrow = adj > 0 ? "↑" : adj < 0 ? "↓" : "—";
-              const arrowColor = adj > 0 ? "#10B981" : adj < 0 ? "#EF4444" : "#475569";
+              const arrowColor = adj > 0 ? "var(--lucid-pos)" : adj < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
               return (
                 <tr
                   key={row.asset}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: changed ? "rgba(59,130,246,0.05)" : undefined }}
+                  style={{ borderBottom: "1px solid var(--lucid-line)", background: changed ? "var(--lucid-surface-2)" : undefined }}
                 >
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span className="mr-2">{flag}</span>
-                    <span className="font-semibold text-white">{row.asset}</span>
+                    <span className="font-semibold" style={{ color: "var(--lucid-ink)" }}>{row.asset}</span>
                   </td>
                   <td className="px-3 py-3">
                     <ScorePill score={row.baseScore} />
                   </td>
                   <td
-                    className="px-3 py-3 tabular-nums font-medium whitespace-nowrap"
-                    style={{ color: changed ? (adj > 0 ? "#10B981" : "#EF4444") : "#475569" }}
+                    className="px-3 py-3 lt-num font-medium whitespace-nowrap"
+                    style={{ color: changed ? (adj > 0 ? "var(--lucid-pos)" : "var(--lucid-neg)") : "var(--lucid-ink-3)" }}
                   >
                     {adjLabel}
                   </td>
                   <td className="px-3 py-3">
                     <ScorePill score={final} />
                   </td>
-                  <td className="px-3 py-3 text-center font-bold tabular-nums" style={{ color: arrowColor }}>
+                  <td className="px-3 py-3 text-center font-bold lt-num" style={{ color: arrowColor }}>
                     {arrow}
                   </td>
                 </tr>
@@ -837,7 +858,7 @@ function ScoreImpactTable({
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] mt-4" style={{ color: "#334155" }}>
+      <p className="text-[11px] mt-4" style={{ color: "var(--lucid-ink-3)" }}>
         {regime === "Risk-Off"
           ? "Compass overrides are active. Final = base + the currently-enabled override deltas — toggle overrides above to see the impact reactively."
           : "In Risk-On and Caution regimes, all base scores equal final scores. Compass overrides only activate in Risk-Off."}
@@ -851,13 +872,13 @@ function ScoreImpactTable({
 function AuditLetterCell({ band }: { band: CompassBand | undefined }) {
   if (!band) {
     return (
-      <td className="px-2 py-2 text-center" style={{ color: "#334155" }}>
+      <td className="px-2 py-2 text-center" style={{ color: "var(--lucid-ink-3)" }}>
         —
       </td>
     );
   }
   return (
-    <td className="px-2 py-2 text-center font-bold tabular-nums" style={{ color: CLS[band].color }}>
+    <td className="px-2 py-2 text-center font-bold lt-num" style={{ color: CLS[band].color }}>
       {band[0]}
     </td>
   );
@@ -867,20 +888,19 @@ const AUDIT_INPUT_ORDER = ["VIX_5D_AVG", "HY_OAS", "YIELD_2S10S", "DXY_TREND", "
 
 function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
   return (
-    <div className="glass-card p-4 sm:p-6">
-      <h2 className="label mb-4" style={{ color: "#64748B" }}>
+    <div className="lt-card lt-edge p-4 sm:p-6">
+      <h2 className="lt-eyebrow mb-4">
         Classification History — Last {history.length} Days
       </h2>
       <div className="overflow-x-auto">
         <div className="overflow-y-auto" style={{ maxHeight: 420 }}>
           <table className="w-full text-xs" style={{ minWidth: 720 }}>
-            <thead className="sticky top-0 z-10" style={{ background: "#0A1424" }}>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <thead className="sticky top-0 z-10" style={{ background: "var(--lucid-surface)" }}>
+              <tr style={{ borderBottom: "1px solid var(--lucid-line-2)" }}>
                 {["Date", "Regime", "VIX", "HY OAS", "2s10s", "DXY", "Gold/DXY", "Data Stack", "Green Wt", "Red Wt"].map((h, idx) => (
                   <th
                     key={h}
-                    className={`px-2 py-2.5 label whitespace-nowrap ${idx <= 1 ? "text-left" : idx >= 8 ? "text-right" : "text-center"}`}
-                    style={{ color: "#64748B" }}
+                    className={`px-2 py-2.5 lt-eyebrow whitespace-nowrap ${idx <= 1 ? "text-left" : idx >= 8 ? "text-right" : "text-center"}`}
                   >
                     {h}
                   </th>
@@ -889,8 +909,8 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
             </thead>
             <tbody>
               {history.map((row) => (
-                <tr key={row.date} className="transition-colors hover:bg-white/3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <td className="px-2 py-2 whitespace-nowrap font-medium" style={{ color: "#CBD5E1" }}>
+                <tr key={row.date} className="transition-colors hover:bg-(--lucid-line)" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+                  <td className="px-2 py-2 whitespace-nowrap font-medium" style={{ color: "var(--lucid-ink-2)" }}>
                     {formatAuditDate(row.date)}
                   </td>
                   <td className="px-2 py-2">
@@ -899,10 +919,10 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
                   {AUDIT_INPUT_ORDER.map((code) => (
                     <AuditLetterCell key={code} band={row.bands[code]} />
                   ))}
-                  <td className="px-2 py-2 text-right tabular-nums font-medium" style={{ color: "#10B981" }}>
+                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: "var(--lucid-pos)" }}>
                     {fmt1(row.greenWeight)}
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums font-medium" style={{ color: row.redWeight > 0 ? "#EF4444" : "#475569" }}>
+                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: row.redWeight > 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
                     {fmt1(row.redWeight)}
                   </td>
                 </tr>
@@ -911,7 +931,7 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
           </table>
         </div>
       </div>
-      <p className="text-[11px] mt-4" style={{ color: "#334155" }}>
+      <p className="text-[11px] mt-4" style={{ color: "var(--lucid-ink-3)" }}>
         Audit log used for regime validation and backtesting. Inputs snapshot daily at market close.
       </p>
     </div>
@@ -949,19 +969,19 @@ export default function CompassPage() {
   const regime = current.activeRegime;
 
   return (
-    <div className="space-y-5 sm:space-y-6 p-4 sm:p-6">
+    <div className="space-y-5 sm:space-y-6 p-4 sm:p-6" style={{ color: "var(--lucid-ink)" }}>
       {/* Page header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold" style={{ color: "#F1F5F9" }}>
+          <h1 className="lt-serif text-xl font-semibold" style={{ color: "var(--lucid-ink)" }}>
             Compass
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
+          <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
             Regime classification — is the fundamental scoring reliable right now?
           </p>
         </div>
-        <p className="text-xs shrink-0 sm:text-right" style={{ color: "#475569" }}>
-          As of <span style={{ color: "#94A3B8" }}>{current.classificationDate}</span>
+        <p className="text-xs shrink-0 sm:text-right" style={{ color: "var(--lucid-ink-3)" }}>
+          As of <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>{current.classificationDate}</span>
         </p>
       </div>
 
@@ -969,12 +989,12 @@ export default function CompassPage() {
       <RegimeHero current={current} />
 
       {/* Section 2 — 6 input votes */}
-      <div className="glass-card p-4 sm:p-6">
+      <div className="lt-card lt-edge p-4 sm:p-6">
         <div className="mb-4">
-          <h2 className="text-base font-semibold" style={{ color: "#F1F5F9" }}>
+          <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
             Compass Inputs — Vote Breakdown
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+          <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
             Each input classified independently, then weighted to determine overall regime.
           </p>
         </div>

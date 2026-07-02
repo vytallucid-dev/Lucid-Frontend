@@ -52,12 +52,12 @@ interface AddTradeModalProps {
 
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
-  background: "rgba(20,28,40,0.8)",
-  border: "1px solid rgba(148,163,184,0.12)",
+  background: "var(--lucid-surface-3)",
+  border: "1px solid var(--lucid-line)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
-  color: "#E2E8F0",
+  color: "var(--lucid-ink)",
   outline: "none",
 };
 
@@ -66,14 +66,14 @@ const LABEL_STYLE: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.05em",
   textTransform: "uppercase",
-  color: "#64748B",
+  color: "var(--lucid-ink-2)",
   marginBottom: 6,
   display: "block",
 };
 
 // Explicit dark background so the native dropdown list stays readable on
 // mobile (some browsers default the option panel to the page background).
-const OPTION_STYLE: React.CSSProperties = { background: "#0A0E14", color: "#E2E8F0" };
+const OPTION_STYLE: React.CSSProperties = { background: "var(--lucid-surface)", color: "var(--lucid-ink)" };
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -92,9 +92,9 @@ function GroupHeader({ children }: { children: React.ReactNode }) {
         fontWeight: 700,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
-        color: "#64748B",
+        color: "var(--lucid-ink-3)",
         paddingBottom: 8,
-        borderBottom: "1px solid rgba(148,163,184,0.08)",
+        borderBottom: "1px solid var(--lucid-line)",
         marginBottom: 16,
       }}
     >
@@ -117,7 +117,7 @@ function SegmentedControl<T extends string>({
   return (
     <div
       className="flex rounded-lg p-0.5"
-      style={{ background: "rgba(20,28,40,0.8)", border: "1px solid rgba(148,163,184,0.12)" }}
+      style={{ background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line)" }}
     >
       {options.map(opt => {
         const active = value === opt;
@@ -129,9 +129,9 @@ function SegmentedControl<T extends string>({
             onClick={() => onChange(opt)}
             className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
             style={{
-              background: active ? (colors?.bg ?? "rgba(59,130,246,0.15)") : "transparent",
-              color: active ? (colors?.active ?? "#93C5FD") : "#64748B",
-              border: active ? `1px solid ${colors?.active ? colors.active + "40" : "rgba(59,130,246,0.25)"}` : "1px solid transparent",
+              background: active ? (colors?.bg ?? "var(--lucid-accent-bg)") : "transparent",
+              color: active ? (colors?.active ?? "var(--lucid-accent)") : "var(--lucid-ink-3)",
+              border: active ? `1px solid ${colors?.active ? colors.active + "40" : "var(--lucid-accent-bd)"}` : "1px solid transparent",
             }}
           >
             {opt}
@@ -341,23 +341,21 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
             width: "100%",
             maxWidth: 720,
             maxHeight: "90vh",
-            background: "rgba(10,18,30,0.98)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(148,163,184,0.12)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+            background: "var(--lucid-surface-2)",
+            border: "1px solid var(--lucid-line)",
           }}
           onClick={e => e.stopPropagation()}
         >
           {/* Modal header */}
           <div
             className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
+            style={{ borderBottom: "1px solid var(--lucid-line)" }}
           >
-            <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>{isEdit ? "Edit Trade" : "Add Trade"}</h2>
+            <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>{isEdit ? "Edit Trade" : "Add Trade"}</h2>
             <button
               onClick={onClose}
               className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               <X size={15} />
             </button>
@@ -371,17 +369,17 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               className="flex flex-col items-center justify-center gap-2 mb-6 rounded-xl"
               style={{
                 height: 112,
-                border: "1.5px dashed rgba(148,163,184,0.2)",
-                background: "rgba(148,163,184,0.02)",
+                border: "1.5px dashed var(--lucid-line-2)",
+                background: "var(--lucid-surface)",
               }}
             >
-              <Camera size={22} style={{ color: "#334155" }} />
-              <p className="text-sm" style={{ color: "#475569" }}>
+              <Camera size={22} style={{ color: "var(--lucid-ink-3)" }} />
+              <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
                 Paste an MT4/MT5 screenshot to auto-fill this form.
               </p>
               <span
                 className="pill"
-                style={{ background: "rgba(168,85,247,0.12)", color: "#C084FC", border: "1px solid rgba(168,85,247,0.2)", fontSize: 10 }}
+                style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", fontSize: 10 }}
               >
                 Phase 3 — coming soon
               </span>
@@ -390,7 +388,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
             {noAccounts && (
               <div
                 className="mb-6 rounded-lg px-4 py-3 text-sm"
-                style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "#F59E0B" }}
+                style={{ background: "var(--lucid-warn-bg)", border: "1px solid var(--lucid-warn-bd)", color: "var(--lucid-warn)" }}
               >
                 You need at least one account before logging a trade. Add one in the Accounts tab.
               </div>
@@ -432,8 +430,8 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       value={direction}
                       onChange={setDirection}
                       colorMap={{
-                        Buy: { active: "#10B981", bg: "rgba(16,185,129,0.12)" },
-                        Sell: { active: "#EF4444", bg: "rgba(239,68,68,0.1)" },
+                        Buy: { active: "#48ba7c", bg: "var(--lucid-pos-bg)" },
+                        Sell: { active: "#e2584d", bg: "var(--lucid-neg-bg)" },
                       }}
                     />
                   </FieldGroup>
@@ -467,22 +465,22 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                 <GroupHeader>Prices</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <FieldGroup label="Entry Price">
-                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Lot Size">
-                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Risk %">
-                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" style={INPUT_STYLE} />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                 </div>
               </div>
@@ -497,19 +495,19 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       value={conviction}
                       onChange={setConviction}
                       colorMap={{
-                        Low: { active: "#64748B", bg: "rgba(100,116,139,0.1)" },
-                        Medium: { active: "#94A3B8", bg: "rgba(148,163,184,0.1)" },
-                        High: { active: "#93C5FD", bg: "rgba(59,130,246,0.15)" },
+                        Low: { active: "#62646c", bg: "var(--lucid-surface-3)" },
+                        Medium: { active: "#9b9c9c", bg: "var(--lucid-surface-3)" },
+                        High: { active: "#cda74f", bg: "var(--lucid-accent-bg)" },
                       }}
                     />
                   </FieldGroup>
 
                   <div>
                     <label style={{ ...LABEL_STYLE, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Sparkles size={11} style={{ color: "#60A5FA" }} />
+                      <Sparkles size={11} style={{ color: "var(--lucid-accent)" }} />
                       Lucid Score
                       {lucidQuery.isFetching && !lucidQuery.isPlaceholderData && (
-                        <span className="flex items-center gap-1" style={{ textTransform: "none", fontWeight: 400, color: "#60A5FA" }}>
+                        <span className="flex items-center gap-1" style={{ textTransform: "none", fontWeight: 400, color: "var(--lucid-accent)" }}>
                           <Loader2 size={10} className="animate-spin" /> fetching…
                         </span>
                       )}
@@ -520,9 +518,10 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       value={fundScore}
                       onChange={e => { setFundScore(e.target.value); setLucidAuto(false); }}
                       placeholder={lucidQuery.isFetching ? "Fetching…" : "Auto from Oracle"}
+                      className="lt-num"
                       style={INPUT_STYLE}
                     />
-                    <p style={{ fontSize: 10.5, color: "#475569", marginTop: 4 }}>
+                    <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
                       {lucidAuto && lucidQuery.data != null
                         ? "Auto-filled from the live Oracle score — edit to override."
                         : !lucidAuto
@@ -563,8 +562,8 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                     style={{
                       width: 40,
                       height: 24,
-                      background: isClosed ? "#3B82F6" : "rgba(148,163,184,0.15)",
-                      border: isClosed ? "1px solid rgba(59,130,246,0.4)" : "1px solid rgba(148,163,184,0.2)",
+                      background: isClosed ? "var(--lucid-accent)" : "var(--lucid-surface-3)",
+                      border: isClosed ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line-2)",
                     }}
                   >
                     <span
@@ -580,19 +579,19 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       }}
                     />
                   </button>
-                  <span style={{ fontSize: 13, color: "#94A3B8" }}>This trade is closed</span>
+                  <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>This trade is closed</span>
                 </div>
 
                 {isClosed && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Partial Exit Price">
-                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Partial Lot %">
-                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" style={INPUT_STYLE} />
+                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Main Exit Price">
-                      <input type="number" step="any" value={mainExit} onChange={e => setMainExit(e.target.value)} placeholder="1.0820" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={mainExit} onChange={e => setMainExit(e.target.value)} placeholder="1.0820" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Date Closed">
                       <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} style={INPUT_STYLE} />
@@ -615,16 +614,16 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
           {/* Footer */}
           <div
             className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
+            style={{ borderTop: "1px solid var(--lucid-line)" }}
           >
             {error && (
-              <span className="mr-auto text-sm" style={{ color: "#FCA5A5" }}>{error}</span>
+              <span className="mr-auto text-sm" style={{ color: "var(--lucid-neg)" }}>{error}</span>
             )}
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm transition-colors"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               Cancel
             </button>
@@ -632,7 +631,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               type="button"
               disabled={saving || noAccounts}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: "#3B82F6", color: "#fff", opacity: saving || noAccounts ? 0.6 : 1 }}
+              style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)", opacity: saving || noAccounts ? 0.6 : 1 }}
               onClick={handleSubmit}
             >
               {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Trade"}

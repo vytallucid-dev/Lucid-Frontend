@@ -42,8 +42,9 @@ export function calcGoalProgress(account: Account, targetPct?: number) {
 
 export function calcAccountStats(accountTrades: Trade[]) {
   const closedTrades = accountTrades.filter(t => t.date_closed);
-  const wins = closedTrades.filter(t => t.blended_rr > 0);
-  const losses = closedTrades.filter(t => t.blended_rr < 0);
+  // Outcome decided by manual net P&L (blended_pnl), matching the journal.
+  const wins = closedTrades.filter(t => t.blended_pnl > 0);
+  const losses = closedTrades.filter(t => t.blended_pnl < 0);
   const denominator = wins.length + losses.length;
   const winRate = denominator > 0 ? (wins.length / denominator) * 100 : 0;
   const netPnl = closedTrades.reduce((sum, t) => sum + t.blended_pnl, 0);
@@ -68,10 +69,10 @@ export function calcAccountStats(accountTrades: Trade[]) {
 
 export function StagePill({ stage }: { stage: string }) {
   const map: Record<string, { bg: string; color: string; border: string }> = {
-    "Stage 1": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    "Stage 2": { bg: "rgba(168,85,247,0.15)", color: "#C084FC", border: "rgba(168,85,247,0.2)" },
-    "Funded":  { bg: "rgba(16,185,129,0.15)", color: "#10B981", border: "rgba(16,185,129,0.25)" },
-    "Blown":   { bg: "rgba(239,68,68,0.1)",   color: "#EF4444", border: "rgba(239,68,68,0.25)" },
+    "Stage 1": { bg: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "var(--lucid-accent-bd)" },
+    "Stage 2": { bg: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "var(--lucid-ctx-bd)" },
+    "Funded":  { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    "Blown":   { bg: "var(--lucid-neg-bg)",   color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
   };
   const s = map[stage] ?? map["Stage 1"];
   return (
@@ -83,10 +84,10 @@ export function StagePill({ stage }: { stage: string }) {
 
 export function StatusPill({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string; border: string }> = {
-    "Active": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    "Passed": { bg: "rgba(16,185,129,0.15)", color: "#10B981", border: "rgba(16,185,129,0.25)" },
-    "Blown":  { bg: "rgba(239,68,68,0.1)",   color: "#EF4444", border: "rgba(239,68,68,0.25)" },
-    "Closed": { bg: "rgba(148,163,184,0.12)", color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    "Active": { bg: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "var(--lucid-accent-bd)" },
+    "Passed": { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    "Blown":  { bg: "var(--lucid-neg-bg)",   color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    "Closed": { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = map[status] ?? map["Active"];
   return (
@@ -108,12 +109,12 @@ export function AccountTypePill({ type }: { type: AccountType }) {
 
 function ExitTypePill({ type }: { type: string }) {
   const map: Record<string, { bg: string; color: string; border: string }> = {
-    TP:           { bg: "var(--positive-bg)", color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    "Partial+TP": { bg: "var(--positive-bg)", color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    SL:           { bg: "var(--negative-bg)", color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    "Partial+SL": { bg: "var(--negative-bg)", color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    Manual:       { bg: "var(--warning-bg)", color: "var(--warning)", border: "rgba(245,158,11,0.25)" },
-    BE:           { bg: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    TP:           { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    "Partial+TP": { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    SL:           { bg: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    "Partial+SL": { bg: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    Manual:       { bg: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "var(--lucid-warn-bd)" },
+    BE:           { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = map[type] ?? map["BE"];
   return (
@@ -126,13 +127,13 @@ function ExitTypePill({ type }: { type: string }) {
 // ── Progress bar components ───────────────────────────────────────────────────
 
 function DrawdownBar({ pctUsed }: { pctUsed: number }) {
-  const color = pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#10B981";
+  const color = pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-pos)";
   return (
     <div
       style={{
         width: "100%",
         height: 8,
-        background: "rgba(148,163,184,0.15)",
+        background: "var(--lucid-surface-3)",
         borderRadius: 4,
         overflow: "hidden",
       }}
@@ -156,7 +157,7 @@ function GoalBar({ pct }: { pct: number }) {
       style={{
         width: "100%",
         height: 8,
-        background: "rgba(148,163,184,0.15)",
+        background: "var(--lucid-surface-3)",
         borderRadius: 4,
         overflow: "hidden",
       }}
@@ -165,7 +166,7 @@ function GoalBar({ pct }: { pct: number }) {
         style={{
           width: `${pct}%`,
           height: "100%",
-          background: "#3B82F6",
+          background: "var(--lucid-accent)",
           borderRadius: 4,
           transition: "width 0.3s ease",
         }}
@@ -179,8 +180,8 @@ function GoalBar({ pct }: { pct: number }) {
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="text-xs font-semibold uppercase tracking-widest mb-3"
-      style={{ color: "#64748B", letterSpacing: "0.08em" }}
+      className="lt-serif text-xs font-semibold uppercase tracking-widest mb-3"
+      style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}
     >
       {children}
     </p>
@@ -190,8 +191,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-xl p-4 ${className ?? ""}`}
-      style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.08)" }}
+      className={`lt-card p-4 ${className ?? ""}`}
     >
       {children}
     </div>
@@ -201,12 +201,11 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 function StatMiniCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
     <div
-      className="rounded-xl p-3 flex flex-col gap-0.5"
-      style={{ background: "rgba(15,23,35,0.8)", border: "1px solid rgba(148,163,184,0.07)" }}
+      className="lt-card-2 rounded-xl p-3 flex flex-col gap-0.5"
     >
-      <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>{value}</span>
-      {sub && <span style={{ fontSize: 11, color: "#475569" }}>{sub}</span>}
+      <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", fontWeight: 500 }}>{label}</span>
+      <span className="lt-num" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>{value}</span>
+      {sub && <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{sub}</span>}
     </div>
   );
 }
@@ -232,7 +231,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
   const isActive = account.status === "Active";
   const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
-  const pnlColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
+  const pnlColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
 
   const remaining = profitTarget - profitAchieved;
   const fromBlown = drawdownLimit - drawdownUsed;
@@ -257,7 +256,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
             <button
               onClick={onEdit}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+              style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
             >
               <Pencil size={14} /> Edit
             </button>
@@ -266,7 +265,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
             <button
               onClick={onDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+              style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
             >
               <Trash2 size={14} /> Delete
             </button>
@@ -281,14 +280,14 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
           {prop && account.stage && <StagePill stage={account.stage} />}
           <StatusPill status={account.status} />
         </div>
-        <p style={{ fontSize: 12, color: "#64748B", marginBottom: 2 }}>{accountSource(account)}</p>
-        <p style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0", marginBottom: 8 }}>
+        <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginBottom: 2 }}>{accountSource(account)}</p>
+        <p className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)", marginBottom: 8 }}>
           {account.account_name}
         </p>
-        <p style={{ fontSize: 28, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+        <p className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: pnlColor, lineHeight: 1 }}>
           {formatCurrency(account.current_balance)}
         </p>
-        <p style={{ fontSize: 13, color: pnlColor, marginTop: 4 }}>
+        <p className="lt-num" style={{ fontSize: 13, color: pnlColor, marginTop: 4 }}>
           {pnl >= 0 ? "+" : ""}{formatCurrency(pnl)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
         </p>
       </Card>
@@ -299,14 +298,14 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
           <SectionTitle>Goal</SectionTitle>
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span style={{ fontSize: 12, color: "#94A3B8" }}>Profit Goal</span>
-              <span style={{ fontSize: 12, color: "#64748B" }}>
+              <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Profit Goal</span>
+              <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
                 {goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}
               </span>
             </div>
             <GoalBar pct={goalPct} />
             <div className="flex items-center justify-between mt-1">
-              <span style={{ fontSize: 11, color: "#475569" }}>
+              <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
                 {goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal
               </span>
             </div>
@@ -321,32 +320,32 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
         {/* Profit Target */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
-            <span style={{ fontSize: 12, color: "#94A3B8" }}>Profit Target</span>
+            <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Profit Target</span>
             {isPassed ? (
-              <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>✓ Passed</span>
+              <span style={{ fontSize: 12, color: "var(--lucid-pos)", fontWeight: 600 }}>✓ Passed</span>
             ) : (
-              <span style={{ fontSize: 12, color: "#64748B" }}>
+              <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
                 {formatCurrency(remaining)} to go
               </span>
             )}
           </div>
           <GoalBar pct={goalPct} />
           <div className="flex items-center justify-between mt-1">
-            <span style={{ fontSize: 11, color: "#475569" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} target</span>
+            <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} target</span>
           </div>
         </div>
 
         {/* Max Drawdown */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span style={{ fontSize: 12, color: "#94A3B8" }}>Max Drawdown</span>
-            <span style={{ fontSize: 12, color: "#64748B" }}>
+            <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Max Drawdown</span>
+            <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
               {formatCurrency(drawdownUsed)} used / {formatCurrency(drawdownLimit)}
             </span>
           </div>
           <DrawdownBar pctUsed={pctUsed} />
           <div className="flex items-center justify-between mt-1">
-            <span style={{ fontSize: 11, color: pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#475569" }}>
+            <span className="lt-num" style={{ fontSize: 11, color: pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-ink-3)" }}>
               {pctUsed.toFixed(0)}% used
             </span>
           </div>
@@ -355,10 +354,10 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
           {isActive && pctUsed > 80 && (
             <div
               className="mt-3 rounded-lg px-3 py-2.5 flex items-start gap-2"
-              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
+              style={{ background: "var(--lucid-neg-bg)", border: "1px solid var(--lucid-neg-bd)" }}
             >
               <span style={{ fontSize: 14 }}>⚠</span>
-              <p style={{ fontSize: 12, color: "#FCA5A5", lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: "var(--lucid-neg)", lineHeight: 1.5 }}>
                 Approaching max drawdown.{" "}
                 <strong>{formatCurrency(fromBlown)}</strong> from blown account.
               </p>
@@ -380,7 +379,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
           <StatMiniCard
             label="Win Rate"
             value={
-              <span style={{ color: winRate >= 40 ? "var(--positive)" : winRate >= 30 ? "var(--warning)" : "var(--negative)" }}>
+              <span style={{ color: winRate >= 40 ? "var(--lucid-pos)" : winRate >= 30 ? "var(--lucid-warn)" : "var(--lucid-neg)" }}>
                 {tradeCount > 0 ? `${winRate.toFixed(0)}%` : "—"}
               </span>
             }
@@ -389,7 +388,7 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
           <StatMiniCard
             label="Avg P&L / Trade"
             value={
-              <span style={{ color: avgPnl > 0 ? "var(--positive)" : avgPnl < 0 ? "var(--negative)" : "#94A3B8" }}>
+              <span style={{ color: avgPnl > 0 ? "var(--lucid-pos)" : avgPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)" }}>
                 {tradeCount > 0 ? formatCurrency(avgPnl) : "—"}
               </span>
             }
@@ -398,11 +397,11 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
             label="Best / Worst Pair"
             value={
               <span style={{ fontSize: 13 }}>
-                <span style={{ color: "var(--positive)" }}>{bestPair}</span>
+                <span style={{ color: "var(--lucid-pos)" }}>{bestPair}</span>
                 {worstPair !== "—" && (
                   <>
-                    <span style={{ color: "#475569" }}> / </span>
-                    <span style={{ color: "var(--negative)" }}>{worstPair}</span>
+                    <span style={{ color: "var(--lucid-ink-3)" }}> / </span>
+                    <span style={{ color: "var(--lucid-neg)" }}>{worstPair}</span>
                   </>
                 )}
               </span>
@@ -415,33 +414,33 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
       <div>
         <SectionTitle>Recent Trades</SectionTitle>
         {recentTrades.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#64748B" }}>No closed trades on this account.</p>
+          <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades on this account.</p>
         ) : (
           <div
             className="rounded-xl overflow-hidden"
-            style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+            style={{ border: "1px solid var(--lucid-line)" }}
           >
             {recentTrades.map((trade, i) => {
-              const pnlCol = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
+              const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
               return (
                 <button
                   key={trade.id}
                   className="w-full text-left flex items-center gap-3 px-3 py-2.5 transition-colors"
                   style={{
-                    background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
-                    borderBottom: i < recentTrades.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                    background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
+                    borderBottom: i < recentTrades.length - 1 ? "1px solid var(--lucid-line)" : "none",
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(59,130,246,0.05)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)")}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--lucid-surface-3)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)")}
                   onClick={() => onTradeClick?.(trade.id)}
                 >
-                  <span style={{ fontSize: 11, color: "#64748B", minWidth: 52 }}>
+                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 52 }}>
                     {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </span>
-                  <span style={{ fontSize: 12, color: "#E2E8F0", flex: 1 }}>
+                  <span style={{ fontSize: 12, color: "var(--lucid-ink)", flex: 1 }}>
                     {getPairDisplay(trade.pair)}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: pnlCol, minWidth: 64, textAlign: "right" }}>
+                  <span className="lt-num" style={{ fontSize: 12, fontWeight: 700, color: pnlCol, minWidth: 64, textAlign: "right" }}>
                     {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
                   </span>
                   <ExitTypePill type={trade.exit_type} />
@@ -457,28 +456,28 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
         <div>
           <SectionTitle>Payouts</SectionTitle>
           {account.payouts.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#64748B" }}>No payouts logged yet.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No payouts logged yet.</p>
           ) : (
             <div
               className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+              style={{ border: "1px solid var(--lucid-line)" }}
             >
               {account.payouts.map((payout: Payout, i: number) => (
                 <div
                   key={i}
                   className="flex items-center gap-3 px-3 py-2.5"
                   style={{
-                    background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
-                    borderBottom: i < account.payouts.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                    background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
+                    borderBottom: i < account.payouts.length - 1 ? "1px solid var(--lucid-line)" : "none",
                   }}
                 >
-                  <span style={{ fontSize: 11, color: "#64748B", minWidth: 80 }}>
+                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 80 }}>
                     {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--positive)", flex: 1 }}>
+                  <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lucid-pos)", flex: 1 }}>
                     +{formatCurrency(payout.amount)}
                   </span>
-                  <span style={{ fontSize: 11, color: "#64748B" }}>
+                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
                     Running: {formatCurrency(payout.running_total)}
                   </span>
                 </div>
@@ -490,33 +489,33 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
         <div>
           <SectionTitle>Deposits &amp; Withdrawals</SectionTitle>
           {account.cash_flows.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#64748B" }}>No deposits or withdrawals logged yet.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No deposits or withdrawals logged yet.</p>
           ) : (
             <div
               className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+              style={{ border: "1px solid var(--lucid-line)" }}
             >
               {account.cash_flows.map((cf, i) => {
                 const isOut = cf.type === "withdrawal";
-                const color = isOut ? "var(--negative)" : "var(--positive)";
+                const color = isOut ? "var(--lucid-neg)" : "var(--lucid-pos)";
                 const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
                 return (
                   <div
                     key={i}
                     className="flex items-center gap-3 px-3 py-2.5"
                     style={{
-                      background: i % 2 === 0 ? "rgba(20,28,40,0.7)" : "rgba(15,23,35,0.5)",
-                      borderBottom: i < account.cash_flows.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                      background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
+                      borderBottom: i < account.cash_flows.length - 1 ? "1px solid var(--lucid-line)" : "none",
                     }}
                   >
-                    <span style={{ fontSize: 11, color: "#64748B", minWidth: 80 }}>
+                    <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 80 }}>
                       {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
-                    <span style={{ fontSize: 12, color: "#94A3B8", flex: 1 }}>
+                    <span style={{ fontSize: 12, color: "var(--lucid-ink-2)", flex: 1 }}>
                       {cfLabel}
-                      {cf.note ? <span style={{ color: "#64748B" }}> · {cf.note}</span> : null}
+                      {cf.note ? <span style={{ color: "var(--lucid-ink-3)" }}> · {cf.note}</span> : null}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color }}>
+                    <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color }}>
                       {isOut ? "−" : "+"}
                       {formatCurrency(cf.amount)}
                     </span>
