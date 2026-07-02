@@ -101,6 +101,17 @@ export interface SubjectOption {
   group?: string;
 }
 
+export type ChartType = "line" | "bar";
+
+/**
+ * Discriminates how the ApexCharts config is assembled per tool:
+ * - "score"      → single score series + 5-band scale zones (Score Trend)
+ * - "indicator"  → bar (actual) + forecast line, surprise-coloured bars
+ * - "cot"        → net-positioning series + extreme annotations
+ * - "comparison" → 2+ subject series overlaid, delta rail
+ */
+export type ChartKind = "score" | "indicator" | "cot" | "comparison";
+
 export interface AnalysisToolConfig {
   key: string;
   title: string;
@@ -111,12 +122,16 @@ export interface AnalysisToolConfig {
   fetchSubject: (subjectId: string, timeframe: TimeframeKey) => Promise<AnalysisSubject>;
   /** React Query key prefix for this subject fetch. */
   queryKeyPrefix: string[];
-  /** Enables the "compare" affordance (second subject overlaid in --lucid-cool). */
+  /** Enables the compare handoff button (routes to the Score Comparison tool). */
   compareEnabled: boolean;
   /** Y-axis unit label, e.g. "pts" or "%". */
   valueUnit: string;
-  /** Y-axis domain, or "auto" to let recharts fit the data. */
+  /** Y-axis domain, or "auto" to let the chart fit the data. */
   yDomain: [number, number] | "auto";
+  /** How the chart is assembled (see ChartKind). */
+  chartKind: ChartKind;
+  /** Default chart type for the bar/line toggle. */
+  defaultChartType: ChartType;
 }
 
 export interface DeferredToolEntry {

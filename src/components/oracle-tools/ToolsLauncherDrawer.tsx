@@ -12,6 +12,7 @@ export type ToolKey =
   | "indicator-trend"
   | "cot-trajectory"
   | "score-comparison"
+  | "cot-comparison"
   | "pair-correlation";
 
 interface ToolsLauncherDrawerProps {

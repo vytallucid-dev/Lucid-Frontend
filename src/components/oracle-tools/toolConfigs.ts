@@ -41,6 +41,8 @@ export const scoreTrendConfig: AnalysisToolConfig = {
   compareEnabled: true,
   valueUnit: "pts",
   yDomain: [-8, 8],
+  chartKind: "score",
+  defaultChartType: "line",
 };
 
 export const scoreComparisonConfig: AnalysisToolConfig = {
@@ -49,6 +51,9 @@ export const scoreComparisonConfig: AnalysisToolConfig = {
   title: "Score Comparison",
   description: "Compare total score trends between two assets or FX pairs on the same chart.",
   queryKeyPrefix: ["oracle", "tools", "score-comparison"],
+  compareEnabled: false,
+  chartKind: "comparison",
+  defaultChartType: "line",
 };
 
 // COT Trajectory — asset-level only (USD/EUR/GBP/JPY/Gold), net positioning over
@@ -68,9 +73,24 @@ export const cotTrajectoryConfig: AnalysisToolConfig = {
   defaultSubjectId: "USD",
   fetchSubject: fetchCotSubject,
   queryKeyPrefix: ["oracle", "tools", "cot-trajectory"],
-  compareEnabled: false,
-  valueUnit: "%",
+  compareEnabled: true,
+  valueUnit: "",
   yDomain: "auto",
+  chartKind: "cot",
+  defaultChartType: "line",
+};
+
+// COT Comparison — two assets' net-position series on one chart (the COT
+// Compare handoff lands here). Same net-position adapter; comparison chart kind.
+export const cotComparisonConfig: AnalysisToolConfig = {
+  ...cotTrajectoryConfig,
+  key: "cot-comparison",
+  title: "COT Comparison",
+  description: "Compare institutional net positioning between two assets on one chart.",
+  queryKeyPrefix: ["oracle", "tools", "cot-comparison"],
+  compareEnabled: false,
+  chartKind: "comparison",
+  defaultChartType: "line",
 };
 
 // Indicator Trend — subject list is heatmap-backed (fetched lazily); the config
@@ -87,6 +107,8 @@ export function buildIndicatorTrendConfig(subjectOptions: SubjectOption[]): Anal
     compareEnabled: false,
     valueUnit: "",
     yDomain: "auto",
+    chartKind: "indicator",
+    defaultChartType: "bar",
   };
 }
 

@@ -192,7 +192,23 @@ export async function fetchIndicatorSubject(
   code: string,
   timeframe: TimeframeKey,
 ): Promise<AnalysisSubject> {
-  const res = await getIndicatorHistory(code, toRange(timeframe));
+  let res;
+  try {
+    res = await getIndicatorHistory(code, toRange(timeframe));
+  } catch {
+    // Unresolved/unknown code (e.g. a name→code mapping the backend doesn't
+    // store) → graceful "data unavailable" state, never a crash screen.
+    return {
+      id: code,
+      name: code,
+      currentValue: null,
+      band: null,
+      delta: null,
+      points: [],
+      seriesAvailable: false,
+      seriesGapNote: `No history available for "${code}". This indicator isn't served by the history endpoint yet.`,
+    };
+  }
 
   const points: AnalysisPoint[] = res.points.map((p, i) => {
     const point: AnalysisPoint = {
@@ -263,43 +279,56 @@ export async function listIndicatorSubjectOptions() {
   const heatmap = await getHeatmap();
   const economies = Object.keys(heatmap) as OracleEconomy[];
   // The indicator-history endpoint keys by indicator CODE. The heatmap exposes
-  // name + economy but not the raw code, so we can't derive codes reliably from
-  // it. Instead we expose the well-known scored indicator codes per economy.
+  // name + economy but not the raw code, so we map the well-known scored codes
+  // per economy. Names we can't map to a REAL backend code are dropped from the
+  // picker entirely (no synthesised codes → no 404 crash on selection).
   return economies.flatMap((economy) =>
-    (heatmap[economy] ?? []).map((ind) => ({
-      id: heatmapIndicatorCode(economy, ind.name),
-      label: `${economy} — ${ind.name}`,
-      group: economy,
-    })),
-  ).filter((o) => o.id !== null) as { id: string; label: string; group: string }[];
+    (heatmap[economy] ?? [])
+      .map((ind): { id: string; label: string; group: string } | null => {
+        const id = heatmapIndicatorCode(economy, ind.name);
+        return id ? { id, label: `${economy} — ${ind.name}`, group: economy } : null;
+      })
+      .filter((o): o is { id: string; label: string; group: string } => o !== null),
+  );
 }
 
 /**
- * Best-effort map from (economy, indicator display name) → backend indicator
- * code. Only the codes the backend actually stores history for are usable; the
- * engine flags a clean empty state for any that return no points.
+ * Maps (economy, indicator display name) → a REAL backend indicator code.
+ * Returns null when it can't map to a code the backend actually stores — the
+ * caller drops those so the picker never offers a code that would 404.
+ *
+ * Guards against double-prefixing: US-scoped names already containing "US ISM"
+ * etc. must not become `US_US_...`. The prefix is only applied to the fixed
+ * code suffix below (never to the raw name), so double-prefixing cannot occur.
  */
-function heatmapIndicatorCode(economy: OracleEconomy, name: string): string | null {
+export function heatmapIndicatorCode(economy: OracleEconomy, name: string): string | null {
   const n = name.toLowerCase();
-  const prefix = economy === "US" ? "US" : economy === "EU" ? "EU" : economy === "UK" ? "UK" : "JP";
+  const prefix = economy; // "US" | "EU" | "UK" | "JP" — used ONLY on fixed suffixes
+  // US-only single-country indicators (no per-economy variant in the backend).
+  if (n.includes("nfp") || n.includes("payroll") || n.includes("non-farm") || n.includes("nonfarm")) return "US_NFP";
+  if (n.includes("jolts")) return "US_JOLTS";
+  if (n.includes("adp")) return "US_ADP";
+  if (n.includes("jobless") || n.includes("claims")) return "US_JOBLESS_CLAIMS";
+  if (n.includes("pce")) return "US_PCE_YOY";
+  // Per-economy indicators — prefix applied to a KNOWN suffix only.
   if (n.includes("cpi")) return `${prefix}_CPI_YOY`;
   if (n.includes("ppi")) return `${prefix}_PPI_MOM`;
   if (n.includes("gdp")) return `${prefix}_GDP_QOQ`;
   if (n.includes("retail")) return `${prefix}_RETAIL_MOM`;
   if (n.includes("unemploy")) return `${prefix}_UNEMP`;
-  if (n.includes("nfp") || n.includes("payroll")) return "US_NFP";
-  if (n.includes("jolts")) return "US_JOLTS";
-  if (n.includes("adp")) return "US_ADP";
-  if (n.includes("claims")) return "US_JOBLESS_CLAIMS";
-  if (n.includes("pce")) return "US_PCE_YOY";
-  // Fallback: expose a synthesised code; the engine shows an honest empty state
-  // if the backend has no history for it.
-  return `${prefix}_${name.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase()}`;
+  // Unmappable → null (dropped from picker; never synthesised).
+  return null;
 }
 
 // ─── COT Trajectory → /api/oracle/cot-history ──────────────────────────────────
 
 export const COT_TRAJECTORY_ASSETS = ["USD", "EUR", "GBP", "JPY", "Gold"] as const;
+
+/** Net position in contracts = long − short (the primary COT signal). */
+function netPosition(p: { longContracts: number | null; shortContracts: number | null }): number | null {
+  if (p.longContracts === null || p.shortContracts === null) return null;
+  return p.longContracts - p.shortContracts;
+}
 
 export async function fetchCotSubject(
   asset: string,
@@ -307,39 +336,46 @@ export async function fetchCotSubject(
 ): Promise<AnalysisSubject> {
   const res = await getCotHistory(asset, toRange(timeframe));
 
-  const netVals = res.points.map((p) => p.netPct).filter((v): v is number => v !== null);
+  const netVals = res.points.map(netPosition).filter((v): v is number => v !== null);
   const maxNet = netVals.length ? Math.max(...netVals) : null;
   const minNet = netVals.length ? Math.min(...netVals) : null;
 
   const points: AnalysisPoint[] = res.points.map((p, i) => {
+    const net = netPosition(p);
     const point: AnalysisPoint = {
       index: i,
       date: p.reportDate,
       label: dateLabel(p.reportDate),
-      value: p.netPct,
+      value: net, // PRIMARY = net position (contracts)
+      secondary: p.weeklyChangePct, // demoted overlay
     };
-    if (p.netPct !== null && p.netPct === maxNet && maxNet !== minNet) {
-      point.event = { kind: "extreme-high", label: "Positioning high" };
-    } else if (p.netPct !== null && p.netPct === minNet && maxNet !== minNet) {
-      point.event = { kind: "extreme-low", label: "Positioning low" };
+    if (net !== null && net === maxNet && maxNet !== minNet) {
+      point.event = { kind: "extreme-high", label: "Most long in window" };
+    } else if (net !== null && net === minNet && maxNet !== minNet) {
+      point.event = { kind: "extreme-low", label: "Most short in window" };
     }
     return point;
   });
 
-  const last = res.points[res.points.length - 1];
-  const prev = res.points.length > 1 ? res.points[res.points.length - 2] : null;
+  const lastPt = res.points[res.points.length - 1];
+  const prevPt = res.points.length > 1 ? res.points[res.points.length - 2] : null;
+  const lastNet = lastPt ? netPosition(lastPt) : null;
+  const prevNet = prevPt ? netPosition(prevPt) : null;
 
   const breakdownByIndex: Record<number, DateBreakdown> = {};
   res.points.forEach((p, i) => {
     breakdownByIndex[i] = {
       date: p.reportDate,
       label: dateLabel(p.reportDate),
-      headline: p.netPct,
+      headline: netPosition(p),
       headlineLabel: p.netPositioningLabel,
       groups: [
         {
           label: "Positioning",
           rows: [
+            { label: "Long", score: null, detail: contracts(p.longContracts) },
+            { label: "Short", score: null, detail: contracts(p.shortContracts) },
+            { label: "Net", score: null, detail: contracts(netPosition(p)) },
             { label: "Long %", score: null, detail: pct(p.longPct) },
             { label: "Short %", score: null, detail: pct(p.shortPct) },
             { label: "Net %", score: null, detail: pct(p.netPct) },
@@ -354,12 +390,13 @@ export async function fetchCotSubject(
 
   return {
     id: res.asset,
-    name: `${res.asset} — Institutional Positioning`,
+    name: `${res.asset} — Net Position`,
     flag: res.flag,
-    currentValue: last?.netPct ?? null,
-    band: last?.netPositioningLabel ?? null,
-    delta: last?.netPct != null && prev?.netPct != null ? Number((last.netPct - prev.netPct).toFixed(2)) : null,
+    currentValue: lastNet,
+    band: lastPt?.netPositioningLabel ?? null,
+    delta: lastNet != null && prevNet != null ? lastNet - prevNet : null,
     points,
+    secondaryLabel: "Weekly Δ%",
     railHeading: "COT Detail",
     breakdownByIndex: points.length > 0 ? breakdownByIndex : undefined,
     seriesAvailable: points.length > 0,
@@ -370,6 +407,10 @@ export async function fetchCotSubject(
 
 function pct(n: number | null): string {
   return n === null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
+}
+
+function contracts(n: number | null): string {
+  return n === null ? "—" : `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
 }
 
 // ─── Pair Correlation (current-snapshot alignment) ─────────────────────────────

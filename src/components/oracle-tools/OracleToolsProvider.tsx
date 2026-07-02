@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ToolsLauncherDrawer, type ToolKey } from "./ToolsLauncherDrawer";
 import { FullScreenAnalysis } from "./FullScreenAnalysis";
 import { PairCorrelationView } from "./PairCorrelationView";
-import { scoreTrendConfig, scoreComparisonConfig, cotTrajectoryConfig, buildIndicatorTrendConfig, listIndicatorSubjectOptions } from "./toolConfigs";
+import { scoreTrendConfig, scoreComparisonConfig, cotTrajectoryConfig, cotComparisonConfig, buildIndicatorTrendConfig, listIndicatorSubjectOptions } from "./toolConfigs";
 
 interface OracleToolsContextValue {
   openDrawer: () => void;
@@ -53,6 +53,17 @@ export function OracleToolsProvider({ children }: { children: ReactNode }) {
     setActiveView({ tool: "cot-trajectory", subjectId: asset });
   }, []);
 
+  // Compare handoff: score trend → Score Comparison with the current subject
+  // pre-loaded as the first series.
+  const openComparison = useCallback((subjectId: string) => {
+    setActiveView({ tool: "score-comparison", subjectId });
+  }, []);
+
+  // COT compare handoff: COT Trajectory → COT Comparison (net-position series).
+  const openCotComparison = useCallback((subjectId: string) => {
+    setActiveView({ tool: "cot-comparison", subjectId });
+  }, []);
+
   const handleSelectTool = useCallback((tool: ToolKey) => {
     setDrawerOpen(false);
     setActiveView({ tool });
@@ -84,7 +95,7 @@ export function OracleToolsProvider({ children }: { children: ReactNode }) {
       <ToolsLauncherDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSelectTool={handleSelectTool} />
 
       {activeView?.tool === "score-trend" && (
-        <FullScreenAnalysis config={scoreTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
+        <FullScreenAnalysis config={scoreTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openComparison} />
       )}
       {activeView?.tool === "score-comparison" && (
         <FullScreenAnalysis config={scoreComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
@@ -93,7 +104,10 @@ export function OracleToolsProvider({ children }: { children: ReactNode }) {
         <FullScreenAnalysis config={indicatorTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
       )}
       {activeView?.tool === "cot-trajectory" && (
-        <FullScreenAnalysis config={cotTrajectoryConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
+        <FullScreenAnalysis config={cotTrajectoryConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openCotComparison} />
+      )}
+      {activeView?.tool === "cot-comparison" && (
+        <FullScreenAnalysis config={cotComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
       )}
       {activeView?.tool === "pair-correlation" && <PairCorrelationView onClose={closeView} />}
     </OracleToolsContext.Provider>

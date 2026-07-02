@@ -1,5 +1,10 @@
 "use client";
 
+// NOTE: Pair Correlation is a relationship view, not a time-series trend, so it
+// is intentionally NOT built on the ApexCharts analysis shell (FullScreenAnalysis).
+// It is left as the current snapshot-alignment view and FLAGGED for its own
+// dedicated design pass (a proper correlation matrix / relationship visual).
+
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, ArrowUp, ArrowDown, Minus } from "lucide-react";
