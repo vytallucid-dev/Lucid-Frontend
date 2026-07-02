@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -22,10 +22,12 @@ import {
   triggerCronJob,
   fetchFredIndicator,
   submitEdgefinderManualInput,
+  isRevisionConfirmationRequired,
   getCotData,
   type FetchLog,
   type DataPoint,
   type CotDataPoint,
+  type RevisionConfirmationRequired,
 } from "@/lib/api/admin";
 import {
   DATA_SOURCE_COLORS,
@@ -107,7 +109,17 @@ function ResultBanner({
 
 // ─── Pipeline panels ──────────────────────────────────────────────────────────
 
-function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg: string) => void }) {
+function ForexFactoryPanel({
+  code,
+  indicatorName,
+  lastActual,
+  onSuccess,
+}: {
+  code: string;
+  indicatorName: string;
+  lastActual: { value: number; observationDate: string } | null;
+  onSuccess: (msg: string) => void;
+}) {
   const mutation = useMutation({
     mutationFn: () => triggerCronJob("forex_factory_fetch"),
     onSuccess: () =>
@@ -158,9 +170,11 @@ function ForexFactoryPanel({ code, onSuccess }: { code: string; onSuccess: (msg:
 
       <ManualEntryForm
         code={code}
+        indicatorName={indicatorName}
         actualLabel="Actual Value"
         actualPlaceholder="e.g. 115 (for 115K)"
         submitLabel="Save Manual Value"
+        autoFillPrevious={lastActual}
         onSuccess={onSuccess}
         instructions={
           <div
@@ -308,32 +322,153 @@ function FredFetchPanel({
   );
 }
 
+// Modal shown when the backend returns the 409 revision gate: the submitted
+// previous differs from our last recorded actual. Three actions per spec.
+function RevisionConfirmModal({
+  info,
+  indicatorName,
+  isSubmitting,
+  onConfirm,
+  onRecheck,
+  onCancel,
+}: {
+  info: RevisionConfirmationRequired;
+  indicatorName: string;
+  isSubmitting: boolean;
+  onConfirm: () => void;
+  onRecheck: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="lt-card w-full max-w-md rounded-2xl p-5 flex flex-col gap-4"
+        style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line-2)" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start gap-3">
+          <AlertCircle size={20} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-warn)" }} />
+          <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
+            Previous value differs from our records
+          </h2>
+        </div>
+
+        <p className="text-sm" style={{ color: "var(--lucid-ink-2)" }}>
+          You entered a previous value of{" "}
+          <span className="lt-num font-semibold" style={{ color: "var(--lucid-ink)" }}>
+            {info.submittedPrevious}
+          </span>{" "}
+          for {indicatorName}, but our last recorded actual was{" "}
+          <span className="lt-num font-semibold" style={{ color: "var(--lucid-ink)" }}>
+            {info.storedActual}
+          </span>{" "}
+          (dated {info.storedActualDate}). This usually means the source revised last
+          month&apos;s figure — or it&apos;s a typo.
+        </p>
+
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+            style={{ background: "var(--lucid-accent)", color: "#fff" }}
+          >
+            {isSubmitting ? (
+              <><Loader2 size={14} className="animate-spin" /> Saving...</>
+            ) : (
+              <><CheckCircle2 size={14} /> Confirm &amp; save</>
+            )}
+          </button>
+          <button
+            onClick={onRecheck}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+            style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink)", border: "1px solid var(--lucid-line-2)" }}
+          >
+            Let me re-check
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition-all disabled:opacity-50"
+            style={{ color: "var(--lucid-ink-3)" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Reusable manual data-entry form. Posts to the EdgeFinder manual endpoint
 // (data_points, vintage-aware idempotent upsert). Used by the manual / rate
 // pipelines AND embedded in the Forex Factory panel for backfill/corrections.
+//
+// When `autoFillPrevious` is set (non-rate entry with a prior data point), the
+// `previous` field pre-fills from the last stored actual and shows an inline
+// hint. On submit, a 409 revision gate opens the confirmation modal.
 function ManualEntryForm({
   code,
+  indicatorName,
   instructions,
   actualLabel,
   actualPlaceholder,
   submitLabel = "Submit Value",
+  autoFillPrevious,
   onSuccess,
 }: {
   code: string;
+  indicatorName: string;
   instructions: ReactNode;
   actualLabel: string;
   actualPlaceholder: string;
   submitLabel?: string;
+  // Last stored actual for this indicator — the value the `previous` field is
+  // pre-filled from. Null/undefined for rate decisions or first releases, in
+  // which case no pre-fill and no hint are shown.
+  autoFillPrevious?: { value: number; observationDate: string } | null;
   onSuccess: (msg: string) => void;
 }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [actual, setActual] = useState("");
   const [forecast, setForecast] = useState("");
-  const [previous, setPrevious] = useState("");
+  const [previous, setPrevious] = useState(
+    autoFillPrevious ? String(autoFillPrevious.value) : "",
+  );
   const [notes, setNotes] = useState("");
+  // Set when the backend returns the 409 gate; drives the confirmation modal.
+  const [pendingRevision, setPendingRevision] = useState<RevisionConfirmationRequired | null>(null);
+  const previousInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-fill the previous field from the last stored actual once it resolves,
+  // but only while the user hasn't typed anything yet (don't clobber edits).
+  const autoFillValue = autoFillPrevious?.value;
+  const userTouchedPrevious = useRef(false);
+  useEffect(() => {
+    if (autoFillValue !== undefined && !userTouchedPrevious.current) {
+      setPrevious(String(autoFillValue));
+    }
+  }, [autoFillValue]);
+
+  const reset = () => {
+    setActual("");
+    setForecast("");
+    setNotes("");
+    // Re-seed previous from the (now newest) auto-fill; the parent refetches
+    // latest after a successful write, so this reflects the value just entered.
+    userTouchedPrevious.current = false;
+    setPrevious(autoFillValue !== undefined ? String(autoFillValue) : "");
+  };
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (confirmRevision?: boolean) =>
       submitEdgefinderManualInput({
         indicatorCode: code,
         observationDate: date,
@@ -341,17 +476,23 @@ function ManualEntryForm({
         forecast: forecast ? parseFloat(forecast) : undefined,
         previous: previous ? parseFloat(previous) : undefined,
         notes: notes || undefined,
+        ...(confirmRevision ? { confirmRevision: true } : {}),
       }),
     onSuccess: (res) => {
+      if (isRevisionConfirmationRequired(res)) {
+        // Hold the write; open the modal so the user can confirm/re-check.
+        setPendingRevision(res);
+        return;
+      }
+      setPendingRevision(null);
       onSuccess(
         `Value ${res.action}: ${res.value} for ${res.observationDate}${res.isRateDecision ? " (Rate Decision — value stored as bps change)" : ""}`,
       );
-      setActual("");
-      setForecast("");
-      setPrevious("");
-      setNotes("");
+      reset();
     },
   });
+
+  const autoFilled = autoFillPrevious != null && previous === String(autoFillPrevious.value);
 
   return (
     <div className="flex flex-col gap-4">
@@ -392,24 +533,42 @@ function ManualEntryForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[
-          { label: "Forecast (optional)", value: forecast, set: setForecast },
-          { label: "Previous (optional)", value: previous, set: setPrevious },
-        ].map(({ label, value, set }) => (
-          <div key={label} className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>{label}</label>
-            <input
-              type="number"
-              step="any"
-              value={value}
-              onChange={(e) => set(e.target.value)}
-              className="rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-            />
-          </div>
-        ))}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium" style={{ color: "#94A3B8" }}>Forecast (optional)</label>
+          <input
+            type="number"
+            step="any"
+            value={forecast}
+            onChange={(e) => setForecast(e.target.value)}
+            className="rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F1F5F9" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Previous (optional)</label>
+          <input
+            ref={previousInputRef}
+            type="number"
+            step="any"
+            value={previous}
+            onChange={(e) => {
+              userTouchedPrevious.current = true;
+              setPrevious(e.target.value);
+            }}
+            className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
+          />
+          {autoFilled && autoFillPrevious && (
+            <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
+              auto-filled from last actual ({autoFillPrevious.observationDate}):{" "}
+              <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>{autoFillPrevious.value}</span>
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -433,7 +592,7 @@ function ManualEntryForm({
       )}
 
       <button
-        onClick={() => mutation.mutate()}
+        onClick={() => mutation.mutate(undefined)}
         disabled={mutation.isPending || !actual || !date}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
         style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
@@ -444,17 +603,37 @@ function ManualEntryForm({
           <><Database size={14} /> {submitLabel}</>
         )}
       </button>
+
+      {pendingRevision && (
+        <RevisionConfirmModal
+          info={pendingRevision}
+          indicatorName={indicatorName}
+          isSubmitting={mutation.isPending}
+          onConfirm={() => mutation.mutate(true)}
+          onRecheck={() => {
+            // Close, return focus to previous for a re-check, don't submit.
+            setPendingRevision(null);
+            userTouchedPrevious.current = true;
+            previousInputRef.current?.focus();
+          }}
+          onCancel={() => setPendingRevision(null)}
+        />
+      )}
     </div>
   );
 }
 
 function ManualRatePanel({
   code,
+  indicatorName,
   isRateDecision,
+  lastActual,
   onSuccess,
 }: {
   code: string;
+  indicatorName: string;
   isRateDecision: boolean;
+  lastActual: { value: number; observationDate: string } | null;
   onSuccess: (msg: string) => void;
 }) {
   const instructions = isRateDecision ? (
@@ -482,9 +661,13 @@ function ManualRatePanel({
   return (
     <ManualEntryForm
       code={code}
+      indicatorName={indicatorName}
       instructions={instructions}
       actualLabel={isRateDecision ? "New Rate Level (%)" : "Actual Value"}
       actualPlaceholder={isRateDecision ? "e.g. 4.75" : "e.g. 2.1"}
+      // Rate decisions don't use `previous` (bps delta is computed), so no
+      // auto-fill or revision gate applies there — only the plain manual case.
+      autoFillPrevious={isRateDecision ? null : lastActual}
       onSuccess={onSuccess}
     />
   );
@@ -565,6 +748,15 @@ export default function EdgefinderIndicatorDetailPage() {
   }
 
   const dataPoints: DataPoint[] = latestData?.data ?? [];
+  const indicatorName = indicator?.name ?? code;
+  // Last stored actual = the most recent current data point (latest is
+  // observationDate-desc, isCurrent). This is the same value the backend
+  // auto-fills from and revision-checks against. Null when there is no prior
+  // data point, so the previous field stays blank (not pre-filled with 0).
+  const lastActual =
+    dataPoints.length > 0
+      ? { value: dataPoints[0].value, observationDate: dataPoints[0].observationDate }
+      : null;
   // Merge fetch logs with manual-entry logs (FF only — other pipelines return an
   // empty manual set), newest first, capped at 8.
   const logs: FetchLog[] = [...(logsData?.logs ?? []), ...(manualLogsData?.logs ?? [])]
@@ -640,13 +832,22 @@ export default function EdgefinderIndicatorDetailPage() {
               </p>
             </div>
 
-            {pipeline === "forex_factory" && <ForexFactoryPanel code={code} onSuccess={handleSuccess} />}
+            {pipeline === "forex_factory" && (
+              <ForexFactoryPanel
+                code={code}
+                indicatorName={indicatorName}
+                lastActual={lastActual}
+                onSuccess={handleSuccess}
+              />
+            )}
             {pipeline === "cftc" && <CftcPanel onSuccess={handleSuccess} />}
             {pipeline === "fred" && <FredFetchPanel code={code} onSuccess={handleSuccess} />}
             {(pipeline === "manual_rate" || pipeline === "manual") && (
               <ManualRatePanel
                 code={code}
+                indicatorName={indicatorName}
                 isRateDecision={pipeline === "manual_rate"}
+                lastActual={lastActual}
                 onSuccess={handleSuccess}
               />
             )}

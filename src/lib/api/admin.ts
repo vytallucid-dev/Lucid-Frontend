@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchRaw, ApiError } from "./client";
 
 // ─── Indicator Types ──────────────────────────────────────────────────────────
 
@@ -234,15 +234,8 @@ export async function submitNiftyManualInput(params: {
   });
 }
 
-// EdgeFinder manual indicators (rate decisions + others)
-export async function submitEdgefinderManualInput(params: {
-  indicatorCode: string;
-  observationDate: string;
-  actual: number;
-  forecast?: number;
-  previous?: number;
-  notes?: string;
-}): Promise<{
+// Successful manual-entry write response (HTTP 200).
+export interface ManualEntrySuccess {
   success: boolean;
   dataPointId: string;
   action: "inserted" | "revised" | "skipped";
@@ -251,11 +244,70 @@ export async function submitEdgefinderManualInput(params: {
   value: number;
   isRateDecision: boolean;
   metadata: Record<string, unknown>;
-}> {
-  return apiFetch("/api/admin/data/manual", {
+}
+
+// 409-style response: the submitted `previous` differs from our last stored
+// actual. Nothing was written; the caller should confirm and re-submit with
+// confirmRevision: true.
+export interface RevisionConfirmationRequired {
+  requiresRevisionConfirmation: true;
+  indicatorCode: string;
+  storedActual: number;
+  storedActualDate: string;
+  submittedPrevious: number;
+}
+
+export type ManualEntryResult = ManualEntrySuccess | RevisionConfirmationRequired;
+
+export function isRevisionConfirmationRequired(
+  result: ManualEntryResult,
+): result is RevisionConfirmationRequired {
+  return "requiresRevisionConfirmation" in result;
+}
+
+// EdgeFinder manual indicators (rate decisions + others).
+//
+// Resolves to a ManualEntrySuccess on a normal write, or a
+// RevisionConfirmationRequired on the 409 gate (submitted previous ≠ last
+// stored actual). Pass confirmRevision: true to acknowledge the mismatch and
+// force the write. Other non-2xx statuses reject via ApiError as usual.
+export async function submitEdgefinderManualInput(params: {
+  indicatorCode: string;
+  observationDate: string;
+  actual: number;
+  forecast?: number;
+  previous?: number;
+  notes?: string;
+  confirmRevision?: boolean;
+}): Promise<ManualEntryResult> {
+  const response = await apiFetchRaw("/api/admin/data/manual", {
     method: "POST",
     body: JSON.stringify(params),
   });
+
+  if (response.status === 409) {
+    const body = (await response.json()) as RevisionConfirmationRequired;
+    return body;
+  }
+
+  if (!response.ok) {
+    let code = String(response.status);
+    let message = response.statusText;
+    try {
+      const errBody = (await response.json()) as {
+        error?: { message?: string; code?: string };
+      };
+      if (errBody.error) {
+        message = errBody.error.message ?? message;
+        code = errBody.error.code ?? code;
+      }
+    } catch {
+      // body wasn't JSON — fall back to statusText already set above
+    }
+    throw new ApiError(response.status, code, message);
+  }
+
+  return (await response.json()) as ManualEntrySuccess;
 }
 
 // ─── COT Data ─────────────────────────────────────────────────────────────────

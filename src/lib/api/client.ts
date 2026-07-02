@@ -31,10 +31,14 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
-export async function apiFetch<T>(
+// Performs the authenticated fetch and the shared 401-redirect handling, but
+// hands the raw Response back to the caller. Use this when a specific non-2xx
+// status carries a meaningful body the caller must inspect (e.g. the 409
+// revision-confirmation gate on manual entry); prefer apiFetch otherwise.
+export async function apiFetchRaw(
   path: string,
   init: RequestInit = {},
-): Promise<T> {
+): Promise<Response> {
   const hasBody = init.body != null;
   const authHeader = await getAuthHeader();
 
@@ -54,6 +58,15 @@ export async function apiFetch<T>(
     }
     throw new ApiError(401, "AUTH_REQUIRED", "Authentication required");
   }
+
+  return response;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const response = await apiFetchRaw(path, init);
 
   if (!response.ok) {
     let code = String(response.status);
