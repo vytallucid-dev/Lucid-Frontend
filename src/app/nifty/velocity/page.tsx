@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, ChevronDown } from "lucide-react";
 import {
     Line,
     LineChart,
@@ -72,18 +72,18 @@ export default function VelocityPage() {
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Velocity</h1>
-        <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>Net score change per day, anchor-to-anchor.</p>
+        <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Velocity</h1>
+        <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Net score change per day, anchor-to-anchor.</p>
       </div>
 
       {/* ── Date Range Inputs (always mounted) ──────────────────────── */}
-      <div className="glass-card p-4 sm:p-5">
+      <div className="lt-card p-4 sm:p-5">
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="vel-start"
               className="text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               Start
             </label>
@@ -94,14 +94,14 @@ export default function VelocityPage() {
               onChange={(e) => setUserStartDate(e.target.value || null)}
               className="px-3 py-2 rounded-lg text-sm"
               style={{
-                background: "rgba(14,20,30,0.6)",
-                border: "1px solid rgba(148,163,184,0.12)",
-                color: "#E2E8F0",
+                background: "var(--lucid-surface-2)",
+                border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
+                color: "var(--lucid-ink)",
                 colorScheme: "dark",
               }}
             />
             {hasVelocity && data.start_net !== null && (
-              <span className="text-xs" style={{ color: "#475569" }}>
+              <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                 Net {netDisplay(data.start_net)}
               </span>
             )}
@@ -111,7 +111,7 @@ export default function VelocityPage() {
             <label
               htmlFor="vel-end"
               className="text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               End
             </label>
@@ -122,14 +122,14 @@ export default function VelocityPage() {
               onChange={(e) => setUserEndDate(e.target.value || null)}
               className="px-3 py-2 rounded-lg text-sm"
               style={{
-                background: "rgba(14,20,30,0.6)",
-                border: "1px solid rgba(148,163,184,0.12)",
-                color: "#E2E8F0",
+                background: "var(--lucid-surface-2)",
+                border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
+                color: "var(--lucid-ink)",
                 colorScheme: "dark",
               }}
             />
             {hasVelocity && data.end_net !== null && (
-              <span className="text-xs" style={{ color: "#475569" }}>
+              <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                 Net {netDisplay(data.end_net)}
               </span>
             )}
@@ -138,7 +138,7 @@ export default function VelocityPage() {
           {(userStartDate !== null || userEndDate !== null) && (
             <button
               className="flex items-center gap-1.5 text-xs px-3 py-2"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
               onClick={resetToAuto}
             >
               <RotateCcw size={12} />
@@ -148,7 +148,7 @@ export default function VelocityPage() {
         </div>
 
         {showAutoHint && (
-          <div className="text-xs mt-3" style={{ color: "#64748B" }}>
+          <div className="text-xs mt-3" style={{ color: "var(--lucid-ink-3)" }}>
             Suggested anchors:{" "}
             {data.auto_anchors.high_anchor_date !== null && (
               <span>
@@ -170,8 +170,8 @@ export default function VelocityPage() {
         )}
       </div>
 
-      {/* ── Tier Reference (always mounted; highlights current label) ── */}
-      <TierTable label={data?.label ?? null} />
+      {/* ── Compact condition scale (current tier prominent; expand for full legend) ── */}
+      <VelocityScale label={data?.label ?? null} velocity={data?.velocity ?? null} />
 
       {/* ── Result Area (swaps; chrome above stays mounted) ─────────── */}
       <ResultArea
@@ -185,41 +185,91 @@ export default function VelocityPage() {
   );
 }
 
-function TierTable({ label }: { label: VelocityLabel | null }) {
+/**
+ * Compact condition scale. Replaces the old always-tall 8-row legend: a single
+ * segmented strip (deterioration → repair) with the CURRENT tier called out
+ * prominently, and the full 8-tier reference tucked behind an expand toggle so
+ * the chart + number stay the focus.
+ */
+function VelocityScale({ label, velocity }: { label: VelocityLabel | null; velocity: number | null }) {
+  const [expanded, setExpanded] = useState(false);
+  // VELOCITY_TIERS is ordered best → worst; reverse for a worst→best left-to-right strip.
+  const strip = [...VELOCITY_TIERS].reverse();
+  const current = label ? VELOCITY_TIERS.find((t) => t.label === label) ?? null : null;
+  const currentColor = current ? `var(${current.cssVar})` : "var(--lucid-ink-3)";
+
   return (
-    <div className="glass-card p-5">
-      <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
-        Velocity Scale
-      </div>
-      <div className="space-y-2">
-        {VELOCITY_TIERS.map((tier) => {
-          const isCurrent = label === tier.label;
-          const tierColor = `var(${tier.cssVar})`;
-          return (
-            <div
-              key={tier.label}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
-              style={{
-                background: isCurrent ? "rgba(59,130,246,0.08)" : "transparent",
-                borderLeft: isCurrent ? "2px solid #3B82F6" : "2px solid transparent",
-              }}
-            >
-              <span className="text-lg w-8 text-center" style={{ color: tierColor }}>
-                {tier.symbol}
-              </span>
-              <span className="text-xs tabular-nums w-28 sm:w-32" style={{ color: "#475569" }}>
-                {tier.range}
-              </span>
-              <span className="text-xs font-medium" style={{ color: isCurrent ? "#E2E8F0" : "#64748B" }}>
-                {tier.label}
-              </span>
-              {isCurrent && (
-                <span className="ml-auto text-xs" style={{ color: "#3B82F6" }}>◄</span>
+    <div className="lt-card p-4">
+      {/* Top row: current tier + segmented strip + expand toggle */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-xl leading-none" style={{ color: currentColor }}>
+            {current?.symbol ?? "—"}
+          </span>
+          <div className="min-w-0">
+            <div className="lt-eyebrow" style={{ color: "var(--lucid-ink-3)" }}>Velocity scale</div>
+            <div className="lt-serif text-sm font-semibold leading-tight truncate" style={{ color: current ? "var(--lucid-ink)" : "var(--lucid-ink-3)" }}>
+              {label ?? "No reading"}
+              {velocity !== null && (
+                <span className="lt-num ml-2 font-normal" style={{ color: currentColor }}>
+                  {formatVelocity(velocity)}/day
+                </span>
               )}
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* Segmented condition strip — current segment raised + ringed. */}
+        <div className="flex items-center gap-0.5 flex-1 min-w-[180px]" role="img" aria-label={`Velocity tier: ${label ?? "none"}`}>
+          {strip.map((tier) => {
+            const isCurrent = tier.label === label;
+            return (
+              <div
+                key={tier.label}
+                title={`${tier.label} · ${tier.range}`}
+                className="flex-1 rounded-sm transition-all"
+                style={{
+                  height: isCurrent ? 16 : 8,
+                  background: `var(${tier.cssVar})`,
+                  opacity: isCurrent ? 1 : 0.32,
+                  outline: isCurrent ? "1px solid var(--lucid-ink)" : "none",
+                  outlineOffset: 1,
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1 text-xs shrink-0"
+          style={{ color: "var(--lucid-ink-3)" }}
+        >
+          {expanded ? "Hide" : "Full scale"}
+          <ChevronDown size={13} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+        </button>
       </div>
+
+      {/* Expanded full legend */}
+      {expanded && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-4 pt-4" style={{ borderTop: "1px solid var(--lucid-line)" }}>
+          {VELOCITY_TIERS.map((tier) => {
+            const isCurrent = label === tier.label;
+            return (
+              <div
+                key={tier.label}
+                className="flex items-center gap-2.5 px-2 py-1 rounded-md"
+                style={{ background: isCurrent ? "var(--lucid-accent-bg)" : "transparent" }}
+              >
+                <span className="text-base w-6 text-center" style={{ color: `var(${tier.cssVar})` }}>{tier.symbol}</span>
+                <span className="lt-num text-xs w-28 shrink-0" style={{ color: "var(--lucid-ink-3)" }}>{tier.range}</span>
+                <span className="text-xs font-medium truncate" style={{ color: isCurrent ? "var(--lucid-ink)" : "var(--lucid-ink-2)" }}>{tier.label}</span>
+                {isCurrent && <span className="ml-auto text-xs shrink-0" style={{ color: "var(--lucid-accent)" }}>◄</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -243,7 +293,7 @@ function ResultArea({
   if (error) {
     if (is404(error)) {
       return (
-        <div className="glass-card p-5 sm:p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
+        <div className="lt-card p-5 sm:p-8" style={{ background: "var(--lucid-line)" }}>
           <EmptyState
             title="No scorecard for selected date"
             description={`${error.message}. Pick a date with available data above.`}
@@ -259,7 +309,7 @@ function ResultArea({
 
   if (!hasVelocity) {
     return (
-      <div className="glass-card p-8" style={{ background: "rgba(148,163,184,0.04)" }}>
+      <div className="lt-card p-8" style={{ background: "var(--lucid-line)" }}>
         <EmptyState
           title="Velocity unavailable"
           description={data.reason ?? undefined}
@@ -276,11 +326,23 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
   const velColor = velocityLabelToColor(label);
   const velSymbol = velocityLabelToSymbol(label);
 
+  // Data-driven y-domain (no hardcoded cap). Net operative range is −13..+13;
+  // pad the actual data, always keep 0 in view, and never clip a band line.
+  const netValues = trajectory.map((p) => p.net);
+  const yDomain: [number, number] = (() => {
+    if (netValues.length === 0) return [-2, 4];
+    const lo = Math.min(0, ...netValues);
+    const hi = Math.max(0, ...netValues);
+    const pad = Math.max(2, Math.round((hi - lo) * 0.15));
+    // Keep the +10 (Strong Bullish) / 0 reference lines visible when relevant.
+    return [Math.max(-13, lo - pad), Math.min(13, Math.max(hi + pad, 10))];
+  })();
+
   return (
     <div className="space-y-5">
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div
-        className="glass-card p-5 sm:p-8 text-center"
+        className="lt-card p-5 sm:p-8 text-center"
         style={{
           background: `color-mix(in srgb, ${velColor} 6%, transparent)`,
           borderColor: `color-mix(in srgb, ${velColor} 30%, transparent)`,
@@ -304,18 +366,18 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
           <span>{label}</span>
         </div>
         {sessions !== null && (
-          <div className="text-sm" style={{ color: "#64748B" }}>
+          <div className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
             {sessions} sessions
           </div>
         )}
       </div>
 
       {/* ── Trajectory Chart ────────────────────────────────────────── */}
-      <div className="glass-card p-5">
-        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
+      <div className="lt-card p-5">
+        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--lucid-ink-3)" }}>
           Trajectory
           {start_date && end_date && (
-            <span style={{ color: "#475569" }}>
+            <span style={{ color: "var(--lucid-ink-3)" }}>
               {" "}
               — {formatDateShort(start_date)} → {formatDateShort(end_date)}
             </span>
@@ -338,8 +400,8 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
                 }))}
                 margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
               >
-                <XAxis dataKey="date" tick={{ fill: "#475569", fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis domain={[-5, 13]} tick={{ fill: "#475569", fontSize: 11 }} tickLine={false} axisLine={false} width={24} />
+                <XAxis dataKey="date" tick={{ fill: "var(--lucid-ink-3)", fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis domain={yDomain} tick={{ fill: "var(--lucid-ink-3)", fontSize: 11 }} tickLine={false} axisLine={false} width={24} />
                 <ReferenceLine y={10} stroke={bandColor("Strong Bullish")} strokeDasharray="3 3" strokeOpacity={0.4} label={{ value: "SB", position: "insideRight", fill: bandColor("Strong Bullish"), fontSize: 10 }} />
                 <ReferenceLine y={7} stroke={bandColor("Bullish")} strokeDasharray="3 3" strokeOpacity={0.3} />
                 <ReferenceLine y={4} stroke={bandColor("Neutral")} strokeDasharray="3 3" strokeOpacity={0.25} />
@@ -353,12 +415,12 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
                   />
                 )}
                 <Tooltip
-                  contentStyle={{ background: "#0A1628", border: "1px solid rgba(148,163,184,0.15)", borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", borderRadius: 8, fontSize: 12 }}
                   formatter={(val) => [netDisplay(Number(val)), "Net"]}
                 />
                 <Line
                   dataKey="net"
-                  stroke="#3B82F6"
+                  stroke="var(--lucid-accent)"
                   strokeWidth={2}
                   dot={(props) => {
                     const point = trajectory[props.index];
@@ -369,8 +431,8 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
                         cx={props.cx}
                         cy={props.cy}
                         r={isAnchor ? 6 : 3}
-                        fill={isAnchor ? "#3B82F6" : "#334155"}
-                        stroke={isAnchor ? "#3B82F6" : "transparent"}
+                        fill={isAnchor ? "var(--lucid-accent)" : "var(--lucid-line-3)"}
+                        stroke={isAnchor ? "var(--lucid-accent)" : "transparent"}
                         strokeWidth={isAnchor ? 2 : 0}
                       />
                     );
@@ -383,7 +445,7 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
       </div>
 
       {/* ── Historical Events Placeholder ───────────────────────────── */}
-      <div className="glass-card p-5">
+      <div className="lt-card p-5">
         <EmptyState
           title="Historical velocity events"
           description="Backend doesn't yet expose the event log. Real events will populate as the velocity classifier accumulates history."

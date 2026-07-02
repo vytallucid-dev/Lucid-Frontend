@@ -21,14 +21,14 @@ export const VELOCITY_TIERS: Array<{
   cssVar: string;
   min: number; // inclusive lower bound; -Infinity for the bottom tier
 }> = [
-  { symbol: "⬆⬆", range: "≥ +0.75 / day", label: "Ceiling Recovery", cssVar: "--band-strong-bullish", min: 0.75 },
-  { symbol: "↑", range: "+0.30 to +0.75", label: "Fast Repair", cssVar: "--band-strong-bullish", min: 0.30 },
-  { symbol: "↗", range: "+0.10 to +0.30", label: "Slow Repair", cssVar: "--band-bullish", min: 0.10 },
-  { symbol: "→", range: "−0.10 to +0.10", label: "Flat", cssVar: "--band-neutral", min: -0.10 },
-  { symbol: "↘", range: "−0.10 to −0.30", label: "Mild Deterioration", cssVar: "--band-caution", min: -0.30 },
-  { symbol: "↓", range: "−0.30 to −0.50", label: "Alert", cssVar: "--band-caution", min: -0.50 },
-  { symbol: "⬇", range: "−0.50 to −1.00", label: "Warning", cssVar: "--band-bearish", min: -1.00 },
-  { symbol: "⬇⬇", range: "≤ −1.00 / day", label: "Emergency Deterioration", cssVar: "--band-strong-bearish", min: -Infinity },
+  { symbol: "⬆⬆", range: "≥ +0.75 / day", label: "Ceiling Recovery", cssVar: "--lucid-scale-4", min: 0.75 },
+  { symbol: "↑", range: "+0.30 to +0.75", label: "Fast Repair", cssVar: "--lucid-scale-4", min: 0.30 },
+  { symbol: "↗", range: "+0.10 to +0.30", label: "Slow Repair", cssVar: "--lucid-scale-3", min: 0.10 },
+  { symbol: "→", range: "−0.10 to +0.10", label: "Flat", cssVar: "--lucid-scale-2", min: -0.10 },
+  { symbol: "↘", range: "−0.10 to −0.30", label: "Mild Deterioration", cssVar: "--lucid-warn", min: -0.30 },
+  { symbol: "↓", range: "−0.30 to −0.50", label: "Alert", cssVar: "--lucid-warn", min: -0.50 },
+  { symbol: "⬇", range: "−0.50 to −1.00", label: "Warning", cssVar: "--lucid-scale-1", min: -1.00 },
+  { symbol: "⬇⬇", range: "≤ −1.00 / day", label: "Emergency Deterioration", cssVar: "--lucid-scale-0", min: -Infinity },
 ];
 
 /** Pick the tier matching a velocity value. */
@@ -40,26 +40,25 @@ export function velocityTier(vel: number) {
   return VELOCITY_TIERS[VELOCITY_TIERS.length - 1];
 }
 
+// Band → theme token. Maps the 6 NIFTY bands onto the warm editorial scale:
+// Strong Bullish = cool blue (scale-4), Bullish = green (scale-3),
+// Neutral = gold (scale-2), Caution = warn amber, Bearish = orange (scale-1),
+// Strong Bearish = red (scale-0). Returns a raw `var(--lucid-*)` reference.
 export function bandColor(band: Band): string {
   switch (band) {
-    case "Strong Bullish": return "var(--band-strong-bullish)";
-    case "Bullish": return "var(--band-bullish)";
-    case "Neutral": return "var(--band-neutral)";
-    case "Caution": return "var(--band-caution)";
-    case "Bearish": return "var(--band-bearish)";
-    case "Strong Bearish": return "var(--band-strong-bearish)";
+    case "Strong Bullish": return "var(--lucid-scale-4)";
+    case "Bullish": return "var(--lucid-scale-3)";
+    case "Neutral": return "var(--lucid-scale-2)";
+    case "Caution": return "var(--lucid-warn)";
+    case "Bearish": return "var(--lucid-scale-1)";
+    case "Strong Bearish": return "var(--lucid-scale-0)";
   }
 }
 
+// Faint band-tinted surface: mix the band token into transparent so cards read
+// as flat surfaces with a wash, not glass. No blur, no glow.
 export function bandBg(band: Band): string {
-  switch (band) {
-    case "Strong Bullish": return "var(--band-strong-bullish-bg)";
-    case "Bullish": return "var(--band-bullish-bg)";
-    case "Neutral": return "var(--band-neutral-bg)";
-    case "Caution": return "var(--band-caution-bg)";
-    case "Bearish": return "var(--band-bearish-bg)";
-    case "Strong Bearish": return "var(--band-strong-bearish-bg)";
-  }
+  return `color-mix(in srgb, ${bandColor(band)} 10%, transparent)`;
 }
 
 export function scorePillClass(score: IndicatorScore | null | undefined): string {
@@ -86,20 +85,28 @@ export function netDisplay(net: number): string {
   return `\u2212${Math.abs(net)}`;
 }
 
+function tokenPill(token: string): { bg: string; color: string; border: string } {
+  return {
+    bg: `color-mix(in srgb, var(${token}) 14%, transparent)`,
+    color: `var(${token})`,
+    border: `color-mix(in srgb, var(${token}) 32%, transparent)`,
+  };
+}
+
 export function flagPillStyle(flag: CompositionFlag): { bg: string; color: string; border: string } {
   switch (flag) {
     case "INFLATION_LED":
-      return { bg: "rgba(16,185,129,0.18)", color: "#10B981", border: "rgba(16,185,129,0.3)" };
+      return tokenPill("--lucid-pos");
     case "DEMAND_DESTRUCTION":
-      return { bg: "rgba(245,158,11,0.18)", color: "#F59E0B", border: "rgba(245,158,11,0.3)" };
+      return tokenPill("--lucid-warn");
     case "MIXED":
-      return { bg: "rgba(148,163,184,0.15)", color: "#94A3B8", border: "rgba(148,163,184,0.25)" };
+      return tokenPill("--lucid-ctx");
     case "INFLATION_HOT":
-      return { bg: "rgba(239,68,68,0.18)", color: "#EF4444", border: "rgba(239,68,68,0.3)" };
+      return tokenPill("--lucid-neg");
     case "DEMAND_REACCEL":
-      return { bg: "rgba(52,211,153,0.18)", color: "#34D399", border: "rgba(52,211,153,0.3)" };
+      return tokenPill("--lucid-pos");
     default:
-      return { bg: "rgba(100,116,139,0.1)", color: "#64748B", border: "rgba(100,116,139,0.2)" };
+      return tokenPill("--lucid-ctx");
   }
 }
 
@@ -110,13 +117,13 @@ export function velocityColor(vel: number): string {
 export function patternTierStyle(tier: string): { bg: string; color: string; border: string } {
   switch (tier) {
     case "CONFIRMED":
-      return { bg: "rgba(16,185,129,0.15)", color: "#10B981", border: "rgba(16,185,129,0.3)" };
+      return tokenPill("--lucid-pos");
     case "OBSERVED":
-      return { bg: "rgba(59,130,246,0.12)", color: "#60A5FA", border: "rgba(59,130,246,0.25)" };
+      return tokenPill("--lucid-cool");
     case "HYPOTHESIS":
-      return { bg: "rgba(168,85,247,0.12)", color: "#A855F7", border: "rgba(168,85,247,0.25)" };
+      return tokenPill("--lucid-accent");
     default:
-      return { bg: "rgba(100,116,139,0.1)", color: "#64748B", border: "rgba(100,116,139,0.2)" };
+      return tokenPill("--lucid-ctx");
   }
 }
 

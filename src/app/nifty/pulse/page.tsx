@@ -87,6 +87,15 @@ export default function PulsePage() {
       band: s.band,
     }));
   const sparkInsufficient = sparkData.length < 2;
+  // Data-driven y-domain (no hardcoded cap). Keep 0 and the +10 line in view.
+  const sparkDomain: [number, number] = (() => {
+    const vals = sparkData.map((d) => d.net);
+    if (vals.length === 0) return [-2, 11];
+    const lo = Math.min(0, ...vals);
+    const hi = Math.max(0, ...vals);
+    const pad = Math.max(1, Math.round((hi - lo) * 0.15));
+    return [Math.max(-13, lo - pad), Math.min(13, Math.max(hi + pad, 11))];
+  })();
 
   // Velocity (sourced from backend's velocity_short on the latest scorecard)
   const vel = current.velocity_short ?? null;
@@ -120,13 +129,13 @@ export default function PulsePage() {
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Pulse</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>Where macro sits right now.</p>
+          <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Pulse</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Where macro sits right now.</p>
         </div>
-        <div className="text-right text-sm shrink-0" style={{ color: "#64748B" }}>
+        <div className="text-right text-sm shrink-0" style={{ color: "var(--lucid-ink-3)" }}>
           <p>As of {formatDate(current.date)}</p>
           {missingCount > 0 && (
-            <p className="text-xs mt-0.5" style={{ color: "#F59E0B" }}>
+            <p className="text-xs mt-0.5" style={{ color: "var(--lucid-warn)" }}>
               {missingCount} indicator{missingCount !== 1 ? "s" : ""} unavailable
             </p>
           )}
@@ -135,7 +144,7 @@ export default function PulsePage() {
               {showHeroPhase && <span>{current.phase}</span>}
               {showHeroPhase && showHeroBucket && " · "}
               {showHeroBucket && (
-                <span style={{ color: "#94A3B8" }}>{current.bucket} regime</span>
+                <span style={{ color: "var(--lucid-ink-2)" }}>{current.bucket} regime</span>
               )}
             </p>
           )}
@@ -144,8 +153,8 @@ export default function PulsePage() {
 
       {/* ── Section 1: Hero Band Card ────────────────────────────────── */}
       <div
-        className="glass-card p-5 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8"
-        style={{ background: bandBg(current.band), borderColor: bandColor(current.band) + "30" }}
+        className="lt-card p-5 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8"
+        style={{ background: bandBg(current.band), borderColor: `color-mix(in srgb, ${bandColor(current.band)} 30%, transparent)` }}
       >
         {/* Left — Band reading */}
         <div className="flex flex-col justify-center gap-3">
@@ -156,10 +165,10 @@ export default function PulsePage() {
             >
               {current.band}
             </div>
-            <div className="text-2xl font-semibold tabular-nums" style={{ color: "#94A3B8" }}>
+            <div className="text-2xl font-semibold tabular-nums" style={{ color: "var(--lucid-ink-2)" }}>
               Net {netDisplay(current.net_score)}
             </div>
-            <div className="text-sm mt-1" style={{ color: "#64748B" }}>
+            <div className="text-sm mt-1" style={{ color: "var(--lucid-ink-3)" }}>
               of 13 indicators · theoretical range −17 to +17
             </div>
           </div>
@@ -171,14 +180,14 @@ export default function PulsePage() {
                   style={{
                     background: bandBg(current.band),
                     color: bandColor(current.band),
-                    border: `1px solid ${bandColor(current.band)}40`,
+                    border: `1px solid color-mix(in srgb, ${bandColor(current.band)} 40%, transparent)`,
                   }}
                 >
                   {current.phase}
                 </span>
               )}
               {showHeroBucket && (
-                <span className="text-xs" style={{ color: "#64748B" }}>
+                <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                   {current.bucket} regime
                 </span>
               )}
@@ -188,7 +197,7 @@ export default function PulsePage() {
 
         {/* Right — Trajectory sparkline */}
         <div className="flex flex-col gap-3">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--lucid-ink-3)" }}>
             Net Score — Last 10 Scorecards
           </div>
           <div style={{ height: 120 }}>
@@ -197,14 +206,14 @@ export default function PulsePage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sparkData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                  <XAxis dataKey="date" tick={{ fill: "#475569", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis domain={[-4, 13]} tick={{ fill: "#475569", fontSize: 10 }} tickLine={false} axisLine={false} width={20} />
+                  <XAxis dataKey="date" tick={{ fill: "var(--lucid-ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis domain={sparkDomain} tick={{ fill: "var(--lucid-ink-3)", fontSize: 10 }} tickLine={false} axisLine={false} width={20} />
                   <ReferenceLine y={10} stroke={bandColor("Strong Bullish")} strokeDasharray="3 3" strokeOpacity={0.4} />
                   <ReferenceLine y={7} stroke={bandColor("Bullish")} strokeDasharray="3 3" strokeOpacity={0.3} />
                   <ReferenceLine y={0} stroke={bandColor("Strong Bearish")} strokeDasharray="3 3" strokeOpacity={0.3} />
                   <Tooltip
-                    contentStyle={{ background: "#0A1628", border: "1px solid rgba(148,163,184,0.15)", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "#94A3B8" }}
+                    contentStyle={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "var(--lucid-ink-2)" }}
                     formatter={(val: unknown) => [netDisplay(Number(val)), "Net"] as [string, string]}
                   />
                   <Line
@@ -219,7 +228,7 @@ export default function PulsePage() {
                           cx={props.cx}
                           cy={props.cy}
                           r={isLast ? 5 : 3}
-                          fill={isLast ? bandColor(current.band) : "#334155"}
+                          fill={isLast ? bandColor(current.band) : "var(--lucid-line-3)"}
                           stroke={isLast ? bandColor(current.band) : "transparent"}
                         />
                       );
@@ -234,32 +243,32 @@ export default function PulsePage() {
               empty-state when it doesn't. Peak context lives in the peak
               banner below when active, so we hide the peak sub-line here to
               avoid duplicate data on adjacent surfaces. */}
-          <div className="glass-card p-3 space-y-2" style={{ background: "rgba(14,20,30,0.7)" }}>
+          <div className="lt-card p-3 space-y-2" style={{ background: "var(--lucid-surface-2)" }}>
             {vel !== null && velColorVal ? (
               <>
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-semibold tabular-nums" style={{ color: velColorVal }}>
                     {vel > 0 ? "+" : ""}{vel.toFixed(2)}
                   </span>
-                  <span className="text-xs" style={{ color: "#64748B" }}>/ day</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>/ day</span>
                 </div>
                 {!current.peak_score_active &&
                   current.peak_score_peak_value !== undefined &&
                   current.peak_score_peak_date && (
-                    <div className="text-xs" style={{ color: "#94A3B8" }}>
+                    <div className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                       Peak: {netDisplay(current.peak_score_peak_value)} on {formatDate(current.peak_score_peak_date)}
                     </div>
                   )}
               </>
             ) : (
-              <div className="text-xs" style={{ color: "#94A3B8" }}>
+              <div className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                 Velocity accumulating — populates after second scorecard
               </div>
             )}
             <button
               onClick={() => router.push("/nifty/velocity")}
               className="text-xs font-medium flex items-center gap-1"
-              style={{ color: "#3B82F6" }}
+              style={{ color: "var(--lucid-accent)" }}
             >
               View Velocity <ChevronRight size={12} />
             </button>
@@ -272,10 +281,10 @@ export default function PulsePage() {
         current.peak_score_peak_value !== undefined &&
         current.peak_score_peak_date && (
         <div
-          className="glass-card p-4 flex flex-wrap items-start justify-between gap-3"
+          className="lt-card p-4 flex flex-wrap items-start justify-between gap-3"
           style={{
             background: "var(--warning-bg)",
-            border: "1px solid rgba(245,158,11,0.3)",
+            border: "1px solid color-mix(in srgb, var(--lucid-warn) 15%, transparent)",
           }}
         >
           <div className="flex gap-3">
@@ -284,7 +293,7 @@ export default function PulsePage() {
               <div className="font-semibold text-sm" style={{ color: "var(--warning)" }}>
                 {current.band} — Ceiling State
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+              <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
                 Peak {netDisplay(current.peak_score_peak_value)} on{" "}
                 {formatDate(current.peak_score_peak_date)} · Now{" "}
                 {netDisplay(current.net_score)}
@@ -303,15 +312,15 @@ export default function PulsePage() {
 
       {current.conflict_flag && (
         <div
-          className="glass-card p-4 flex items-start gap-3"
-          style={{ background: "var(--purple-bg)", border: "1px solid rgba(168,85,247,0.3)" }}
+          className="lt-card p-4 flex items-start gap-3"
+          style={{ background: "var(--purple-bg)", border: "1px solid color-mix(in srgb, var(--lucid-accent) 14%, transparent)" }}
         >
           <Zap size={18} className="mt-0.5 shrink-0" style={{ color: "var(--purple)" }} />
           <div>
             <div className="font-semibold text-sm" style={{ color: "var(--purple)" }}>
               CONFLICT — Domestic {netDisplay(current.domestic_composite)}, External {netDisplay(current.external_composite)}
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+            <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
               Net masks the regime. Read External as the trade-relevant signal.
             </div>
           </div>
@@ -321,24 +330,24 @@ export default function PulsePage() {
       {(current.band === "Bearish" || current.band === "Strong Bearish") && (
         <button
           onClick={() => router.push("/nifty/v-bottom")}
-          className="glass-card p-3 w-full flex items-center justify-between text-sm"
-          style={{ background: "rgba(14,20,30,0.5)", border: "1px solid rgba(148,163,184,0.1)" }}
+          className="lt-card p-3 w-full flex items-center justify-between text-sm"
+          style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)" }}
         >
           <div className="flex items-center gap-2">
-            <Search size={15} style={{ color: "#94A3B8" }} />
-            <span style={{ color: "#94A3B8" }}>
+            <Search size={15} style={{ color: "var(--lucid-ink-2)" }} />
+            <span style={{ color: "var(--lucid-ink-2)" }}>
               {current.band} band active — V-Bottom diagnostic available
             </span>
           </div>
-          <div className="flex items-center gap-1" style={{ color: "#3B82F6" }}>
+          <div className="flex items-center gap-1" style={{ color: "var(--lucid-accent)" }}>
             Open <ChevronRight size={14} />
           </div>
         </button>
       )}
 
       {/* ── Section 3: Section 9F Split ─────────────────────────────── */}
-      <div className="glass-card p-4 sm:p-6">
-        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>
+      <div className="lt-card p-4 sm:p-6">
+        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--lucid-ink-3)" }}>
           Section 9F — Composite Breakdown
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
@@ -358,12 +367,12 @@ export default function PulsePage() {
                   else router.push("/nifty/scorecard");
                 }}
               >
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--lucid-ink-3)" }}>
                   {label}
                 </div>
                 <div
                   className="text-5xl font-bold tabular-nums transition-colors"
-                  style={{ color: isNet ? bandColor(current.band) : "#E2E8F0" }}
+                  style={{ color: isNet ? bandColor(current.band) : "var(--lucid-ink)" }}
                 >
                   {netDisplay(value)}
                 </div>
@@ -372,16 +381,16 @@ export default function PulsePage() {
                     className="h-full rounded-full transition-all"
                     style={{
                       width: `${fillPct}%`,
-                      background: isNet ? bandColor(current.band) : "rgba(148,163,184,0.5)",
+                      background: isNet ? bandColor(current.band) : "color-mix(in srgb, var(--lucid-ctx) 20%, transparent)",
                     }}
                   />
                 </div>
                 <div>
-                  <div className="text-xs font-medium" style={{ color: "#94A3B8" }}>{sub}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#475569" }}>{desc}</div>
+                  <div className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>{sub}</div>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>{desc}</div>
                 </div>
                 {drawerKey && (
-                  <div className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#3B82F6" }}>
+                  <div className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--lucid-accent)" }}>
                     Click to expand indicators →
                   </div>
                 )}
@@ -394,27 +403,27 @@ export default function PulsePage() {
       {/* ── Section 4: Two-Column Strip ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Left — What Changed */}
-        <div className="glass-card p-5 space-y-4">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
+        <div className="lt-card p-5 space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--lucid-ink-3)" }}>
             {formatDate(current.date)}
             {current.phase ? ` — ${current.phase}` : ""}
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-2" style={{ color: "#94A3B8" }}>
+            <div className="text-sm font-medium mb-2" style={{ color: "var(--lucid-ink-2)" }}>
               This scorecard&apos;s catalysts
             </div>
             {current.catalysts.length > 0 ? (
               <ul className="space-y-1.5">
                 {current.catalysts.slice(0, 5).map((c, i) => (
-                  <li key={i} className="flex gap-2 text-xs" style={{ color: "#64748B" }}>
-                    <span style={{ color: "#475569" }}>•</span>
+                  <li key={i} className="flex gap-2 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+                    <span style={{ color: "var(--lucid-ink-3)" }}>•</span>
                     <span>{c}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs" style={{ color: "#475569" }}>
+              <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                 No catalysts recorded for this scorecard.
               </p>
             )}
@@ -422,7 +431,7 @@ export default function PulsePage() {
 
           {showWhatChanged && (
             <div>
-              <div className="text-sm font-medium mb-2" style={{ color: "#94A3B8" }}>
+              <div className="text-sm font-medium mb-2" style={{ color: "var(--lucid-ink-2)" }}>
                 What changed vs prior scorecard
               </div>
               <ul className="space-y-1.5">
@@ -431,9 +440,9 @@ export default function PulsePage() {
                   if (ind.score === null) {
                     return (
                       <li key={ind.id} className="flex items-center gap-2 text-xs">
-                        <span style={{ color: "#64748B" }}>—</span>
-                        <span style={{ color: "#94A3B8" }}>{ind.short}</span>
-                        <span style={{ color: "#475569" }}>
+                        <span style={{ color: "var(--lucid-ink-3)" }}>—</span>
+                        <span style={{ color: "var(--lucid-ink-2)" }}>{ind.short}</span>
+                        <span style={{ color: "var(--lucid-ink-3)" }}>
                           {scoreDisplay(prev)} → unavailable
                         </span>
                       </li>
@@ -445,8 +454,8 @@ export default function PulsePage() {
                       <span style={{ color: up ? "var(--positive)" : "var(--negative)" }}>
                         {up ? "↑" : "↓"}
                       </span>
-                      <span style={{ color: "#94A3B8" }}>{ind.short}</span>
-                      <span style={{ color: "#475569" }}>
+                      <span style={{ color: "var(--lucid-ink-2)" }}>{ind.short}</span>
+                      <span style={{ color: "var(--lucid-ink-3)" }}>
                         flipped {scoreDisplay(prev)} → {scoreDisplay(ind.score)}
                       </span>
                     </li>
@@ -458,8 +467,8 @@ export default function PulsePage() {
         </div>
 
         {/* Right — Composition Flag */}
-        <div className="glass-card p-5 space-y-4">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#64748B" }}>
+        <div className="lt-card p-5 space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--lucid-ink-3)" }}>
             Ind 9 Composition
           </div>
 
@@ -489,8 +498,8 @@ export default function PulsePage() {
                   const sum = scores.reduce((a: number, b: number) => a + b, 0);
                   return (
                     <div key={label} className="flex items-center justify-between text-xs">
-                      <span style={{ color: "#64748B" }}>{label}</span>
-                      <span className="tabular-nums" style={{ color: sum < 0 ? "var(--negative)" : sum > 0 ? "var(--positive)" : "#64748B" }}>
+                      <span style={{ color: "var(--lucid-ink-3)" }}>{label}</span>
+                      <span className="tabular-nums" style={{ color: sum < 0 ? "var(--negative)" : sum > 0 ? "var(--positive)" : "var(--lucid-ink-3)" }}>
                         {netDisplay(sum)} ({negCount} neg)
                       </span>
                     </div>
@@ -501,13 +510,13 @@ export default function PulsePage() {
               <button
                 onClick={() => router.push("/nifty/usd-lab")}
                 className="text-xs font-medium flex items-center gap-1"
-                style={{ color: "#3B82F6" }}
+                style={{ color: "var(--lucid-accent)" }}
               >
                 Open USD Lab <ChevronRight size={12} />
               </button>
             </>
           ) : (
-            <p className="text-xs" style={{ color: "#475569" }}>
+            <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
               Composition flag inactive — Ind 9 raw not in trigger range (current: {ind9Raw ?? "—"})
             </p>
           )}
@@ -517,13 +526,13 @@ export default function PulsePage() {
       {/* ── Section 5: Narrative ─────────────────────────────────────── */}
       {current.notes && (
         <div
-          className="glass-card p-5"
-          style={{ background: "rgba(14,20,30,0.5)", borderColor: "rgba(148,163,184,0.08)" }}
+          className="lt-card p-5"
+          style={{ background: "var(--lucid-surface-2)", borderColor: "var(--lucid-line)" }}
         >
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#475569" }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)" }}>
             Phase Narrative
           </div>
-          <p className="text-sm leading-relaxed" style={{ color: "#94A3B8" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--lucid-ink-2)" }}>
             {current.notes}
           </p>
         </div>
@@ -536,7 +545,7 @@ export default function PulsePage() {
         title={drawerContent === "domestic" ? "Domestic Indicators" : "External Indicators"}
       >
         <div className="p-4 sm:p-6 space-y-4">
-          <p className="text-xs" style={{ color: "#64748B" }}>
+          <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
             {drawerContent === "domestic"
               ? "6 domestic indicators (Ind 1, 2, 3, 4, 5, 7) driving the structural floor."
               : "6 external indicators (Ind 6, 8, 9, 10, 11, 12) driving the cycle reading."}
@@ -547,27 +556,27 @@ export default function PulsePage() {
                 ? "var(--positive)"
                 : ind.score !== null && ind.score <= -1
                   ? "var(--negative)"
-                  : "rgba(148,163,184,0.2)";
+                  : "color-mix(in srgb, var(--lucid-ctx) 20%, transparent)";
             return (
               <div
                 key={ind.id}
                 className="p-4 rounded-xl"
                 style={{
-                  background: "rgba(14,20,30,0.6)",
+                  background: "var(--lucid-surface-2)",
                   borderLeft: `3px solid ${borderColor}`,
                 }}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div>
-                    <span className="text-xs" style={{ color: "#475569" }}>Ind {ind.id} · </span>
-                    <span className="text-sm font-medium" style={{ color: "#E2E8F0" }}>{ind.name}</span>
+                    <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>Ind {ind.id} · </span>
+                    <span className="text-sm font-medium" style={{ color: "var(--lucid-ink)" }}>{ind.name}</span>
                   </div>
                   <span className={scorePillClass(ind.score)}>{scoreDisplay(ind.score)}</span>
                 </div>
-                <div className="font-mono text-base font-semibold" style={{ color: "#E2E8F0" }}>
+                <div className="font-mono text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   {ind.value}
                 </div>
-                <div className="text-xs mt-0.5" style={{ color: "#64748B" }}>{ind.magnitude}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>{ind.magnitude}</div>
               </div>
             );
           })}

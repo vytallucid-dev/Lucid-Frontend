@@ -122,18 +122,20 @@ body {
   --border-subtle: rgba(148, 163, 184, 0.1);
   --border-strong: rgba(148, 163, 184, 0.2);
   --text-primary: #E2E8F0;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --accent-blue: #3B82F6;
-  --accent-blue-glow: rgba(59, 130, 246, 0.15);
-  --positive: #10B981;
-  --positive-bg: rgba(16, 185, 129, 0.15);
-  --negative: #EF4444;
-  --negative-bg: rgba(239, 68, 68, 0.1);
-  --warning: #F59E0B;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --neutral: #94A3B8;
-  --neutral-bg: rgba(148, 163, 184, 0.1);
+  /* Legacy palette aliases → remapped onto warm editorial tokens so any
+     lingering NIFTY reference stays on-theme (no cold slate / blue). */
+  --text-secondary: var(--lucid-ink-2);
+  --text-muted: var(--lucid-ink-3);
+  --accent-blue: var(--lucid-accent);
+  --accent-blue-glow: var(--lucid-accent-bg);
+  --positive: var(--lucid-pos);
+  --positive-bg: var(--lucid-pos-bg);
+  --negative: var(--lucid-neg);
+  --negative-bg: var(--lucid-neg-bg);
+  --warning: var(--lucid-warn);
+  --warning-bg: var(--lucid-warn-bg);
+  --neutral: var(--lucid-ctx);
+  --neutral-bg: var(--lucid-ctx-bg);
   --purple: #A855F7;
   --purple-bg: rgba(168, 85, 247, 0.15);
 }
@@ -220,22 +222,24 @@ body {
 /* =============================================
    NIFTY — Band & Score Tokens
    ============================================= */
+/* Band tokens mapped onto the warm editorial scale (--lucid-scale-*).
+   Kept as aliases so any lingering --band-* reference stays on-theme. */
 :root {
-  --band-strong-bullish: #10B981;
-  --band-strong-bullish-bg: rgba(16, 185, 129, 0.18);
-  --band-bullish: #34D399;
-  --band-bullish-bg: rgba(52, 211, 153, 0.14);
-  --band-neutral: #94A3B8;
-  --band-neutral-bg: rgba(148, 163, 184, 0.12);
-  --band-caution: #F59E0B;
-  --band-caution-bg: rgba(245, 158, 11, 0.14);
-  --band-bearish: #F97316;
-  --band-bearish-bg: rgba(249, 115, 22, 0.15);
-  --band-strong-bearish: #EF4444;
-  --band-strong-bearish-bg: rgba(239, 68, 68, 0.18);
+  --band-strong-bullish: var(--lucid-scale-4);
+  --band-strong-bullish-bg: color-mix(in srgb, var(--lucid-scale-4) 12%, transparent);
+  --band-bullish: var(--lucid-scale-3);
+  --band-bullish-bg: color-mix(in srgb, var(--lucid-scale-3) 12%, transparent);
+  --band-neutral: var(--lucid-scale-2);
+  --band-neutral-bg: color-mix(in srgb, var(--lucid-scale-2) 12%, transparent);
+  --band-caution: var(--lucid-warn);
+  --band-caution-bg: color-mix(in srgb, var(--lucid-warn) 12%, transparent);
+  --band-bearish: var(--lucid-scale-1);
+  --band-bearish-bg: color-mix(in srgb, var(--lucid-scale-1) 12%, transparent);
+  --band-strong-bearish: var(--lucid-scale-0);
+  --band-strong-bearish-bg: color-mix(in srgb, var(--lucid-scale-0) 12%, transparent);
 }
 
-/* Score pills */
+/* Score pills — warm scale. Positive = green, neutral = gold, negative = red. */
 .score-pill {
   display: inline-flex;
   align-items: center;
@@ -245,13 +249,14 @@ body {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
+  font-family: var(--lucid-font-mono);
   font-variant-numeric: tabular-nums;
 }
-.score-pos-2 { background: rgba(16, 185, 129, 0.25); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); }
-.score-pos-1 { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.3); }
-.score-zero  { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.25); }
-.score-neg-1 { background: rgba(239, 68, 68, 0.12); color: #F97316; border: 1px solid rgba(249, 115, 22, 0.3); }
-.score-neg-2 { background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+.score-pos-2 { background: color-mix(in srgb, var(--lucid-pos) 22%, transparent); color: var(--lucid-pos); border: 1px solid color-mix(in srgb, var(--lucid-pos) 40%, transparent); }
+.score-pos-1 { background: color-mix(in srgb, var(--lucid-pos) 13%, transparent); color: var(--lucid-pos); border: 1px solid color-mix(in srgb, var(--lucid-pos) 28%, transparent); }
+.score-zero  { background: color-mix(in srgb, var(--lucid-ctx) 13%, transparent); color: var(--lucid-ink-2); border: 1px solid color-mix(in srgb, var(--lucid-ctx) 25%, transparent); }
+.score-neg-1 { background: color-mix(in srgb, var(--lucid-scale-1) 13%, transparent); color: var(--lucid-scale-1); border: 1px solid color-mix(in srgb, var(--lucid-scale-1) 28%, transparent); }
+.score-neg-2 { background: color-mix(in srgb, var(--lucid-neg) 22%, transparent); color: var(--lucid-neg); border: 1px solid color-mix(in srgb, var(--lucid-neg) 40%, transparent); }
 
 /* Composite badge */
 .composite-badge {

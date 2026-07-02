@@ -220,19 +220,19 @@ function PatternsPageInner({
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>Patterns</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>What we&apos;ve learned. What&apos;s relevant now.</p>
+          <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Patterns</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>What we&apos;ve learned. What&apos;s relevant now.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
-          <span style={{ color: "#10B981" }}>{tierCounts.CONFIRMED} CONFIRMED</span>
-          <span style={{ color: "#64748B" }}>·</span>
-          <span style={{ color: "#60A5FA" }}>{tierCounts.OBSERVED} OBSERVED</span>
-          <span style={{ color: "#64748B" }}>·</span>
-          <span style={{ color: "#A855F7" }}>{tierCounts.HYPOTHESIS} HYPOTHESIS</span>
+          <span style={{ color: "var(--lucid-pos)" }}>{tierCounts.CONFIRMED} CONFIRMED</span>
+          <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
+          <span style={{ color: "var(--lucid-accent)" }}>{tierCounts.OBSERVED} OBSERVED</span>
+          <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
+          <span style={{ color: "var(--lucid-accent)" }}>{tierCounts.HYPOTHESIS} HYPOTHESIS</span>
           {missingCount > 0 && (
             <>
-              <span style={{ color: "#64748B" }}>·</span>
-              <span style={{ color: "#F59E0B" }}>
+              <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
+              <span style={{ color: "var(--lucid-warn)" }}>
                 {missingCount} indicator{missingCount !== 1 ? "s" : ""} unavailable
               </span>
             </>
@@ -242,11 +242,11 @@ function PatternsPageInner({
 
       {/* ── Section 1: Relevant Now ──────────────────────────────────── */}
       {topRelevant.length > 0 && (
-        <div className="glass-card p-4 sm:p-5">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>
+        <div className="lt-card p-4 sm:p-5">
+          <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--lucid-ink-3)" }}>
             Relevant Now
           </div>
-          <p className="text-xs mb-4" style={{ color: "#475569" }}>
+          <p className="text-xs mb-4" style={{ color: "var(--lucid-ink-3)" }}>
             Patterns matched against current scorecard
             {currentSc.phase ? ` — ${currentSc.phase}, ${currentSc.band}.` : ` — ${currentSc.band}.`}
           </p>
@@ -257,29 +257,29 @@ function PatternsPageInner({
                 <button
                   key={pattern.id}
                   className="w-full text-left p-4 rounded-xl hover:bg-white/5 transition-colors"
-                  style={{ background: "rgba(14,20,30,0.5)", border: "1px solid rgba(148,163,184,0.08)" }}
+                  style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
                   onClick={() => openPattern(pattern, true)}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-semibold" style={{ color: "#3B82F6" }}>{pattern.id}</span>
-                      <span className="text-sm font-medium" style={{ color: "#E2E8F0" }}>{pattern.name}</span>
+                      <span className="font-mono text-xs font-semibold" style={{ color: "var(--lucid-accent)" }}>{pattern.id}</span>
+                      <span className="text-sm font-medium" style={{ color: "var(--lucid-ink)" }}>{pattern.name}</span>
                       <span className="text-xs px-2 py-0.5 rounded" style={{ background: ts.bg, color: ts.color }}>
                         {pattern.tier}
                       </span>
                       {pattern.drives_subtool && (
-                        <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(59,130,246,0.1)", color: "#60A5FA" }}>
+                        <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>
                           → {pattern.drives_subtool}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs ml-2 shrink-0" style={{ color: "#334155" }}>
+                    <span className="text-xs ml-2 shrink-0" style={{ color: "var(--lucid-line-3)" }}>
                       Score: {relevance_score}
                     </span>
                   </div>
                   {matched_triggers.length > 0 && (
-                    <div className="text-xs" style={{ color: "#64748B" }}>
-                      <span style={{ color: "#475569" }}>Why now: </span>
+                    <div className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+                      <span style={{ color: "var(--lucid-ink-3)" }}>Why now: </span>
                       {matched_triggers.join(" · ")}
                     </div>
                   )}
@@ -290,7 +290,7 @@ function PatternsPageInner({
           {topRelevant.length > 3 && (
             <button
               className="mt-3 text-xs"
-              style={{ color: "#3B82F6" }}
+              style={{ color: "var(--lucid-accent)" }}
               onClick={() => setShowAllRelevant((v) => !v)}
             >
               {showAllRelevant ? `Show fewer` : `See all ${topRelevant.length} relevant patterns`}
@@ -311,9 +311,9 @@ function PatternsPageInner({
                   key={t}
                   className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                   style={{
-                    background: active ? ts.bg : "rgba(14,20,30,0.6)",
-                    color: active ? ts.color : "#475569",
-                    border: `1px solid ${active ? ts.border : "rgba(148,163,184,0.1)"}`,
+                    background: active ? ts.bg : "var(--lucid-surface-2)",
+                    color: active ? ts.color : "var(--lucid-ink-3)",
+                    border: `1px solid ${active ? ts.border : "color-mix(in srgb, var(--lucid-ctx) 12%, transparent)"}`,
                   }}
                   onClick={() => toggleTier(t)}
                 >
@@ -331,9 +331,9 @@ function PatternsPageInner({
                   key={st}
                   className="px-2.5 py-1 rounded-full text-xs transition-all"
                   style={{
-                    background: active ? "rgba(59,130,246,0.15)" : "rgba(14,20,30,0.5)",
-                    color: active ? "#3B82F6" : "#475569",
-                    border: `1px solid ${active ? "rgba(59,130,246,0.3)" : "rgba(148,163,184,0.08)"}`,
+                    background: active ? "color-mix(in srgb, var(--lucid-accent) 14%, transparent)" : "var(--lucid-surface-2)",
+                    color: active ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
+                    border: `1px solid ${active ? "color-mix(in srgb, var(--lucid-accent) 14%, transparent)" : "var(--lucid-line)"}`,
                   }}
                   onClick={() =>
                     setFilterSubTool((prev) => prev.includes(st) ? prev.filter((x) => x !== st) : [...prev, st])
@@ -352,9 +352,9 @@ function PatternsPageInner({
             onChange={(e) => setSearch(e.target.value)}
             className="sm:ml-auto px-3 py-1.5 rounded-lg text-xs w-full sm:w-48"
             style={{
-              background: "rgba(14,20,30,0.6)",
-              border: "1px solid rgba(148,163,184,0.1)",
-              color: "#E2E8F0",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
+              color: "var(--lucid-ink)",
               outline: "none",
             }}
           />
@@ -362,7 +362,7 @@ function PatternsPageInner({
           {hasFilters && (
             <button
               className="text-xs"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
               onClick={() => { setFilterTiers([]); setFilterSubTool([]); setFilterCategory([]); setSearch(""); }}
             >
               Clear
@@ -370,7 +370,7 @@ function PatternsPageInner({
           )}
         </div>
 
-        <p className="text-xs mb-3" style={{ color: "#475569" }}>
+        <p className="text-xs mb-3" style={{ color: "var(--lucid-ink-3)" }}>
           Showing {filtered.length} of {patterns.length} patterns
         </p>
 
@@ -383,19 +383,19 @@ function PatternsPageInner({
                 key={pattern.id}
                 className="text-left p-5 rounded-xl hover:bg-white/5 transition-colors"
                 style={{
-                  background: "rgba(14,20,30,0.45)",
-                  border: "1px solid rgba(148,163,184,0.08)",
+                  background: "var(--lucid-surface-2)",
+                  border: "1px solid var(--lucid-line)",
                   borderLeft: `3px solid ${ts.color}30`,
                 }}
                 onClick={() => openPattern(pattern, false)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold" style={{ color: "#3B82F6" }}>{pattern.id}</span>
-                    <span className="text-sm font-semibold" style={{ color: "#E2E8F0" }}>{pattern.name}</span>
+                    <span className="font-mono text-xs font-bold" style={{ color: "var(--lucid-accent)" }}>{pattern.id}</span>
+                    <span className="text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>{pattern.name}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs" style={{ color: "#475569" }}>{pattern.instances} instances</span>
+                    <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>{pattern.instances} instances</span>
                     <span className="text-xs px-2 py-0.5 rounded" style={{ background: ts.bg, color: ts.color, border: `1px solid ${ts.border}` }}>
                       {pattern.tier}
                     </span>
@@ -403,22 +403,22 @@ function PatternsPageInner({
                 </div>
 
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(14,20,30,0.6)", color: "#64748B", border: "1px solid rgba(148,163,184,0.08)" }}>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}>
                     {pattern.category}
                   </span>
                   {pattern.drives_subtool && (
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(59,130,246,0.08)", color: "#60A5FA" }}>
+                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>
                       → {pattern.drives_subtool}
                     </span>
                   )}
                   {relevance && relevance.relevance_score >= 25 && (
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(16,185,129,0.08)", color: "#10B981" }}>
+                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-pos) 15%, transparent)", color: "var(--lucid-pos)" }}>
                       ★ Relevant now
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>{pattern.rule}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>{pattern.rule}</p>
               </button>
             );
           })}
@@ -468,12 +468,12 @@ function PatternDrawerContent({
       {fromRelevant && relevance && relevance.matched_triggers.length > 0 && (
         <div
           className="p-4 rounded-xl"
-          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)" }}
+          style={{ background: "color-mix(in srgb, var(--lucid-pos) 15%, transparent)", border: "1px solid color-mix(in srgb, var(--lucid-pos) 15%, transparent)" }}
         >
-          <div className="text-xs font-semibold mb-2" style={{ color: "#10B981" }}>Relevant to current state because:</div>
+          <div className="text-xs font-semibold mb-2" style={{ color: "var(--lucid-pos)" }}>Relevant to current state because:</div>
           <ul className="space-y-1">
             {relevance.matched_triggers.map((t, i) => (
-              <li key={i} className="flex gap-2 text-xs" style={{ color: "#6EE7B7" }}>
+              <li key={i} className="flex gap-2 text-xs" style={{ color: "var(--lucid-pos)" }}>
                 <span>•</span>{t}
               </li>
             ))}
@@ -482,25 +482,25 @@ function PatternDrawerContent({
       )}
 
       <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B" }}>Meta</div>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)" }}>Meta</div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg" style={{ background: "rgba(14,20,30,0.5)" }}>
-            <div className="text-xs mb-1" style={{ color: "#475569" }}>Tier</div>
+          <div className="p-3 rounded-lg" style={{ background: "var(--lucid-surface-2)" }}>
+            <div className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>Tier</div>
             <span className="text-sm font-semibold px-2 py-0.5 rounded" style={{ background: ts.bg, color: ts.color }}>
               {pattern.tier}
             </span>
           </div>
-          <div className="p-3 rounded-lg" style={{ background: "rgba(14,20,30,0.5)" }}>
-            <div className="text-xs mb-1" style={{ color: "#475569" }}>Instances</div>
-            <div className="text-sm font-semibold" style={{ color: "#E2E8F0" }}>{pattern.instances}</div>
+          <div className="p-3 rounded-lg" style={{ background: "var(--lucid-surface-2)" }}>
+            <div className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>Instances</div>
+            <div className="text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>{pattern.instances}</div>
           </div>
-          <div className="p-3 rounded-lg" style={{ background: "rgba(14,20,30,0.5)" }}>
-            <div className="text-xs mb-1" style={{ color: "#475569" }}>Category</div>
-            <div className="text-xs" style={{ color: "#94A3B8" }}>{pattern.category}</div>
+          <div className="p-3 rounded-lg" style={{ background: "var(--lucid-surface-2)" }}>
+            <div className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>Category</div>
+            <div className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>{pattern.category}</div>
           </div>
-          <div className="p-3 rounded-lg" style={{ background: "rgba(14,20,30,0.5)" }}>
-            <div className="text-xs mb-1" style={{ color: "#475569" }}>Drives Sub-tool</div>
-            <div className="text-xs" style={{ color: pattern.drives_subtool ? "#60A5FA" : "#334155" }}>
+          <div className="p-3 rounded-lg" style={{ background: "var(--lucid-surface-2)" }}>
+            <div className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>Drives Sub-tool</div>
+            <div className="text-xs" style={{ color: pattern.drives_subtool ? "var(--lucid-accent)" : "var(--lucid-line-3)" }}>
               {pattern.drives_subtool ?? "—"}
             </div>
           </div>
@@ -508,23 +508,23 @@ function PatternDrawerContent({
       </div>
 
       <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>Rule</div>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>Rule</div>
         <div
           className="p-4 rounded-xl text-xs leading-relaxed"
-          style={{ background: "rgba(14,20,30,0.6)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.06)" }}
+          style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)" }}
         >
           {pattern.rule}
         </div>
       </div>
 
       <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>Description</div>
-        <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>{pattern.description}</p>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>Description</div>
+        <p className="text-xs leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>{pattern.description}</p>
       </div>
 
       {inWindow.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>
             Instance Examples ({inWindow.length})
           </div>
           <div className="space-y-1.5">
@@ -532,17 +532,17 @@ function PatternDrawerContent({
               <div
                 key={i}
                 className="flex items-center justify-between px-3 py-2 rounded-lg"
-                style={{ background: "rgba(14,20,30,0.4)" }}
+                style={{ background: "var(--lucid-surface-2)" }}
               >
                 <div>
-                  <span className="text-xs" style={{ color: "#94A3B8" }}>{formatDate(date)}</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>{formatDate(date)}</span>
                   {sc && (
-                    <span className="ml-2 text-xs" style={{ color: "#475569" }}>
+                    <span className="ml-2 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                       {sc.phase ? `${sc.phase} · ` : ""}Net {sc.net_score >= 0 ? "+" : ""}{sc.net_score}
                     </span>
                   )}
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(59,130,246,0.08)", color: "#60A5FA" }}>
+                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>
                   Open scorecard →
                 </span>
               </div>
@@ -552,8 +552,8 @@ function PatternDrawerContent({
       )}
 
       <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>Status</div>
-        <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>{pattern.status}</p>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>Status</div>
+        <p className="text-xs leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>{pattern.status}</p>
       </div>
     </div>
   );

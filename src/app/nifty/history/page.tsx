@@ -158,10 +158,10 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold" style={{ color: "#E2E8F0" }}>History</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>Every scorecard, every phase.</p>
+          <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>History</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Every scorecard, every phase.</p>
         </div>
-        <div className="text-sm text-right shrink-0" style={{ color: "#64748B" }}>
+        <div className="text-sm text-right shrink-0" style={{ color: "var(--lucid-ink-3)" }}>
           <p>{scorecards.length} scorecards · {uniquePhases.length} phases</p>
           <p>{phaseRange}</p>
         </div>
@@ -172,15 +172,15 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
         {/* View toggle */}
         <div
           className="flex rounded-lg p-0.5 gap-0.5"
-          style={{ background: "rgba(14,20,30,0.6)", border: "1px solid rgba(148,163,184,0.1)" }}
+          style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)" }}
         >
           {(["phase", "date"] as ViewMode[]).map((v) => (
             <button
               key={v}
               className="px-4 py-1.5 rounded-md text-sm font-medium transition-all capitalize"
               style={{
-                background: view === v ? "rgba(59,130,246,0.15)" : "transparent",
-                color: view === v ? "#3B82F6" : "#64748B",
+                background: view === v ? "color-mix(in srgb, var(--lucid-accent) 14%, transparent)" : "transparent",
+                color: view === v ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
               }}
               onClick={() => setView(v)}
             >
@@ -197,9 +197,9 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           onChange={(e) => setSearch(e.target.value)}
           className="px-3 py-1.5 rounded-lg text-sm w-full sm:w-60"
           style={{
-            background: "rgba(14,20,30,0.6)",
-            border: "1px solid rgba(148,163,184,0.1)",
-            color: "#E2E8F0",
+            background: "var(--lucid-surface-2)",
+            border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
+            color: "var(--lucid-ink)",
             outline: "none",
           }}
         />
@@ -210,13 +210,13 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           <div className="relative group">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-              style={{ background: "rgba(14,20,30,0.6)", border: "1px solid rgba(148,163,184,0.1)", color: filterBands.length ? "#3B82F6" : "#64748B" }}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", color: filterBands.length ? "var(--lucid-accent)" : "var(--lucid-ink-3)" }}
             >
               Band {filterBands.length ? `(${filterBands.length})` : ""} <ChevronDown size={12} />
             </button>
             <div
               className="absolute left-0 top-9 z-50 hidden group-focus-within:block rounded-xl p-2 space-y-1"
-              style={{ background: "rgba(10,18,30,0.98)", border: "1px solid rgba(148,163,184,0.12)", width: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", width: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
             >
               {ALL_BANDS.map((b) => (
                 <label key={b} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer">
@@ -236,13 +236,13 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           <div className="relative group">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-              style={{ background: "rgba(14,20,30,0.6)", border: "1px solid rgba(148,163,184,0.1)", color: filterSubTools.length ? "#3B82F6" : "#64748B" }}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", color: filterSubTools.length ? "var(--lucid-accent)" : "var(--lucid-ink-3)" }}
             >
               Sub-tools {filterSubTools.length ? `(${filterSubTools.length})` : ""} <ChevronDown size={12} />
             </button>
             <div
               className="absolute left-0 top-9 z-50 hidden group-focus-within:block rounded-xl p-2 space-y-1"
-              style={{ background: "rgba(10,18,30,0.98)", border: "1px solid rgba(148,163,184,0.12)", width: 160, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)", width: 160, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
             >
               {["Peak Ceiling", "CONFLICT", "Composition"].map((t) => (
                 <label key={t} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer">
@@ -252,14 +252,14 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                     onChange={(e) => setFilterSubTools((prev) => e.target.checked ? [...prev, t] : prev.filter((x) => x !== t))}
                     className="w-3 h-3"
                   />
-                  <span className="text-xs" style={{ color: "#94A3B8" }}>{t}</span>
+                  <span className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>{t}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {hasFilters && (
-            <button className="text-xs" style={{ color: "#64748B" }} onClick={clearFilters}>
+            <button className="text-xs" style={{ color: "var(--lucid-ink-3)" }} onClick={clearFilters}>
               Clear filters
             </button>
           )}
@@ -282,30 +282,30 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
               const subTools = phaseSubTools(phaseScs);
 
               return (
-                <div key={phase} className="glass-card p-5">
+                <div key={phase} className="lt-card p-5">
                   {/* Phase header */}
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-base font-bold" style={{ color: "#E2E8F0" }}>{phase}</h3>
+                        <h3 className="text-base font-bold" style={{ color: "var(--lucid-ink)" }}>{phase}</h3>
                         {latest.bucket && (
                           <span
                             className="text-xs px-2 py-0.5 rounded"
                             style={{
-                              background: "rgba(14,20,30,0.6)",
-                              color: "#94A3B8",
-                              border: "1px solid rgba(148,163,184,0.1)",
+                              background: "var(--lucid-surface-2)",
+                              color: "var(--lucid-ink-2)",
+                              border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
                             }}
                           >
                             {latest.bucket}
                           </span>
                         )}
                       </div>
-                      <div className="text-xs" style={{ color: "#475569" }}>
+                      <div className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                         {formatDateShort(earliest.date)} → {formatDateShort(latest.date)} · {phaseScs.length} scorecards
                       </div>
                     </div>
-                    <div className="text-right text-xs" style={{ color: "#475569" }}>
+                    <div className="text-right text-xs" style={{ color: "var(--lucid-ink-3)" }}>
                       <div>Peak: {netDisplay(peakSc.net_score)} on {formatDateShort(peakSc.date)}</div>
                       <div>Floor: {netDisplay(floorSc.net_score)} on {formatDateShort(floorSc.date)}</div>
                       {subTools.length > 0 && (
@@ -315,8 +315,8 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                               key={t}
                               className="px-1.5 py-0.5 rounded text-xs"
                               style={{
-                                background: t === "Peak Ceiling" ? "rgba(245,158,11,0.12)" : t === "CONFLICT" ? "rgba(168,85,247,0.12)" : "rgba(59,130,246,0.12)",
-                                color: t === "Peak Ceiling" ? "#F59E0B" : t === "CONFLICT" ? "#A855F7" : "#60A5FA",
+                                background: t === "Peak Ceiling" ? "color-mix(in srgb, var(--lucid-warn) 15%, transparent)" : t === "CONFLICT" ? "color-mix(in srgb, var(--lucid-accent) 14%, transparent)" : "color-mix(in srgb, var(--lucid-accent) 14%, transparent)",
+                                color: t === "Peak Ceiling" ? "var(--lucid-warn)" : t === "CONFLICT" ? "var(--lucid-accent)" : "var(--lucid-accent)",
                               }}
                             >
                               {t}
@@ -333,10 +333,10 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                       <button
                         key={sc.id}
                         className="w-full text-left px-3 py-2 rounded-lg flex flex-wrap items-center gap-2 sm:gap-4 hover:bg-white/5 transition-colors group"
-                        style={{ background: "rgba(14,20,30,0.3)" }}
+                        style={{ background: "var(--lucid-surface-2)" }}
                         onClick={() => setDrawerSc(sc)}
                       >
-                        <span className="text-xs w-24 shrink-0" style={{ color: "#64748B" }}>
+                        <span className="text-xs w-24 shrink-0" style={{ color: "var(--lucid-ink-3)" }}>
                           {formatDate(sc.date)}
                         </span>
                         <span className="font-mono font-bold tabular-nums text-sm" style={{ color: bandColor(sc.band) }}>
@@ -349,22 +349,22 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                           {sc.band}
                         </span>
                         {sc.peak_score_active && (
-                          <span className="text-xs" style={{ color: "#F59E0B" }}>⚠ Peak</span>
+                          <span className="text-xs" style={{ color: "var(--lucid-warn)" }}>⚠ Peak</span>
                         )}
                         {sc.conflict_flag && (
-                          <span className="text-xs" style={{ color: "#A855F7" }}>⚡ CONFLICT</span>
+                          <span className="text-xs" style={{ color: "var(--lucid-accent)" }}>⚡ CONFLICT</span>
                         )}
                         {sc.missing_indicators.length > 0 && (
-                          <span className="text-xs" style={{ color: "#F59E0B" }}>
+                          <span className="text-xs" style={{ color: "var(--lucid-warn)" }}>
                             {sc.missing_indicators.length} unavailable
                           </span>
                         )}
                         {sc.catalysts[0] && (
-                          <span className="text-xs truncate" style={{ color: "#475569" }}>
+                          <span className="text-xs truncate" style={{ color: "var(--lucid-ink-3)" }}>
                             {sc.catalysts[0]}
                           </span>
                         )}
-                        <span className="ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#3B82F6" }}>→</span>
+                        <span className="ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--lucid-accent)" }}>→</span>
                       </button>
                     ))}
                   </div>
@@ -381,20 +381,20 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           {sorted.length === 0 ? (
             <FilterEmpty onClear={clearFilters} />
           ) : (
-            <div className="glass-card overflow-x-auto">
+            <div className="lt-card overflow-x-auto">
               <table className="w-full text-xs" style={{ minWidth: 760 }}>
                 <thead>
-                  <tr style={{ background: "rgba(14,20,30,0.6)", borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
+                  <tr style={{ background: "var(--lucid-surface-2)", borderBottom: "1px solid var(--lucid-line)" }}>
                     <th className="text-left px-3 py-3"><SortHeader col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "#475569" }}>Phase</th>
-                    <th className="text-left px-3 py-3" style={{ color: "#475569" }}>Bucket</th>
+                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Phase</th>
+                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Bucket</th>
                     <th className="text-left px-3 py-3"><SortHeader col="domestic" label="Domestic" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
                     <th className="text-left px-3 py-3"><SortHeader col="external" label="External" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
                     <th className="text-left px-3 py-3"><SortHeader col="net" label="Net" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "#475569" }}>Band</th>
+                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Band</th>
                     <th className="text-left px-3 py-3"><SortHeader col="ind9" label="Ind 9 Raw" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "#475569" }}>Flag</th>
-                    <th className="text-left px-3 py-3" style={{ color: "#475569" }}>Sub-tools</th>
+                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Flag</th>
+                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Sub-tools</th>
                   </tr>
                 </thead>
                 {/* TODO: virtualize when history > 200 rows */}
@@ -406,22 +406,22 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                       <tr
                         key={sc.id}
                         className="border-t hover:bg-white/2 cursor-pointer transition-colors"
-                        style={{ borderColor: "rgba(148,163,184,0.05)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.005)" }}
+                        style={{ borderColor: "var(--lucid-line)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.005)" }}
                         onClick={() => setDrawerSc(sc)}
                       >
-                        <td className="px-3 py-2" style={{ color: "#94A3B8" }}>{formatDate(sc.date)}</td>
-                        <td className="px-3 py-2" style={{ color: "#64748B" }}>{sc.phase ?? <span style={{ color: "#334155" }}>—</span>}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--lucid-ink-2)" }}>{formatDate(sc.date)}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--lucid-ink-3)" }}>{sc.phase ?? <span style={{ color: "var(--lucid-line-3)" }}>—</span>}</td>
                         <td className="px-3 py-2">
                           {sc.bucket ? (
-                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(14,20,30,0.6)", color: "#64748B" }}>
+                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)" }}>
                               {sc.bucket}
                             </span>
                           ) : (
-                            <span style={{ color: "#334155" }}>—</span>
+                            <span style={{ color: "var(--lucid-line-3)" }}>—</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 tabular-nums" style={{ color: "#94A3B8" }}>{netDisplay(sc.domestic_composite)}</td>
-                        <td className="px-3 py-2 tabular-nums" style={{ color: sc.external_composite < 0 ? "var(--negative)" : "#94A3B8" }}>
+                        <td className="px-3 py-2 tabular-nums" style={{ color: "var(--lucid-ink-2)" }}>{netDisplay(sc.domestic_composite)}</td>
+                        <td className="px-3 py-2 tabular-nums" style={{ color: sc.external_composite < 0 ? "var(--negative)" : "var(--lucid-ink-2)" }}>
                           {netDisplay(sc.external_composite)}
                         </td>
                         <td className="px-3 py-2 font-bold tabular-nums" style={{ color: bandColor(sc.band) }}>
@@ -430,7 +430,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                         <td className="px-3 py-2">
                           <span className="text-xs" style={{ color: bandColor(sc.band) }}>{sc.band}</span>
                         </td>
-                        <td className="px-3 py-2 tabular-nums font-mono" style={{ color: ind9 === null ? "#334155" : ind9 < 0 ? "var(--positive)" : ind9 > 0 ? "var(--negative)" : "#64748B" }}>
+                        <td className="px-3 py-2 tabular-nums font-mono" style={{ color: ind9 === null ? "var(--lucid-line-3)" : ind9 < 0 ? "var(--positive)" : ind9 > 0 ? "var(--negative)" : "var(--lucid-ink-3)" }}>
                           {ind9 === null ? "—" : `${ind9 >= 0 ? "+" : ""}${ind9}`}
                         </td>
                         <td className="px-3 py-2">
@@ -439,22 +439,22 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
                               {sc.composition_flag.replace("_", " ")}
                             </span>
                           ) : (
-                            <span style={{ color: "#334155" }}>—</span>
+                            <span style={{ color: "var(--lucid-line-3)" }}>—</span>
                           )}
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex gap-1">
                             {sc.peak_score_active && (
-                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>Peak</span>
+                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-warn) 15%, transparent)", color: "var(--lucid-warn)" }}>Peak</span>
                             )}
                             {sc.conflict_flag && (
-                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7" }}>Conflict</span>
+                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>Conflict</span>
                             )}
                             {sc.composition_flag && (
-                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "rgba(59,130,246,0.1)", color: "#60A5FA" }}>Comp</span>
+                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>Comp</span>
                             )}
                             {sc.missing_indicators.length > 0 && (
-                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }} title={`${sc.missing_indicators.length} indicators unavailable`}>
+                              <span className="text-xs px-1 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-warn) 15%, transparent)", color: "var(--lucid-warn)" }} title={`${sc.missing_indicators.length} indicators unavailable`}>
                                 ⚠ {sc.missing_indicators.length}
                               </span>
                             )}
@@ -489,11 +489,11 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
               <div className="text-lg font-semibold mt-1" style={{ color: bandColor(drawerSc.band) }}>
                 {drawerSc.band}
               </div>
-              <div className="text-xs mt-2" style={{ color: "#64748B" }}>
+              <div className="text-xs mt-2" style={{ color: "var(--lucid-ink-3)" }}>
                 Dom {netDisplay(drawerSc.domestic_composite)} · Ext {netDisplay(drawerSc.external_composite)} · Ind 9 raw {drawerSc.ind9_raw_composite === null ? "—" : `${drawerSc.ind9_raw_composite >= 0 ? "+" : ""}${drawerSc.ind9_raw_composite}`}
               </div>
               {drawerSc.missing_indicators.length > 0 && (
-                <div className="text-xs mt-2" style={{ color: "#F59E0B" }}>
+                <div className="text-xs mt-2" style={{ color: "var(--lucid-warn)" }}>
                   {drawerSc.missing_indicators.length} indicator{drawerSc.missing_indicators.length !== 1 ? "s" : ""} unavailable
                 </div>
               )}
@@ -501,21 +501,21 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
 
             {/* Indicators */}
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B" }}>Indicators</div>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)" }}>Indicators</div>
               <div className="space-y-1.5">
                 {drawerSc.indicators.map((ind) => (
-                  <div key={ind.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: "rgba(14,20,30,0.4)" }}>
+                  <div key={ind.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: "var(--lucid-surface-2)" }}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs w-10" style={{ color: "#475569" }}>Ind {ind.id}</span>
-                      <span className="text-xs" style={{ color: "#94A3B8" }}>{ind.short}</span>
+                      <span className="text-xs w-10" style={{ color: "var(--lucid-ink-3)" }}>Ind {ind.id}</span>
+                      <span className="text-xs" style={{ color: "var(--lucid-ink-2)" }}>{ind.short}</span>
                       {ind.outcome === "insufficient_data" && (
-                        <span className="text-xs" style={{ color: "#F59E0B" }} title={ind.reason ?? "insufficient data"}>
+                        <span className="text-xs" style={{ color: "var(--lucid-warn)" }} title={ind.reason ?? "insufficient data"}>
                           ⚠
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs" style={{ color: "#64748B" }}>{ind.value}</span>
+                      <span className="font-mono text-xs" style={{ color: "var(--lucid-ink-3)" }}>{ind.value}</span>
                       <span className={scorePillClass(ind.score)}>{scoreDisplay(ind.score)}</span>
                     </div>
                   </div>
@@ -526,11 +526,11 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
             {/* Catalysts */}
             {drawerSc.catalysts.length > 0 && (
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>Catalysts</div>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>Catalysts</div>
                 <ul className="space-y-1.5">
                   {drawerSc.catalysts.map((c, i) => (
-                    <li key={i} className="flex gap-2 text-xs" style={{ color: "#64748B" }}>
-                      <span style={{ color: "#475569" }}>•</span>{c}
+                    <li key={i} className="flex gap-2 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+                      <span style={{ color: "var(--lucid-ink-3)" }}>•</span>{c}
                     </li>
                   ))}
                 </ul>
@@ -540,8 +540,8 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
             {/* Notes */}
             {drawerSc.notes && (
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#64748B" }}>Notes</div>
-                <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>{drawerSc.notes}</p>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--lucid-ink-3)" }}>Notes</div>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>{drawerSc.notes}</p>
               </div>
             )}
           </div>
@@ -568,7 +568,7 @@ function SortHeader({
     <button
       className="flex items-center gap-1 text-left"
       onClick={() => onToggle(col)}
-      style={{ color: sortCol === col ? "#94A3B8" : "#475569" }}
+      style={{ color: sortCol === col ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)" }}
     >
       {label}
       {sortCol === col && <span>{sortDir === "desc" ? " ↓" : " ↑"}</span>}
@@ -578,13 +578,13 @@ function SortHeader({
 
 function FilterEmpty({ onClear }: { onClear: () => void }) {
   return (
-    <div className="glass-card p-16 text-center">
-      <BookText size={40} className="mx-auto mb-4" style={{ color: "#334155" }} />
-      <p className="text-sm font-medium mb-1" style={{ color: "#64748B" }}>No scorecards match these filters.</p>
-      <p className="text-xs mb-4" style={{ color: "#475569" }}>Try removing a filter or adjusting the date range.</p>
+    <div className="lt-card p-16 text-center">
+      <BookText size={40} className="mx-auto mb-4" style={{ color: "var(--lucid-line-3)" }} />
+      <p className="text-sm font-medium mb-1" style={{ color: "var(--lucid-ink-3)" }}>No scorecards match these filters.</p>
+      <p className="text-xs mb-4" style={{ color: "var(--lucid-ink-3)" }}>Try removing a filter or adjusting the date range.</p>
       <button
         className="text-sm px-4 py-2 rounded-lg"
-        style={{ background: "rgba(59,130,246,0.1)", color: "#3B82F6", border: "1px solid rgba(59,130,246,0.2)" }}
+        style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)", border: "1px solid color-mix(in srgb, var(--lucid-accent) 14%, transparent)" }}
         onClick={onClear}
       >
         Clear Filters
