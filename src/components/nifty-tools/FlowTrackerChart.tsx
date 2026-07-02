@@ -243,7 +243,9 @@ export function FlowTrackerChart({
         yaxis,
         colors,
         stroke: { curve: "smooth", width: strokeWidths, lineCap: "round" },
-        // Overlay lines must skip nulls to leave honest gaps.
+        // Overlay lines must skip nulls to leave honest gaps (DII n/a days,
+        // Ind-13 backfill gaps) — never bridge across a missing reading.
+        connectNulls: false,
         plotOptions: { bar: { columnWidth: "62%", borderRadius: 2 } },
         fill: { type: "solid", opacity: chartType === "bar" ? 0.9 : 1 },
         markers: { size: 0, hover: { size: 5 } },

@@ -3,12 +3,15 @@
 import { useState, useMemo } from "react";
 import { BookText, ChevronDown } from "lucide-react";
 import { useScorecardHistory } from "@/hooks/useScorecardHistory";
+import { usePatterns } from "@/hooks/usePatterns";
 import type { PublicScorecard, PublicBand } from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { bandColor, bandBg, netDisplay, scorePillClass, scoreDisplay, flagPillStyle, formatDate, formatDateShort } from "../nifty-utils";
+import { HistoryChart } from "./HistoryChart";
+import { derivePatternMarkers, summarizeOverlays, PATTERN_OVERLAYS } from "./patternOverlays";
 
 type ViewMode = "phase" | "date";
 
@@ -74,8 +77,25 @@ export default function HistoryPage() {
 }
 
 function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
+  const { data: patterns } = usePatterns();
   const [view, setView] = useState<ViewMode>("phase");
   const [drawerSc, setDrawerSc] = useState<PublicScorecard | null>(null);
+
+  // Chart wants ascending (oldest → newest); the API returns newest-first.
+  const ascending = useMemo(
+    () => [...scorecards].sort((a, b) => a.date.localeCompare(b.date)),
+    [scorecards],
+  );
+  const markers = useMemo(
+    () => derivePatternMarkers(ascending, patterns),
+    [ascending, patterns],
+  );
+  const overlaySummary = useMemo(() => summarizeOverlays(markers), [markers]);
+
+  const openDrawerForDate = (date: string) => {
+    const sc = scorecards.find((s) => s.date === date) ?? null;
+    setDrawerSc(sc);
+  };
   const [filterBands, setFilterBands] = useState<PublicBand[]>([]);
   const [filterPhases, setFilterPhases] = useState<string[]>([]);
   const [filterSubTools, setFilterSubTools] = useState<string[]>([]);
@@ -165,6 +185,63 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
           <p>{scorecards.length} scorecards · {uniquePhases.length} phases</p>
           <p>{phaseRange}</p>
         </div>
+      </div>
+
+      {/* ── Net-score timeline (centerpiece) ────────────────────────── */}
+      <div className="lt-card lt-edge p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="lt-eyebrow">
+            Net score over time
+            <span className="lt-eyebrow-ln" />
+          </div>
+          {/* Pattern overlay legend */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {PATTERN_OVERLAYS.map((def) => {
+              const active =
+                overlaySummary.derived.includes(def.id) ||
+                overlaySummary.instanceOnly.includes(def.id);
+              return (
+                <span
+                  key={def.id}
+                  className="flex items-center gap-1.5 text-xs"
+                  style={{ color: active ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", opacity: active ? 1 : 0.5 }}
+                  title={def.note}
+                >
+                  <span
+                    className="w-2.5 h-2.5"
+                    style={{
+                      background: def.color,
+                      borderRadius: def.mode === "example_dates" ? 0 : "9999px",
+                    }}
+                  />
+                  {def.short}
+                  <span style={{ color: "var(--lucid-ink-3)" }}>
+                    {def.mode === "derived" ? "· derived" : "· instances"}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        {ascending.length < 2 ? (
+          <div className="py-10">
+            <EmptyState title="Timeline accumulating" description="Need at least two scorecards to draw the net-score history." />
+          </div>
+        ) : (
+          <div style={{ height: 320 }}>
+            <HistoryChart scorecards={ascending} markers={markers} onSelectDate={openDrawerForDate} />
+          </div>
+        )}
+        <p className="text-xs mt-3" style={{ color: "var(--lucid-ink-3)" }}>
+          Pattern overlays are derived client-side from stored per-date fields.{" "}
+          {overlaySummary.derived.length > 0 && (
+            <>Derived: {overlaySummary.derived.join(", ")}. </>
+          )}
+          {overlaySummary.instanceOnly.length > 0 && (
+            <>Marked by known instance dates only: {overlaySummary.instanceOnly.join(", ")}. </>
+          )}
+          V-bottoms are trough events and aren&apos;t derivable from a single row, so only their confirmed instances are marked.
+        </p>
       </div>
 
       {/* ── Top Bar ─────────────────────────────────────────────────── */}
@@ -384,17 +461,17 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
             <div className="lt-card overflow-x-auto">
               <table className="w-full text-xs" style={{ minWidth: 760 }}>
                 <thead>
-                  <tr style={{ background: "var(--lucid-surface-2)", borderBottom: "1px solid var(--lucid-line)" }}>
-                    <th className="text-left px-3 py-3"><SortHeader col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Phase</th>
-                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Bucket</th>
-                    <th className="text-left px-3 py-3"><SortHeader col="domestic" label="Domestic" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3"><SortHeader col="external" label="External" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3"><SortHeader col="net" label="Net" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Band</th>
-                    <th className="text-left px-3 py-3"><SortHeader col="ind9" label="Ind 9 Raw" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
-                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Flag</th>
-                    <th className="text-left px-3 py-3" style={{ color: "var(--lucid-ink-3)" }}>Sub-tools</th>
+                  <tr style={{ background: "var(--lucid-surface-3)", borderBottom: "1px solid var(--lucid-line-2)" }}>
+                    <th className="lt-eyebrow text-left px-3 py-3"><SortHeader col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
+                    <th className="lt-eyebrow text-left px-3 py-3">Phase</th>
+                    <th className="lt-eyebrow text-left px-3 py-3">Bucket</th>
+                    <th className="lt-eyebrow text-left px-3 py-3"><SortHeader col="domestic" label="Domestic" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
+                    <th className="lt-eyebrow text-left px-3 py-3"><SortHeader col="external" label="External" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
+                    <th className="lt-eyebrow text-left px-3 py-3"><SortHeader col="net" label="Net" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
+                    <th className="lt-eyebrow text-left px-3 py-3">Band</th>
+                    <th className="lt-eyebrow text-left px-3 py-3"><SortHeader col="ind9" label="Ind 9 Raw" sortCol={sortCol} sortDir={sortDir} onToggle={toggleSort} /></th>
+                    <th className="lt-eyebrow text-left px-3 py-3">Flag</th>
+                    <th className="lt-eyebrow text-left px-3 py-3">Sub-tools</th>
                   </tr>
                 </thead>
                 {/* TODO: virtualize when history > 200 rows */}
@@ -481,7 +558,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
             {/* Band summary */}
             <div
               className="p-4 rounded-xl"
-              style={{ background: bandBg(drawerSc.band), border: `1px solid ${bandColor(drawerSc.band)}30` }}
+              style={{ background: bandBg(drawerSc.band), border: `1px solid color-mix(in srgb, ${bandColor(drawerSc.band)} 30%, transparent)` }}
             >
               <div className="text-3xl font-bold" style={{ color: bandColor(drawerSc.band) }}>
                 {netDisplay(drawerSc.net_score)}
