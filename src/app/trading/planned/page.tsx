@@ -23,10 +23,10 @@ import { toast } from "@/components/toast";
 const STATUS_ORDER: PlannedStatus[] = ["Ready", "Watching", "Invalidated", "Cancelled"];
 
 const STATUS_STYLE: Record<PlannedStatus, { label: string; color: string; barColor: string }> = {
-  Ready:       { label: "READY",       color: "#F59E0B", barColor: "#F59E0B" },
-  Watching:    { label: "WATCHING",    color: "#93C5FD", barColor: "#3B82F6" },
-  Invalidated: { label: "INVALIDATED", color: "#64748B", barColor: "#475569" },
-  Cancelled:   { label: "CANCELLED",   color: "#475569", barColor: "#334155" },
+  Ready:       { label: "READY",       color: "var(--lucid-warn)", barColor: "var(--lucid-warn)" },
+  Watching:    { label: "WATCHING",    color: "var(--lucid-ctx)", barColor: "var(--lucid-ctx)" },
+  Invalidated: { label: "INVALIDATED", color: "var(--lucid-ink-3)", barColor: "var(--lucid-ink-3)" },
+  Cancelled:   { label: "CANCELLED",   color: "var(--lucid-ink-3)", barColor: "var(--lucid-ink-3)" },
 };
 
 // ── Filter chips ──────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ function MoreMenu({
         ref={btnRef}
         onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
         className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-        style={{ color: "#64748B" }}
+        style={{ color: "var(--lucid-ink-3)" }}
       >
         <MoreHorizontal size={14} />
       </button>
@@ -99,10 +99,8 @@ function MoreMenu({
           style={{
             top: pos.top,
             right: pos.right,
-            background: "rgba(15,23,36,0.98)",
-            border: "1px solid rgba(148,163,184,0.12)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-            backdropFilter: "blur(12px)",
+            background: "var(--lucid-surface-2)",
+            border: "1px solid var(--lucid-line)",
           }}
           onClick={e => e.stopPropagation()}
         >
@@ -111,7 +109,7 @@ function MoreMenu({
               key={item.label}
               onClick={e => { e.stopPropagation(); item.action(); setOpen(false); }}
               className="w-full text-left px-4 py-2 text-sm transition-colors hover:bg-white/5"
-              style={{ color: item.danger ? "#EF4444" : "#E2E8F0" }}
+              style={{ color: item.danger ? "var(--lucid-neg)" : "var(--lucid-ink)" }}
             >
               {item.label}
             </button>
@@ -126,11 +124,11 @@ function MoreMenu({
 // ── Pair cell ─────────────────────────────────────────────────────────────────
 function PairCell({ pair }: { pair: string }) {
   const config = pairs.find(p => p.symbol === pair);
-  if (!config) return <span style={{ color: "#E2E8F0", fontWeight: 500 }}>{pair}</span>;
+  if (!config) return <span style={{ color: "var(--lucid-ink)", fontWeight: 500 }}>{pair}</span>;
   return (
     <span className="flex items-center gap-1.5">
       <span style={{ fontSize: 14 }}>{config.flag_a}{config.flag_b}</span>
-      <span style={{ color: "#E2E8F0", fontWeight: 500, fontSize: 13 }}>{config.display_name}</span>
+      <span style={{ color: "var(--lucid-ink)", fontWeight: 500, fontSize: 13 }}>{config.display_name}</span>
     </span>
   );
 }
@@ -161,14 +159,14 @@ function PlannedRow({
   const currentAboveEntry = trade.current_market_price > trade.planned_entry;
   const isFavorable =
     trade.direction === "Buy" ? !currentAboveEntry : currentAboveEntry;
-  const priceColor = dist.direction === "at" ? "#10B981" : isFavorable ? "#10B981" : "#EF4444";
+  const priceColor = dist.direction === "at" ? "var(--lucid-pos)" : isFavorable ? "var(--lucid-pos)" : "var(--lucid-neg)";
 
   return (
     <tr
       onClick={onRowClick}
       className="transition-colors cursor-pointer"
-      style={{ borderBottom: "1px solid rgba(148,163,184,0.05)" }}
-      onMouseEnter={e => (e.currentTarget.style.background = "rgba(148,163,184,0.03)")}
+      style={{ borderBottom: "1px solid var(--lucid-line)" }}
+      onMouseEnter={e => (e.currentTarget.style.background = "var(--lucid-surface-2)")}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
     >
       {/* Status bar */}
@@ -188,21 +186,21 @@ function PlannedRow({
 
       {/* Direction */}
       <td style={{ padding: "10px 8px", width: 60 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: trade.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+        <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
           {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
         </span>
       </td>
 
       {/* Planned Entry */}
       <td style={{ padding: "10px 8px", width: 100 }}>
-        <span style={{ fontSize: 12, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>
+        <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink)", fontVariantNumeric: "tabular-nums" }}>
           {trade.planned_entry}
         </span>
       </td>
 
       {/* Current Price */}
       <td style={{ padding: "10px 8px", width: 100 }}>
-        <span style={{ fontSize: 12, color: priceColor, fontVariantNumeric: "tabular-nums" }}>
+        <span className="lt-num" style={{ fontSize: 12, color: priceColor, fontVariantNumeric: "tabular-nums" }}>
           {trade.current_market_price}
         </span>
       </td>
@@ -214,14 +212,14 @@ function PlannedRow({
 
       {/* R:R */}
       <td style={{ padding: "10px 8px", width: 80 }}>
-        <span style={{ fontSize: 12, color: rr >= 2 ? "#10B981" : "#94A3B8", fontWeight: 600 }}>
+        <span className="lt-num" style={{ fontSize: 12, color: rr >= 2 ? "var(--lucid-pos)" : "var(--lucid-ink-2)", fontWeight: 600 }}>
           {rr.toFixed(2)}R
         </span>
       </td>
 
       {/* Risk */}
       <td style={{ padding: "10px 8px", width: 60 }}>
-        <span style={{ fontSize: 12, color: "#94A3B8" }}>{trade.planned_risk_pct}%</span>
+        <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>{trade.planned_risk_pct}%</span>
       </td>
 
       {/* Conviction */}
@@ -239,7 +237,7 @@ function PlannedRow({
             <button
               onClick={e => { e.stopPropagation(); onConvert(); }}
               className="px-2.5 py-1 rounded-md text-xs font-semibold transition-all hover:opacity-80"
-              style={{ background: "rgba(59,130,246,0.15)", color: "#93C5FD", border: "1px solid rgba(59,130,246,0.25)" }}
+              style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}
             >
               Convert →
             </button>
@@ -293,6 +291,7 @@ function StatusSection({
         style={{ paddingBottom: 6 }}
       >
         <span
+          className="lt-serif"
           style={{
             fontSize: 10,
             fontWeight: 700,
@@ -302,8 +301,9 @@ function StatusSection({
         >
           {cfg.label}
         </span>
-        <div style={{ flex: 1, height: 1, background: "rgba(148,163,184,0.08)" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--lucid-line)" }} />
         <span
+          className="lt-num"
           style={{
             fontSize: 11,
             color: cfg.color,
@@ -313,7 +313,7 @@ function StatusSection({
         >
           {trades.length}
         </span>
-        <span style={{ color: "#475569" }}>
+        <span style={{ color: "var(--lucid-ink-3)" }}>
           {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         </span>
       </button>
@@ -325,25 +325,25 @@ function StatusSection({
               className="flex items-center justify-center rounded-lg mb-4"
               style={{
                 height: 52,
-                border: "1px dashed rgba(148,163,184,0.1)",
-                color: "#334155",
+                border: "1px dashed var(--lucid-line)",
+                color: "var(--lucid-ink-3)",
                 fontSize: 12,
               }}
             >
               No {status.toLowerCase()} setups
             </div>
           ) : (
-            <div className="rounded-xl mb-4 overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.08)" }}>
+            <div className="rounded-xl mb-4 overflow-hidden" style={{ border: "1px solid var(--lucid-line)" }}>
               <div className="overflow-x-auto">
-              <table className="w-full border-collapse" style={{ background: "rgba(20,28,40,0.5)", minWidth: 760 }}>
+              <table className="w-full border-collapse" style={{ background: "var(--lucid-surface)", minWidth: 760 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
+                  <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
                     <th style={{ width: 4, padding: 0 }} />
                     {["Pair", "Model", "Dir", "Entry", "Current", "Distance", "R:R", "Risk", "Conviction", ""].map(h => (
                       <th
                         key={h}
                         className="text-left"
-                        style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", color: "#475569", padding: "8px 8px", textTransform: "uppercase" }}
+                        style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", color: "var(--lucid-ink-3)", padding: "8px 8px", textTransform: "uppercase" }}
                       >
                         {h}
                       </th>
@@ -450,14 +450,14 @@ export default function PlannedPage() {
       {/* Page header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#E2E8F0" }}>Planned Trades</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
+          <h1 className="lt-serif text-xl font-bold" style={{ color: "var(--lucid-ink)" }}>Planned Trades</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
             Setups in waiting. Setups in motion.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span style={{ fontSize: 12, color: "#64748B" }}>
-            <span style={{ color: "#93C5FD", fontWeight: 600 }}>{activeCount} active</span>
+          <span style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+            <span className="lt-num" style={{ color: "var(--lucid-accent)", fontWeight: 600 }}>{activeCount} active</span>
             {" · "}
             <span>{invalidatedCount} invalidated</span>
           </span>
@@ -480,15 +480,15 @@ export default function PlannedPage() {
                 style={{
                   background: active
                     ? isStatus
-                      ? `${cfg!.barColor}26`
-                      : "rgba(59,130,246,0.15)"
-                    : "rgba(20,28,40,0.6)",
+                      ? `color-mix(in srgb, ${cfg!.barColor} 15%, transparent)`
+                      : "var(--lucid-accent-bg)"
+                    : "var(--lucid-surface)",
                   color: active
-                    ? isStatus ? cfg!.color : "#93C5FD"
-                    : "#64748B",
+                    ? isStatus ? cfg!.color : "var(--lucid-accent)"
+                    : "var(--lucid-ink-3)",
                   border: active
-                    ? `1px solid ${isStatus ? cfg!.barColor + "40" : "rgba(59,130,246,0.25)"}`
-                    : "1px solid rgba(148,163,184,0.1)",
+                    ? `1px solid ${isStatus ? `color-mix(in srgb, ${cfg!.barColor} 40%, transparent)` : "var(--lucid-accent-bd)"}`
+                    : "1px solid var(--lucid-line)",
                 }}
               >
                 {opt}
@@ -501,7 +501,7 @@ export default function PlannedPage() {
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-          style={{ background: "rgba(59,130,246,0.9)", color: "#fff" }}
+          style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
         >
           <Plus size={14} />
           Add Planned Trade
@@ -520,18 +520,18 @@ export default function PlannedPage() {
           className="flex flex-col items-center justify-center gap-3 rounded-2xl"
           style={{
             minHeight: 240,
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(148,163,184,0.08)",
+            background: "var(--lucid-surface)",
+            border: "1px solid var(--lucid-line)",
           }}
         >
           <span style={{ fontSize: 32 }}>📋</span>
-          <p style={{ fontSize: 14, color: "#94A3B8", fontWeight: 500 }}>
+          <p style={{ fontSize: 14, color: "var(--lucid-ink-2)", fontWeight: 500 }}>
             No setups being watched.
           </p>
           <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-            style={{ background: "rgba(59,130,246,0.9)", color: "#fff" }}
+            style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
           >
             + Add Planned Trade
           </button>

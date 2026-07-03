@@ -90,28 +90,26 @@ export function OracleToolsProvider({ children }: { children: ReactNode }) {
 
   return (
     <OracleToolsContext.Provider value={value}>
-      <div className="relative">
-        {children}
+      {children}
 
-        <ToolsLauncherDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSelectTool={handleSelectTool} />
+      <ToolsLauncherDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSelectTool={handleSelectTool} />
 
-        {activeView?.tool === "score-trend" && (
-          <FullScreenAnalysis config={scoreTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openComparison} />
-        )}
-        {activeView?.tool === "score-comparison" && (
-          <FullScreenAnalysis config={scoreComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
-        )}
-        {activeView?.tool === "indicator-trend" && indicatorTrendConfig.subjectOptions.length > 0 && (
-          <FullScreenAnalysis config={indicatorTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
-        )}
-        {activeView?.tool === "cot-trajectory" && (
-          <FullScreenAnalysis config={cotTrajectoryConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openCotComparison} />
-        )}
-        {activeView?.tool === "cot-comparison" && (
-          <FullScreenAnalysis config={cotComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
-        )}
-        {activeView?.tool === "pair-correlation" && <PairCorrelationView onClose={closeView} />}
-      </div>
+      {activeView?.tool === "score-trend" && (
+        <FullScreenAnalysis config={scoreTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openComparison} />
+      )}
+      {activeView?.tool === "score-comparison" && (
+        <FullScreenAnalysis config={scoreComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
+      )}
+      {activeView?.tool === "indicator-trend" && indicatorTrendConfig.subjectOptions.length > 0 && (
+        <FullScreenAnalysis config={indicatorTrendConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
+      )}
+      {activeView?.tool === "cot-trajectory" && (
+        <FullScreenAnalysis config={cotTrajectoryConfig} initialSubjectId={activeView.subjectId} onClose={closeView} onCompare={openCotComparison} />
+      )}
+      {activeView?.tool === "cot-comparison" && (
+        <FullScreenAnalysis config={cotComparisonConfig} initialSubjectId={activeView.subjectId} onClose={closeView} />
+      )}
+      {activeView?.tool === "pair-correlation" && <PairCorrelationView onClose={closeView} />}
     </OracleToolsContext.Provider>
   );
 }

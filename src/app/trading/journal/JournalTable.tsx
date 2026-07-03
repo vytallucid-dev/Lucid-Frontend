@@ -11,9 +11,9 @@ function getConvictionClass(conviction: string, isLive: boolean): string {
 
 function ModelPill({ model }: { model: string }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    "4HPullBack": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    Breakout:    { bg: "rgba(168,85,247,0.12)",  color: "#C084FC", border: "rgba(168,85,247,0.2)" },
-    Short:       { bg: "rgba(148,163,184,0.1)",  color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    "4HPullBack": { bg: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "var(--lucid-accent-bd)" },
+    Breakout:    { bg: "var(--lucid-ctx-bg)",  color: "var(--lucid-ctx)", border: "var(--lucid-ctx-bd)" },
+    Short:       { bg: "var(--lucid-surface-3)",  color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = styles[model] ?? styles["Short"];
   return (
@@ -32,9 +32,9 @@ function DirectionPill({ direction }: { direction: string }) {
     <span
       className="pill"
       style={{
-        background: isBuy ? "var(--positive-bg)" : "var(--negative-bg)",
-        color: isBuy ? "var(--positive)" : "var(--negative)",
-        border: `1px solid ${isBuy ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+        background: isBuy ? "var(--lucid-pos-bg)" : "var(--lucid-neg-bg)",
+        color: isBuy ? "var(--lucid-pos)" : "var(--lucid-neg)",
+        border: `1px solid ${isBuy ? "var(--lucid-pos-bd)" : "var(--lucid-neg-bd)"}`,
       }}
     >
       {isBuy ? "↑" : "↓"} {direction}
@@ -44,12 +44,12 @@ function DirectionPill({ direction }: { direction: string }) {
 
 function ExitTypePill({ type }: { type: string }) {
   const map: Record<string, { bg: string; color: string; border: string }> = {
-    TP:           { bg: "var(--positive-bg)",              color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    "Partial+TP": { bg: "var(--positive-bg)",              color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    SL:           { bg: "var(--negative-bg)",              color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    "Partial+SL": { bg: "var(--negative-bg)",              color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    Manual:       { bg: "var(--warning-bg)",               color: "var(--warning)",  border: "rgba(245,158,11,0.25)" },
-    BE:           { bg: "rgba(148,163,184,0.1)",           color: "#94A3B8",         border: "rgba(148,163,184,0.2)" },
+    TP:           { bg: "var(--lucid-pos-bg)",              color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    "Partial+TP": { bg: "var(--lucid-pos-bg)",              color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    SL:           { bg: "var(--lucid-neg-bg)",              color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    "Partial+SL": { bg: "var(--lucid-neg-bg)",              color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    Manual:       { bg: "var(--lucid-warn-bg)",               color: "var(--lucid-warn)",  border: "var(--lucid-warn-bd)" },
+    BE:           { bg: "var(--lucid-surface-3)",           color: "var(--lucid-ink-2)",         border: "var(--lucid-line-2)" },
   };
   const s = map[type] ?? map["BE"];
   return (
@@ -61,19 +61,19 @@ function ExitTypePill({ type }: { type: string }) {
 
 function ConvictionPill({ conviction }: { conviction: string }) {
   if (conviction === "High")
-    return <span className="pill pill-blue">High</span>;
+    return <span className="pill" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}>High</span>;
   if (conviction === "Medium")
-    return <span className="pill" style={{ background: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.2)" }}>Medium</span>;
-  return <span className="pill" style={{ background: "rgba(100,116,139,0.1)", color: "#64748B", border: "1px solid rgba(100,116,139,0.15)" }}>Low</span>;
+    return <span className="pill" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}>Medium</span>;
+  return <span className="pill" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}>Low</span>;
 }
 
 function PairCell({ pair }: { pair: string }) {
   const config = pairs.find(p => p.symbol === pair);
-  if (!config) return <span style={{ color: "#E2E8F0" }}>{pair}</span>;
+  if (!config) return <span style={{ color: "var(--lucid-ink)" }}>{pair}</span>;
   return (
     <span className="flex items-center gap-1">
       <span>{config.flag_a}{config.flag_b}</span>
-      <span style={{ color: "#E2E8F0", fontWeight: 500 }}>{config.display_name}</span>
+      <span style={{ color: "var(--lucid-ink)", fontWeight: 500 }}>{config.display_name}</span>
     </span>
   );
 }
@@ -85,7 +85,7 @@ const TH_STYLE: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.06em",
   textTransform: "uppercase",
-  color: "#64748B",
+  color: "var(--lucid-ink-3)",
   whiteSpace: "nowrap",
   userSelect: "none",
 };
@@ -94,7 +94,7 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-card)" }}
+      style={{ border: "1px solid var(--lucid-line)", background: "var(--lucid-surface)" }}
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 1020 }}>
@@ -114,7 +114,7 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
             <col style={{ width: 95 }} />
           </colgroup>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
+            <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>
               <th style={{ ...TH_STYLE, padding: 0 }} />
               <th style={TH_STYLE}>Date</th>
               <th style={TH_STYLE}>Pair</th>
@@ -133,16 +133,16 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
           <tbody>
             {trades.map(trade => {
               const isLive = !trade.date_closed;
-              const pipsColor = trade.total_pips > 0 ? "var(--positive)" : trade.total_pips < 0 ? "var(--negative)" : "#94A3B8";
-              const rrColor = trade.blended_rr > 0 ? "var(--positive)" : trade.blended_rr < 0 ? "var(--negative)" : "#94A3B8";
-              const pnlColor = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
+              const pipsColor = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const rrColor = trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
 
               return (
                 <tr
                   key={trade.id}
                   onClick={() => onRowClick(trade)}
                   className="trade-row"
-                  style={{ cursor: "pointer", borderBottom: "1px solid rgba(148,163,184,0.05)" }}
+                  style={{ cursor: "pointer", borderBottom: "1px solid var(--lucid-line)" }}
                   onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgba(255,255,255,0.02)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
                 >
@@ -154,27 +154,22 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
                       background: isLive
                         ? "transparent"
                         : trade.conviction === "High"
-                        ? "var(--accent-blue)"
+                        ? "var(--lucid-accent)"
                         : trade.conviction === "Medium"
-                        ? "#475569"
+                        ? "var(--lucid-ink-3)"
                         : "transparent",
-                      boxShadow: isLive
-                        ? undefined
-                        : trade.conviction === "High"
-                        ? "inset 8px 0 16px -8px rgba(59,130,246,0.25)"
-                        : undefined,
                     }}
                   >
                     {isLive && (
                       <div
                         className="pulse-live w-full h-full"
-                        style={{ background: "var(--accent-blue)", width: 4, height: "100%", minHeight: 44 }}
+                        style={{ background: "var(--lucid-accent)", width: 4, height: "100%", minHeight: 44 }}
                       />
                     )}
                   </td>
 
                   {/* Date */}
-                  <td style={{ padding: "0 12px", height: 44, color: "#94A3B8", fontSize: 13 }}>
+                  <td className="lt-num" style={{ padding: "0 12px", height: 44, color: "var(--lucid-ink-2)", fontSize: 13 }}>
                     {formatDate(trade.date_opened).replace(/, \d{4}$/, "")}
                   </td>
 
@@ -194,39 +189,39 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
                   </td>
 
                   {/* Entry */}
-                  <td style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: "#E2E8F0" }}>
+                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: "var(--lucid-ink)" }}>
                     {trade.entry_price}
                   </td>
 
                   {/* Exit */}
-                  <td style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: isLive ? "#64748B" : "#E2E8F0" }}>
+                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: isLive ? "var(--lucid-ink-3)" : "var(--lucid-ink)" }}>
                     {isLive ? "—" : trade.main_exit_price}
                   </td>
 
                   {/* Pips */}
-                  <td style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "#64748B" : pipsColor, fontVariantNumeric: "tabular-nums" }}>
+                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "var(--lucid-ink-3)" : pipsColor, fontVariantNumeric: "tabular-nums" }}>
                     {isLive ? "—" : (trade.total_pips > 0 ? `+${trade.total_pips}` : `${trade.total_pips}`)}
                   </td>
 
                   {/* Risk */}
-                  <td style={{ padding: "0 12px", fontSize: 13, color: "#94A3B8" }}>
+                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, color: "var(--lucid-ink-2)" }}>
                     {trade.risk_pct}%
                   </td>
 
                   {/* R:R */}
-                  <td style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "#64748B" : rrColor, fontVariantNumeric: "tabular-nums" }}>
+                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "var(--lucid-ink-3)" : rrColor, fontVariantNumeric: "tabular-nums" }}>
                     {isLive ? "—" : `${trade.blended_rr > 0 ? "" : ""}${trade.blended_rr}R`}
                   </td>
 
                   {/* P&L */}
                   <td style={{ padding: "0 12px" }}>
                     {isLive ? (
-                      <span className="flex items-center gap-1.5" style={{ color: "#93C5FD", fontSize: 13, fontWeight: 700 }}>
-                        <span className="pulse-live w-1.5 h-1.5 rounded-full" style={{ background: "#3B82F6", display: "inline-block" }} />
+                      <span className="flex items-center gap-1.5" style={{ color: "var(--lucid-accent)", fontSize: 13, fontWeight: 700 }}>
+                        <span className="pulse-live w-1.5 h-1.5 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
                         Live
                       </span>
                     ) : (
-                      <span style={{ fontSize: 13, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+                      <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
                         {formatCurrency(trade.blended_pnl)}
                       </span>
                     )}

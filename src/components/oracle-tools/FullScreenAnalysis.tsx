@@ -6,7 +6,6 @@ import { X, ChevronDown, TrendingUp, TrendingDown, Minus, LineChart, BarChart3, 
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { AnalysisChart } from "./AnalysisChart";
-import { TimeframeControl, type CustomRange } from "@/components/shared/TimeframeControl";
 import type {
   AnalysisSubject,
   AnalysisToolConfig,
@@ -31,39 +30,6 @@ interface FullScreenAnalysisProps {
   onClose: () => void;
   /** Routes to the Score Comparison tool with `subjectId` as the first series. */
   onCompare?: (subjectId: string) => void;
-}
-
-/**
- * Windows a subject's points to an exact [from, to] date range and re-indexes
- * them 0..n-1 (re-keying breakdownByIndex to match) so AnalysisChart/SideRail
- * — which key purely off point index — keep working unmodified.
- */
-function windowSubject(subject: AnalysisSubject, range: CustomRange): AnalysisSubject {
-  const keptOldIndices: number[] = [];
-  const points = subject.points
-    .filter((p) => p.date >= range.from && p.date <= range.to)
-    .map((p, i) => {
-      keptOldIndices.push(p.index);
-      return { ...p, index: i };
-    });
-
-  const breakdownByIndex = subject.breakdownByIndex
-    ? keptOldIndices.reduce<Record<number, DateBreakdown>>((acc, oldIdx, newIdx) => {
-        const bd = subject.breakdownByIndex?.[oldIdx];
-        if (bd) acc[newIdx] = bd;
-        return acc;
-      }, {})
-    : undefined;
-
-  const lastPoint = points[points.length - 1];
-  return {
-    ...subject,
-    points,
-    breakdownByIndex,
-    currentValue: lastPoint?.value ?? subject.currentValue,
-    seriesAvailable: points.length > 0,
-    seriesGapNote: points.length === 0 ? "No data in the selected custom range." : subject.seriesGapNote,
-  };
 }
 
 function fmtSigned(n: number | null, unit: string): string {
@@ -272,48 +238,35 @@ export function FullScreenAnalysis({ config, initialSubjectId, initialCompareId,
   const [subjectId, setSubjectId] = useState(initialSubjectId ?? config.defaultSubjectId);
   const [compareId, setCompareId] = useState<string | null>(initialCompareId ?? null);
   const [timeframe, setTimeframe] = useState<TimeframeKey>("3M");
-  const [customRange, setCustomRange] = useState<CustomRange | null>(null);
   const [chartType, setChartType] = useState<ChartType>(config.defaultChartType);
   const [showBands, setShowBands] = useState(config.chartKind === "score");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const isComparison = config.chartKind === "comparison";
 
-  // Oracle's history endpoints only accept a fixed range enum (no from/to) —
-  // a custom range fetches the broadest preset and windows client-side below.
-  const effectiveTimeframe = customRange ? "1Y" : timeframe;
-
   const subjectQuery = useQuery({
-    queryKey: [...config.queryKeyPrefix, subjectId, effectiveTimeframe],
-    queryFn: () => config.fetchSubject(subjectId, effectiveTimeframe),
+    queryKey: [...config.queryKeyPrefix, subjectId, timeframe],
+    queryFn: () => config.fetchSubject(subjectId, timeframe),
   });
 
   const compareQuery = useQuery({
-    queryKey: [...config.queryKeyPrefix, compareId, effectiveTimeframe],
-    queryFn: () => config.fetchSubject(compareId as string, effectiveTimeframe),
+    queryKey: [...config.queryKeyPrefix, compareId, timeframe],
+    queryFn: () => config.fetchSubject(compareId as string, timeframe),
     enabled: isComparison && compareId !== null,
   });
 
-  const rawSubject = subjectQuery.data;
-  const rawCompareSubject = isComparison && compareId ? (compareQuery.data ?? null) : null;
-
-  const subject = useMemo(
-    () => (rawSubject && customRange ? windowSubject(rawSubject, customRange) : rawSubject),
-    [rawSubject, customRange],
-  );
-  const compareSubject = useMemo(
-    () => (rawCompareSubject && customRange ? windowSubject(rawCompareSubject, customRange) : rawCompareSubject),
-    [rawCompareSubject, customRange],
-  );
+  const subject = subjectQuery.data;
+  const compareSubject = isComparison && compareId ? (compareQuery.data ?? null) : null;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
-    return () => { document.removeEventListener("keydown", handler); };
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
   }, [onClose]);
 
   return (
-    <div className="absolute inset-x-0 top-11 bottom-0 z-20 flex flex-col" style={{ background: "var(--lucid-bg)" }}>
+    <div className="fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
       {/* ── HEADER (Bloomberg-style panel header) ── */}
       <div className="shrink-0 flex flex-col" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
         {/* Row 1: identity + headline value + delta + close */}
@@ -393,18 +346,22 @@ export function FullScreenAnalysis({ config, initialSubjectId, initialCompareId,
               ))}
             </div>
 
-            {/* Timeframe (presets + custom range) */}
-            <TimeframeControl
-              presets={TIMEFRAMES.map((tf) => ({ key: tf.key, label: tf.label }))}
-              activePresetKey={customRange ? null : timeframe}
-              onSelectPreset={(key) => {
-                setCustomRange(null);
-                setTimeframe(key as TimeframeKey);
-              }}
-              customRange={customRange}
-              onSelectCustomRange={setCustomRange}
-              maxDate={new Date().toISOString().slice(0, 10)}
-            />
+            {/* Timeframe */}
+            <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid var(--lucid-line-2)" }}>
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf.key}
+                  onClick={() => setTimeframe(tf.key)}
+                  className="px-3 py-1.5 text-xs font-semibold transition-colors lt-num"
+                  style={{
+                    background: timeframe === tf.key ? "var(--lucid-accent-bg)" : "transparent",
+                    color: timeframe === tf.key ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
+                  }}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
 
             {/* Compare — routes to the Comparison tool (not inline) */}
             {config.compareEnabled && onCompare && (

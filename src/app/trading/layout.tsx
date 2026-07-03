@@ -30,8 +30,8 @@ export default function TradingLayout({ children }: { children: React.ReactNode 
       <div
         className="flex items-center gap-5 sm:gap-6 px-4 sm:px-6 h-11 shrink-0 overflow-x-auto no-scrollbar scroll-touch"
         style={{
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-          background: "rgba(2, 8, 23, 0.4)",
+          borderBottom: "1px solid var(--lucid-line)",
+          background: "transparent",
         }}
       >
         {tabs.map((tab) => {
@@ -42,16 +42,14 @@ export default function TradingLayout({ children }: { children: React.ReactNode 
               href={tab.href}
               className="relative h-full flex items-center text-sm font-medium transition-colors whitespace-nowrap shrink-0"
               style={{
-                color: active ? "#F1F5F9" : "#64748B",
+                color: active ? "var(--lucid-ink)" : "var(--lucid-ink-3)",
               }}
             >
-              <span className="hover:text-[#94A3B8] transition-colors">
-                {tab.label}
-              </span>
+              {tab.label}
               {active && (
                 <div
-                  className="absolute bottom-0 left-0 right-0 h-[2px]"
-                  style={{ background: "#3B82F6" }}
+                  className="absolute bottom-0 left-0 right-0 h-0.5"
+                  style={{ background: "var(--lucid-accent)" }}
                 />
               )}
             </Link>

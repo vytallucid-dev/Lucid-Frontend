@@ -18,12 +18,12 @@ interface AddPlannedTradeModalProps {
 
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
-  background: "rgba(20,28,40,0.8)",
-  border: "1px solid rgba(148,163,184,0.12)",
+  background: "var(--lucid-surface-3)",
+  border: "1px solid var(--lucid-line)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
-  color: "#E2E8F0",
+  color: "var(--lucid-ink)",
   outline: "none",
 };
 
@@ -32,13 +32,13 @@ const LABEL_STYLE: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.05em",
   textTransform: "uppercase",
-  color: "#64748B",
+  color: "var(--lucid-ink-3)",
   marginBottom: 6,
   display: "block",
 };
 
 // Explicit dark background so the native dropdown list stays readable on mobile.
-const OPTION_STYLE: React.CSSProperties = { background: "#0A0E14", color: "#E2E8F0" };
+const OPTION_STYLE: React.CSSProperties = { background: "var(--lucid-surface)", color: "var(--lucid-ink)" };
 
 /** Local `YYYY-MM-DD` string for a `date` input, defaulting to today. */
 function toDateInput(d: Date): string {
@@ -58,14 +58,15 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 function GroupHeader({ children }: { children: React.ReactNode }) {
   return (
     <h3
+      className="lt-serif"
       style={{
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
-        color: "#64748B",
+        color: "var(--lucid-ink-3)",
         paddingBottom: 8,
-        borderBottom: "1px solid rgba(148,163,184,0.08)",
+        borderBottom: "1px solid var(--lucid-line)",
         marginBottom: 16,
       }}
     >
@@ -88,7 +89,7 @@ function SegmentedControl<T extends string>({
   return (
     <div
       className="flex rounded-lg p-0.5"
-      style={{ background: "rgba(20,28,40,0.8)", border: "1px solid rgba(148,163,184,0.12)" }}
+      style={{ background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line)" }}
     >
       {options.map(opt => {
         const active = value === opt;
@@ -100,10 +101,10 @@ function SegmentedControl<T extends string>({
             onClick={() => onChange(opt)}
             className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
             style={{
-              background: active ? (colors?.bg ?? "rgba(59,130,246,0.15)") : "transparent",
-              color: active ? (colors?.active ?? "#93C5FD") : "#64748B",
+              background: active ? (colors?.bg ?? "var(--lucid-accent-bg)") : "transparent",
+              color: active ? (colors?.active ?? "var(--lucid-accent)") : "var(--lucid-ink-3)",
               border: active
-                ? `1px solid ${colors?.active ? colors.active + "40" : "rgba(59,130,246,0.25)"}`
+                ? `1px solid ${colors?.active ? `color-mix(in srgb, ${colors.active} 40%, transparent)` : "var(--lucid-accent-bd)"}`
                 : "1px solid transparent",
             }}
           >
@@ -225,10 +226,8 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
             width: "100%",
             maxWidth: 640,
             maxHeight: "88vh",
-            background: "rgba(10,18,30,0.98)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(148,163,184,0.12)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+            background: "var(--lucid-surface-2)",
+            border: "1px solid var(--lucid-line)",
           }}
           onClick={e => e.stopPropagation()}
           onSubmit={handleSubmit}
@@ -236,16 +235,16 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
           {/* Header */}
           <div
             className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}
+            style={{ borderBottom: "1px solid var(--lucid-line)" }}
           >
-            <h2 className="text-base font-semibold" style={{ color: "#E2E8F0" }}>
+            <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
               {editId ? "Edit Planned Trade" : "Add Planned Trade"}
             </h2>
             <button
               type="button"
               onClick={onClose}
               className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               <X size={15} />
             </button>
@@ -280,8 +279,8 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                       value={direction}
                       onChange={setDirection}
                       colorMap={{
-                        Buy: { active: "#10B981", bg: "rgba(16,185,129,0.12)" },
-                        Sell: { active: "#EF4444", bg: "rgba(239,68,68,0.1)" },
+                        Buy: { active: "var(--lucid-pos)", bg: "var(--lucid-pos-bg)" },
+                        Sell: { active: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)" },
                       }}
                     />
                   </FieldGroup>
@@ -291,6 +290,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                       type="date"
                       value={datePlanned}
                       onChange={e => setDatePlanned(e.target.value)}
+                      className="lt-num"
                       style={INPUT_STYLE}
                     />
                   </FieldGroup>
@@ -302,20 +302,20 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                 <GroupHeader>Price Levels</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Entry">
-                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.2580" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.2580" className="lt-num" style={INPUT_STYLE} required />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.2540" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.2540" className="lt-num" style={INPUT_STYLE} required />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.2620" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.2620" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.2680" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.2680" className="lt-num" style={INPUT_STYLE} required />
                   </FieldGroup>
                   <div className="col-span-2 sm:col-span-1">
                     <FieldGroup label="Current Market Price">
-                      <input type="number" step="any" value={currentMarketPrice} onChange={e => setCurrentMarketPrice(e.target.value)} placeholder="Defaults to entry — update to track distance" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={currentMarketPrice} onChange={e => setCurrentMarketPrice(e.target.value)} placeholder="Defaults to entry — update to track distance" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                   </div>
                 </div>
@@ -326,7 +326,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                 <GroupHeader>Risk &amp; Conviction</GroupHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Planned Risk %">
-                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" style={INPUT_STYLE} />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lt-num" style={INPUT_STYLE} />
                   </FieldGroup>
 
                   <FieldGroup label="Conviction">
@@ -335,9 +335,9 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                       value={conviction}
                       onChange={setConviction}
                       colorMap={{
-                        Low: { active: "#64748B", bg: "rgba(100,116,139,0.1)" },
-                        Medium: { active: "#94A3B8", bg: "rgba(148,163,184,0.1)" },
-                        High: { active: "#93C5FD", bg: "rgba(59,130,246,0.15)" },
+                        Low: { active: "var(--lucid-ink-3)", bg: "var(--lucid-surface-3)" },
+                        Medium: { active: "var(--lucid-ink-2)", bg: "var(--lucid-surface-3)" },
+                        High: { active: "var(--lucid-ink)", bg: "var(--lucid-line-2)" },
                       }}
                     />
                   </FieldGroup>
@@ -360,14 +360,14 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
           {/* Footer */}
           <div
             className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}
+            style={{ borderTop: "1px solid var(--lucid-line)" }}
           >
-            {error && <span className="mr-auto text-sm" style={{ color: "#FCA5A5" }}>{error}</span>}
+            {error && <span className="mr-auto text-sm" style={{ color: "var(--lucid-neg)" }}>{error}</span>}
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
             >
               Cancel
             </button>
@@ -375,7 +375,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
               type="submit"
               disabled={saving}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-              style={{ background: "rgba(59,130,246,0.9)", color: "#fff", opacity: saving ? 0.6 : 1 }}
+              style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)", opacity: saving ? 0.6 : 1 }}
             >
               {saving ? "Saving…" : editId ? "Save Changes" : "Add to Watchlist"}
             </button>

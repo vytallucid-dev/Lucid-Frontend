@@ -1,0 +1,172 @@
+/* Flat solid surfaces + hairline borders. No backdrop-filter,
+   no glass, no glow. Depth comes from surface steps and borders, not blur. */
+
+:root {
+  /* Surfaces (flat, solid, opaque — no transparency, no blur) */
+  --lucid-bg: #090a0d;
+  --lucid-surface: #111319;
+  --lucid-surface-2: #171a20;
+  --lucid-surface-3: #20242c;
+
+  /* Hairline borders (the separation mechanism — replaces glass/blur entirely) */
+  --lucid-line: rgba(255, 255, 255, 0.06);
+  --lucid-line-2: rgba(255, 255, 255, 0.10);
+  --lucid-line-3: rgba(255, 255, 255, 0.17);
+
+  /* Ink (warm off-white, not cold slate) */
+  --lucid-ink: #f1efe9;
+  --lucid-ink-2: #9b9c9c;
+  --lucid-ink-3: #62646c;
+
+  /* Gold accent (primary) */
+  --lucid-accent: #cda74f;
+  --lucid-accent-bg: rgba(205, 167, 79, 0.12);
+  --lucid-accent-bd: rgba(205, 167, 79, 0.45);
+
+  /* Semantic / status */
+  --lucid-pos: #48ba7c;
+  --lucid-pos-bg: rgba(72, 186, 124, 0.12);
+  --lucid-pos-bd: rgba(72, 186, 124, 0.38);
+
+  --lucid-neg: #e2584d;
+  --lucid-neg-bg: rgba(226, 88, 77, 0.12);
+  --lucid-neg-bd: rgba(226, 88, 77, 0.40);
+
+  --lucid-warn: #e0a13e;
+  --lucid-warn-bg: rgba(224, 161, 62, 0.12);
+  --lucid-warn-bd: rgba(224, 161, 62, 0.38);
+
+  --lucid-ctx: #7f93b2;
+  --lucid-ctx-bg: rgba(127, 147, 178, 0.11);
+  --lucid-ctx-bd: rgba(127, 147, 178, 0.32);
+
+  --lucid-cool: #4ea1e6;
+
+  /* 5-step score scale (NIFTY bands / Oracle bias) */
+  --lucid-scale-0: #e2584d; /* strong bearish */
+  --lucid-scale-1: #e0913f; /* bearish */
+  --lucid-scale-2: #cda74f; /* neutral (gold) */
+  --lucid-scale-3: #48ba7c; /* bullish */
+  --lucid-scale-4: #4ea1e6; /* strong bullish */
+
+  /* Geometry */
+  --lucid-r-sm: 8px;
+  --lucid-r-md: 12px;
+  --lucid-r-lg: 16px;
+  --lucid-r-xl: 22px;
+
+  /* Type — the three-font system */
+  --lucid-font-serif: var(--font-space-grotesk), sans-serif; /* display/heading font — Space Grotesk */
+  --lucid-font-sans: var(--font-inter);
+  --lucid-font-mono: var(--font-plex-mono), monospace;
+
+  /* Font sizing base (not applied globally here) */
+  --lucid-fs-base: 13.5px;
+  --lucid-lh-base: 1.55;
+}
+
+.lt-card {
+  background: var(--lucid-surface);
+  border: 1px solid var(--lucid-line);
+  border-radius: var(--lucid-r-lg);
+}
+
+.lt-card-2 {
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line);
+  border-radius: var(--lucid-r-md);
+}
+
+.lt-num {
+  font-family: var(--lucid-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.lt-serif {
+  font-family: var(--lucid-font-serif);
+}
+
+.lt-hover {
+  transition: 0.15s;
+}
+.lt-hover:hover {
+  border-color: var(--lucid-line-3);
+}
+
+.lt-eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lt-eyebrow-ln {
+  flex: 1;
+  height: 1px;
+  background: var(--lucid-line);
+}
+/* Eyebrow typography on a table header/cell: keep the label styling but restore
+   the table-cell display model (the base `.lt-eyebrow` is `display:flex`, which
+   would collapse column alignment and ignore text-align on <th>/<td>). */
+th.lt-eyebrow,
+td.lt-eyebrow {
+  display: table-cell;
+}
+
+.lt-edge {
+  position: relative;
+}
+.lt-edge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lucid-line-3), transparent);
+}
+
+.lt-hero-wash {
+  background:
+    linear-gradient(180deg, var(--lucid-accent-bg), transparent 55%),
+    var(--lucid-surface);
+}
+
+.lt-lift {
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.lt-lift:hover {
+  transform: translateY(-2px);
+  border-color: var(--lucid-line-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lt-lift {
+    transition: border-color 0.18s ease;
+  }
+  .lt-lift:hover {
+    transform: none;
+  }
+}
+
+.lt-topbar-rest {
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.2s ease, border-color 0.2s ease, height 0.2s ease;
+}
+
+.lt-topbar-scrolled {
+  background: var(--lucid-surface);
+  border-bottom: 1px solid var(--lucid-line);
+  transition: background-color 0.2s ease, border-color 0.2s ease, height 0.2s ease;
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .lt-topbar-scrolled {
+    background: color-mix(in srgb, var(--lucid-surface) 82%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}

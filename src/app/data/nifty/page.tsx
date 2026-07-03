@@ -27,48 +27,36 @@ import {
 function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
   const pipeline = getNiftyPipeline(indicator.code);
   const freshness = getFreshnessStatus(indicator);
-  const sourceColor = DATA_SOURCE_COLORS[indicator.dataSource] ?? "#64748B";
+  const sourceColor = DATA_SOURCE_COLORS[indicator.dataSource] ?? "var(--lucid-ink-3)";
   const freshnessColor = FRESHNESS_COLORS[freshness];
 
   return (
     <Link
       href={`/data/nifty/${encodeURIComponent(indicator.code)}`}
-      className="flex flex-col gap-3 rounded-xl p-4 transition-all duration-200 group hover:scale-[1.01]"
-      style={{
-        background: "rgba(10, 22, 40, 0.6)",
-        border: "1px solid rgba(255,255,255,0.06)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(59,130,246,0.3)";
-        (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 20px rgba(59,130,246,0.06)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.06)";
-        (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none";
-      }}
+      className="lt-card lt-hover flex flex-col gap-3 rounded-xl p-4 transition-all duration-200 group hover:scale-[1.01]"
     >
       {/* Top row: order badge + name + arrow */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {indicator.displayOrder !== null && (
             <span
-              className="shrink-0 flex items-center justify-center rounded-lg text-xs font-bold"
+              className="lt-num shrink-0 flex items-center justify-center rounded-lg text-xs font-bold"
               style={{
                 width: 28,
                 height: 28,
-                background: "rgba(59,130,246,0.12)",
-                color: "#3B82F6",
-                border: "1px solid rgba(59,130,246,0.2)",
+                background: "var(--lucid-accent-bg)",
+                color: "var(--lucid-accent)",
+                border: "1px solid var(--lucid-accent-bd)",
               }}
             >
               {indicator.displayOrder}
             </span>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate" style={{ color: "#F1F5F9" }}>
+            <p className="text-sm font-medium truncate" style={{ color: "var(--lucid-ink)" }}>
               {indicator.name}
             </p>
-            <p className="text-[10px] font-mono truncate" style={{ color: "#475569" }}>
+            <p className="lt-num text-[10px] truncate" style={{ color: "var(--lucid-ink-3)" }}>
               {indicator.code}
             </p>
           </div>
@@ -76,7 +64,7 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         <ChevronRight
           size={14}
           className="shrink-0 mt-1 transition-transform group-hover:translate-x-0.5"
-          style={{ color: "#334155" }}
+          style={{ color: "var(--lucid-ink-3)" }}
         />
       </div>
 
@@ -85,9 +73,9 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         <span
           className="rounded-full px-2 py-0.5 text-[10px] font-medium"
           style={{
-            background: `${sourceColor}14`,
+            background: "var(--lucid-surface-2)",
             color: sourceColor,
-            border: `1px solid ${sourceColor}28`,
+            border: "1px solid var(--lucid-line-2)",
           }}
         >
           {DATA_SOURCE_LABELS[indicator.dataSource] ?? indicator.dataSource}
@@ -95,9 +83,9 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         <span
           className="rounded-full px-2 py-0.5 text-[10px] font-medium"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            color: "#64748B",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--lucid-surface-2)",
+            color: "var(--lucid-ink-3)",
+            border: "1px solid var(--lucid-line)",
           }}
         >
           {indicator.compositeGroup ?? "—"}
@@ -105,9 +93,9 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         <span
           className="rounded-full px-2 py-0.5 text-[10px] font-medium"
           style={{
-            background: `${freshnessColor}12`,
+            background: "var(--lucid-surface-2)",
             color: freshnessColor,
-            border: `1px solid ${freshnessColor}28`,
+            border: "1px solid var(--lucid-line-2)",
           }}
         >
           {FRESHNESS_LABELS[freshness]}
@@ -117,41 +105,41 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
       {/* Last data point */}
       <div
         className="rounded-lg px-3 py-2 flex items-center justify-between"
-        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.04)" }}
+        style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
       >
         {indicator.latestDataPoint ? (
           <>
             <div>
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 Last value
               </p>
-              <p className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+              <p className="lt-num text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                 {indicator.latestDataPoint.value}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 As of
               </p>
-              <p className="text-xs" style={{ color: "#94A3B8" }}>
+              <p className="lt-num text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                 {indicator.latestDataPoint.observationDate}
               </p>
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 {formatRelativeDate(indicator.latestDataPoint.fetchedAt)}
               </p>
             </div>
           </>
         ) : (
-          <p className="text-xs" style={{ color: "#475569" }}>
+          <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
             No data yet
           </p>
         )}
       </div>
 
       {/* Pipeline label */}
-      <p className="text-[10px]" style={{ color: "#475569" }}>
+      <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
         Pipeline:{" "}
-        <span style={{ color: "#64748B" }}>{PIPELINE_LABELS[pipeline]}</span>
+        <span style={{ color: "var(--lucid-ink-3)" }}>{PIPELINE_LABELS[pipeline]}</span>
       </p>
     </Link>
   );
@@ -237,8 +225,8 @@ export default function NiftyDataPage() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle size={40} style={{ color: "#EF4444" }} />
-        <p className="text-lg font-medium" style={{ color: "#F1F5F9" }}>
+        <AlertCircle size={40} style={{ color: "var(--lucid-neg)" }} />
+        <p className="lt-serif text-lg font-medium" style={{ color: "var(--lucid-ink)" }}>
           Admin access required
         </p>
       </div>
@@ -253,27 +241,27 @@ export default function NiftyDataPage() {
   return (
     <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "#475569" }}>
-        <Link href="/data" className="hover:text-[#94A3B8] transition-colors">
+      <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "var(--lucid-ink-3)" }}>
+        <Link href="/data" className="hover:opacity-80 transition-colors" style={{ color: "var(--lucid-ink-2)" }}>
           Data
         </Link>
         <ChevronRight size={14} />
-        <span style={{ color: "#94A3B8" }}>NIFTY</span>
+        <span style={{ color: "var(--lucid-ink-2)" }}>NIFTY</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div
           className="p-2.5 rounded-xl shrink-0"
-          style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)" }}
+          style={{ background: "var(--lucid-pos-bg)", border: "1px solid var(--lucid-pos-bd)" }}
         >
-          <Activity size={20} style={{ color: "#10B981" }} />
+          <Activity size={20} style={{ color: "var(--lucid-pos)" }} />
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
+          <h1 className="lt-serif text-xl font-bold" style={{ color: "var(--lucid-ink)" }}>
             NIFTY Indicators
           </h1>
-          <p className="text-sm" style={{ color: "#64748B" }}>
+          <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
             {isLoading ? "Loading..." : `${indicators.length} indicators`} — click any card to manage its data
           </p>
         </div>
@@ -281,13 +269,12 @@ export default function NiftyDataPage() {
 
       {/* Scorecard trigger */}
       <div
-        className="mb-6 rounded-2xl p-4 sm:p-5"
-        style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+        className="lt-card mb-6 rounded-2xl p-4 sm:p-5"
       >
-        <h2 className="text-sm font-semibold mb-1" style={{ color: "#F1F5F9" }}>
+        <h2 className="lt-serif text-sm font-semibold mb-1" style={{ color: "var(--lucid-ink)" }}>
           Pipeline Controls
         </h2>
-        <p className="text-xs mb-4" style={{ color: "#64748B" }}>
+        <p className="text-xs mb-4" style={{ color: "var(--lucid-ink-3)" }}>
           Manually trigger processing jobs for the NIFTY module.
         </p>
         <div className="flex flex-wrap gap-4 items-start">
@@ -297,8 +284,8 @@ export default function NiftyDataPage() {
               disabled={scorecardMutation.isPending || isPolling}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-50"
               style={{
-                background: (scorecardMutation.isPending || isPolling) ? "rgba(16,185,129,0.3)" : "#10B981",
-                color: "#000",
+                background: (scorecardMutation.isPending || isPolling) ? "var(--lucid-pos-bg)" : "var(--lucid-pos)",
+                color: "var(--lucid-bg)",
               }}
             >
               {scorecardMutation.isPending
@@ -310,34 +297,36 @@ export default function NiftyDataPage() {
 
             {triggerError && (
               <div className="flex items-center gap-1.5">
-                <XCircle size={12} style={{ color: "#EF4444" }} />
-                <span className="text-xs" style={{ color: "#FCA5A5" }}>{triggerError}</span>
+                <XCircle size={12} style={{ color: "var(--lucid-neg)" }} />
+                <span className="text-xs" style={{ color: "var(--lucid-neg)" }}>{triggerError}</span>
               </div>
             )}
 
             {isPolling && !lastLog && (
               <div className="flex items-center gap-1.5">
-                <Clock size={12} style={{ color: "#64748B" }} />
-                <span className="text-xs" style={{ color: "#64748B" }}>Waiting for scorecard to complete…</span>
+                <Clock size={12} style={{ color: "var(--lucid-ink-3)" }} />
+                <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>Waiting for scorecard to complete…</span>
               </div>
             )}
 
             {lastLog && (() => {
-              const statusColor = lastLog.status === "success" ? "#10B981" : lastLog.status === "failed" ? "#EF4444" : "#F59E0B";
+              const statusColor = lastLog.status === "success" ? "var(--lucid-pos)" : lastLog.status === "failed" ? "var(--lucid-neg)" : "var(--lucid-warn)";
+              const statusBg = lastLog.status === "success" ? "var(--lucid-pos-bg)" : lastLog.status === "failed" ? "var(--lucid-neg-bg)" : "var(--lucid-warn-bg)";
+              const statusBd = lastLog.status === "success" ? "var(--lucid-pos-bd)" : lastLog.status === "failed" ? "var(--lucid-neg-bd)" : "var(--lucid-warn-bd)";
               return (
                 <div
                   className="rounded-lg px-3 py-2 flex flex-col gap-0.5"
-                  style={{ background: `${statusColor}08`, border: `1px solid ${statusColor}20` }}
+                  style={{ background: statusBg, border: `1px solid ${statusBd}` }}
                 >
                   <div className="flex items-center gap-1.5">
                     {lastLog.status === "success"
-                      ? <CheckCircle2 size={12} style={{ color: "#10B981" }} />
+                      ? <CheckCircle2 size={12} style={{ color: "var(--lucid-pos)" }} />
                       : lastLog.status === "failed"
-                      ? <XCircle size={12} style={{ color: "#EF4444" }} />
-                      : <AlertCircle size={12} style={{ color: "#F59E0B" }} />}
+                      ? <XCircle size={12} style={{ color: "var(--lucid-neg)" }} />
+                      : <AlertCircle size={12} style={{ color: "var(--lucid-warn)" }} />}
                     <span className="text-xs font-semibold capitalize" style={{ color: statusColor }}>{lastLog.status}</span>
                   </div>
-                  <p className="text-[11px]" style={{ color: "#64748B" }}>
+                  <p className="lt-num text-[11px]" style={{ color: "var(--lucid-ink-3)" }}>
                     {lastLog.durationMs != null
                       ? lastLog.durationMs < 1000 ? `${lastLog.durationMs}ms` : `${(lastLog.durationMs / 1000).toFixed(1)}s`
                       : "—"}{" · "}
@@ -351,14 +340,14 @@ export default function NiftyDataPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-20 justify-center" style={{ color: "#475569" }}>
+        <div className="flex items-center gap-2 py-20 justify-center" style={{ color: "var(--lucid-ink-3)" }}>
           <Loader2 size={20} className="animate-spin" />
           <span>Loading indicators...</span>
         </div>
       ) : error ? (
         <div
           className="rounded-xl p-4 flex items-center gap-2"
-          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}
+          style={{ background: "var(--lucid-neg-bg)", border: "1px solid var(--lucid-neg-bd)", color: "var(--lucid-neg)" }}
         >
           <AlertCircle size={16} />
           <span className="text-sm">Failed to load indicators</span>
@@ -367,7 +356,7 @@ export default function NiftyDataPage() {
         <div className="flex flex-col gap-8">
           {domestic.length > 0 && (
             <section>
-              <h2 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "#475569" }}>
+              <h2 className="lt-serif text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "var(--lucid-ink-3)" }}>
                 Domestic Indicators ({domestic.length})
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -380,7 +369,7 @@ export default function NiftyDataPage() {
 
           {external.length > 0 && (
             <section>
-              <h2 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "#475569" }}>
+              <h2 className="lt-serif text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "var(--lucid-ink-3)" }}>
                 External Indicators ({external.length})
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -393,7 +382,7 @@ export default function NiftyDataPage() {
 
           {bridge.length > 0 && (
             <section>
-              <h2 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "#475569" }}>
+              <h2 className="lt-serif text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "var(--lucid-ink-3)" }}>
                 Bridge Indicators ({bridge.length})
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

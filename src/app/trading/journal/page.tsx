@@ -56,20 +56,20 @@ function FilterPopover({
     <div
       className="absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden flex"
       style={{
-        background: "rgba(14, 22, 34, 0.98)",
-        border: "1px solid rgba(148, 163, 184, 0.15)",
+        background: "var(--lucid-surface-2)",
+        border: "1px solid var(--lucid-line-2)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         minWidth: 280,
       }}
     >
-      <div className="py-1 border-r" style={{ borderColor: "rgba(148,163,184,0.1)", minWidth: 148 }}>
+      <div className="py-1 border-r" style={{ borderColor: "var(--lucid-line)", minWidth: 148 }}>
         {cats.map(cat => (
           <button
             key={cat}
             className="w-full text-left px-3 py-2 text-sm transition-colors"
             style={{
-              color: selectedCat === cat ? "#E2E8F0" : "#94A3B8",
-              background: selectedCat === cat ? "rgba(59,130,246,0.1)" : "transparent",
+              color: selectedCat === cat ? "var(--lucid-ink)" : "var(--lucid-ink-2)",
+              background: selectedCat === cat ? "var(--lucid-accent-bg)" : "transparent",
             }}
             onMouseEnter={() => setSelectedCat(cat)}
           >
@@ -87,7 +87,7 @@ function FilterPopover({
                 disabled={already}
                 className="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between"
                 style={{
-                  color: already ? "#64748B" : "#E2E8F0",
+                  color: already ? "var(--lucid-ink-3)" : "var(--lucid-ink)",
                   cursor: already ? "default" : "pointer",
                 }}
                 onMouseEnter={e => { if (!already) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}
@@ -95,7 +95,7 @@ function FilterPopover({
                 onClick={() => { if (!already) { onAdd(selectedCat, val); onClose(); } }}
               >
                 <span>{val}</span>
-                {already && <span style={{ color: "#64748B", fontSize: 10 }}>active</span>}
+                {already && <span style={{ color: "var(--lucid-ink-3)", fontSize: 10 }}>active</span>}
               </button>
             );
           })}
@@ -190,18 +190,18 @@ export default function JournalPage() {
       {/* Page header */}
       <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: "#E2E8F0" }}>Journal</h1>
-          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
+          <h1 className="text-2xl font-semibold lt-serif" style={{ color: "var(--lucid-ink)" }}>Journal</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--lucid-ink-3)" }}>
             Every live trade. Every decision. Every outcome.
           </p>
         </div>
         <div
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm self-start"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "#94A3B8" }}
+          style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)" }}
         >
-          <span className="font-medium">{count} trades</span>
-          <span style={{ color: "#334155" }}>·</span>
-          <span className="font-semibold" style={{ color: net >= 0 ? "var(--positive)" : "var(--negative)" }}>
+          <span className="font-medium lt-num">{count} trades</span>
+          <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
+          <span className="font-semibold lt-num" style={{ color: net >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
             {formatCurrency(net)} net
           </span>
         </div>
@@ -211,8 +211,8 @@ export default function JournalPage() {
       <div
         className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30"
         style={{
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(148, 163, 184, 0.08)",
+          background: "var(--lucid-surface)",
+          borderBottom: "1px solid var(--lucid-line)",
         }}
       >
         {/* Left */}
@@ -220,9 +220,9 @@ export default function JournalPage() {
           <button
             onClick={e => { e.stopPropagation(); setAddOpen(true); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
-            style={{ background: "#3B82F6", color: "#fff" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#3B82F6"; }}
+            style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-accent-bd)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-accent)"; }}
           >
             <Plus size={14} /> Add Trade
           </button>
@@ -230,7 +230,7 @@ export default function JournalPage() {
             value={selectedAccount}
             onChange={e => setSelectedAccount(e.target.value)}
             className="text-sm rounded-lg px-2.5 py-1.5"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "#94A3B8", outline: "none" }}
+            style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)", outline: "none" }}
           >
             <option value="all">All Accounts</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
@@ -243,7 +243,7 @@ export default function JournalPage() {
             <span
               key={f.id}
               className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
-              style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.2)", color: "#93C5FD" }}
+              style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)", color: "var(--lucid-accent)" }}
             >
               {f.category}: {f.value}
               <button onClick={() => removeFilter(f.id)} className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity">
@@ -256,9 +256,9 @@ export default function JournalPage() {
               onClick={() => setFilterOpen(o => !o)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
-                background: filterOpen ? "rgba(148,163,184,0.1)" : "var(--bg-card)",
-                border: "1px solid var(--border-subtle)",
-                color: "#94A3B8",
+                background: filterOpen ? "var(--lucid-surface-3)" : "var(--lucid-surface)",
+                border: "1px solid var(--lucid-line)",
+                color: "var(--lucid-ink-2)",
               }}
             >
               <SlidersHorizontal size={12} /> Add Filter
@@ -270,16 +270,16 @@ export default function JournalPage() {
         </div>
 
         {/* Right: view toggle */}
-        <div className="flex rounded-lg p-0.5 ml-auto" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+        <div className="flex rounded-lg p-0.5 ml-auto" style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}>
           {(["table", "gallery"] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
               style={{
-                background: view === v ? "rgba(59,130,246,0.15)" : "transparent",
-                color: view === v ? "#93C5FD" : "#64748B",
-                border: view === v ? "1px solid rgba(59,130,246,0.2)" : "1px solid transparent",
+                background: view === v ? "var(--lucid-accent-bg)" : "transparent",
+                color: view === v ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
+                border: view === v ? "1px solid var(--lucid-accent-bd)" : "1px solid transparent",
               }}
             >
               {v === "table" ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
@@ -352,19 +352,19 @@ function EmptyState({ hasFilters, onClear, onAdd }: { hasFilters: boolean; onCle
     <div className="flex items-center justify-center py-24">
       <div
         className="flex flex-col items-center gap-4 p-10 rounded-2xl text-center"
-        style={{ maxWidth: 520, background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+        style={{ maxWidth: 520, background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}
       >
-        <BookText size={40} style={{ color: "#334155" }} />
+        <BookText size={40} style={{ color: "var(--lucid-ink-3)" }} />
         {hasFilters ? (
           <>
             <div>
-              <p className="text-base font-semibold" style={{ color: "#E2E8F0" }}>No trades match these filters</p>
-              <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Try removing a filter or adjusting the date range.</p>
+              <p className="text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>No trades match these filters</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--lucid-ink-3)" }}>Try removing a filter or adjusting the date range.</p>
             </div>
             <button
               onClick={onClear}
               className="px-4 py-2 rounded-lg text-sm font-medium"
-              style={{ background: "rgba(59,130,246,0.15)", color: "#93C5FD", border: "1px solid rgba(59,130,246,0.2)" }}
+              style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}
             >
               Clear Filters
             </button>
@@ -372,17 +372,17 @@ function EmptyState({ hasFilters, onClear, onAdd }: { hasFilters: boolean; onCle
         ) : (
           <>
             <div>
-              <p className="text-base font-semibold" style={{ color: "#E2E8F0" }}>Your journal is empty</p>
-              <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Add your first trade to start building your edge.</p>
+              <p className="text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>Your journal is empty</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--lucid-ink-3)" }}>Add your first trade to start building your edge.</p>
             </div>
             <button
               onClick={onAdd}
               className="px-5 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: "#3B82F6", color: "#fff" }}
+              style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
             >
               + Add Your First Trade
             </button>
-            <p className="text-xs" style={{ color: "#334155" }}>
+            <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
               Or paste a screenshot from MT4/MT5 to auto-fill (coming Phase 3)
             </p>
           </>

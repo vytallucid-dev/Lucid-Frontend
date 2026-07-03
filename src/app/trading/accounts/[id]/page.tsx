@@ -115,15 +115,14 @@ function DrawdownChartTooltip({ active, payload, label }: {
     <div
       className="rounded-xl px-3 py-2.5"
       style={{
-        background: "rgba(10,14,20,0.95)",
-        border: "1px solid rgba(148,163,184,0.2)",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+        background: "var(--lucid-surface-2)",
+        border: "1px solid var(--lucid-line-2)",
       }}
     >
-      <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>{formatCurrency(balance)}</p>
+      <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4 }}>{label}</p>
+      <p className="lt-num" style={{ fontSize: 14, fontWeight: 700, color: "var(--lucid-ink)" }}>{formatCurrency(balance)}</p>
       {tradeLabel && tradeLabel !== "Start" && (
-        <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{tradeLabel}</p>
+        <p style={{ fontSize: 11, color: "var(--lucid-ink-2)", marginTop: 2 }}>{tradeLabel}</p>
       )}
     </div>
   );
@@ -133,12 +132,12 @@ function DrawdownChartTooltip({ active, payload, label }: {
 
 function ExitTypePill({ type }: { type: string }) {
   const map: Record<string, { bg: string; color: string; border: string }> = {
-    TP:           { bg: "var(--positive-bg)", color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    "Partial+TP": { bg: "var(--positive-bg)", color: "var(--positive)", border: "rgba(16,185,129,0.25)" },
-    SL:           { bg: "var(--negative-bg)", color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    "Partial+SL": { bg: "var(--negative-bg)", color: "var(--negative)", border: "rgba(239,68,68,0.25)" },
-    Manual:       { bg: "var(--warning-bg)", color: "var(--warning)", border: "rgba(245,158,11,0.25)" },
-    BE:           { bg: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    TP:           { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    "Partial+TP": { bg: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "var(--lucid-pos-bd)" },
+    SL:           { bg: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    "Partial+SL": { bg: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "var(--lucid-neg-bd)" },
+    Manual:       { bg: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "var(--lucid-warn-bd)" },
+    BE:           { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = map[type] ?? map["BE"];
   return (
@@ -152,13 +151,10 @@ function ExitTypePill({ type }: { type: string }) {
 
 function StatCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div
-      className="rounded-xl p-4 flex flex-col gap-1"
-      style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.08)" }}
-    >
-      <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
-      <span style={{ fontSize: 22, fontWeight: 700, color: "#E2E8F0" }}>{value}</span>
-      {sub && <span style={{ fontSize: 11, color: "#475569" }}>{sub}</span>}
+    <div className="lt-card p-4 flex flex-col gap-1">
+      <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+      <span className="lt-num" style={{ fontSize: 22, fontWeight: 700, color: "var(--lucid-ink)" }}>{value}</span>
+      {sub && <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{sub}</span>}
     </div>
   );
 }
@@ -201,7 +197,7 @@ export default function AccountDetailPage() {
   if (!account) {
     return (
       <DetailPageLayout backHref="/trading/accounts" backLabel="Accounts" title="Account not found">
-        <div className="py-16 text-center" style={{ color: "#64748B", fontSize: 14 }}>
+        <div className="py-16 text-center" style={{ color: "var(--lucid-ink-3)", fontSize: 14 }}>
           This account could not be found. It may have been deleted.
         </div>
       </DetailPageLayout>
@@ -218,8 +214,8 @@ export default function AccountDetailPage() {
   const isActive = account.status === "Active";
   const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
-  const pnlColor = pnl > 0 ? "var(--positive)" : pnl < 0 ? "var(--negative)" : "#94A3B8";
-  const ddColor = pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#10B981";
+  const pnlColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const ddColor = pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-pos)";
   const remaining = profitTarget - profitAchieved;
   const fromBlown = drawdownLimit - drawdownUsed;
 
@@ -243,14 +239,14 @@ export default function AccountDetailPage() {
       <button
         onClick={() => setEditOpen(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-        style={{ color: "#94A3B8", border: "1px solid rgba(148,163,184,0.15)" }}
+        style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
       >
         <Pencil size={14} /> Edit
       </button>
       <button
         onClick={() => setConfirmDelete(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-        style={{ color: "#F87171", border: "1px solid rgba(239,68,68,0.25)" }}
+        style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
       >
         <Trash2 size={14} /> Delete
       </button>
@@ -266,8 +262,7 @@ export default function AccountDetailPage() {
     >
       {/* ── Account header ──────────────────────────────────────────── */}
       <div
-        className="rounded-2xl p-4 sm:p-6 mb-6"
-        style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
+        className="lt-card p-4 sm:p-6 mb-6"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -276,20 +271,20 @@ export default function AccountDetailPage() {
               {prop && account.stage && <StagePill stage={account.stage} />}
               <StatusPill status={account.status} />
             </div>
-            <p style={{ fontSize: 13, color: "#64748B", marginBottom: 4 }}>{accountSource(account)}</p>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#E2E8F0", marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginBottom: 4 }}>{accountSource(account)}</p>
+            <h2 className="lt-serif" style={{ fontSize: 22, fontWeight: 700, color: "var(--lucid-ink)", marginBottom: 8 }}>
               {account.account_name}
             </h2>
-            <p style={{ fontSize: 13, color: "#64748B" }}>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>
               Started {formatDate(account.starting_date)} · {prop ? "Size" : "Starting balance"} {formatCurrency(account.account_size)}
             </p>
           </div>
 
           <div className="sm:text-right">
-            <p style={{ fontSize: 36, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+            <p className="lt-num" style={{ fontSize: 36, fontWeight: 700, color: pnlColor, lineHeight: 1 }}>
               {formatCurrency(account.current_balance)}
             </p>
-            <p style={{ fontSize: 14, color: pnlColor, marginTop: 6, opacity: 0.9 }}>
+            <p className="lt-num" style={{ fontSize: 14, color: pnlColor, marginTop: 6, opacity: 0.9 }}>
               {pnl >= 0 ? "+" : ""}{formatCurrency(pnl)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
             </p>
           </div>
@@ -301,12 +296,12 @@ export default function AccountDetailPage() {
         <StatCard label="Trade Count" value={tradeCount} sub="total trades" />
         <StatCard
           label="Win Rate"
-          value={<span style={{ color: winRate >= 40 ? "var(--positive)" : winRate >= 30 ? "var(--warning)" : "var(--negative)" }}>{tradeCount > 0 ? `${winRate.toFixed(0)}%` : "—"}</span>}
+          value={<span style={{ color: winRate >= 40 ? "var(--lucid-pos)" : winRate >= 30 ? "var(--lucid-warn)" : "var(--lucid-neg)" }}>{tradeCount > 0 ? `${winRate.toFixed(0)}%` : "—"}</span>}
           sub="wins / (wins + losses)"
         />
         <StatCard
           label="Avg P&L / Trade"
-          value={<span style={{ color: avgPnl > 0 ? "var(--positive)" : avgPnl < 0 ? "var(--negative)" : "#94A3B8" }}>{tradeCount > 0 ? formatCurrency(avgPnl) : "—"}</span>}
+          value={<span style={{ color: avgPnl > 0 ? "var(--lucid-pos)" : avgPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)" }}>{tradeCount > 0 ? formatCurrency(avgPnl) : "—"}</span>}
         />
         <StatCard
           label="Net P&L"
@@ -317,17 +312,17 @@ export default function AccountDetailPage() {
 
       {/* ── Goal (personal, optional) ────────────────────────────────── */}
       {!prop && hasGoal && (
-        <div className="rounded-2xl p-4 sm:p-6 mb-6" style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>Goal</h3>
+        <div className="lt-card p-4 sm:p-6 mb-6">
+          <h3 className="lt-serif" style={{ fontSize: 14, fontWeight: 600, color: "var(--lucid-ink-2)", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>Goal</h3>
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span style={{ fontSize: 13, color: "#94A3B8" }}>Profit Goal</span>
-              <span style={{ fontSize: 13, color: "#64748B" }}>{goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}</span>
+              <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>Profit Goal</span>
+              <span className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}</span>
             </div>
-            <div style={{ width: "100%", height: 10, background: "rgba(148,163,184,0.12)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
-              <div style={{ width: `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 5 }} />
+            <div style={{ width: "100%", height: 10, background: "var(--lucid-surface-3)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: `${goalPct}%`, height: "100%", background: "var(--lucid-accent)", borderRadius: 5 }} />
             </div>
-            <p style={{ fontSize: 12, color: "#475569" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal achieved</p>
+            <p className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal achieved</p>
           </div>
         </div>
       )}
@@ -335,27 +330,26 @@ export default function AccountDetailPage() {
       {/* ── Targets (prop only) ──────────────────────────────────────── */}
       {prop && (
       <div
-        className="rounded-2xl p-4 sm:p-6 mb-6"
-        style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
+        className="lt-card p-4 sm:p-6 mb-6"
       >
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <h3 className="lt-serif" style={{ fontSize: 14, fontWeight: 600, color: "var(--lucid-ink-2)", marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Targets
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
           {/* Profit Target */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span style={{ fontSize: 13, color: "#94A3B8" }}>Profit Target</span>
+              <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>Profit Target</span>
               {isPassed ? (
-                <span style={{ fontSize: 13, color: "#10B981", fontWeight: 600 }}>✓ Passed</span>
+                <span style={{ fontSize: 13, color: "var(--lucid-pos)", fontWeight: 600 }}>✓ Passed</span>
               ) : (
-                <span style={{ fontSize: 13, color: "#64748B" }}>{formatCurrency(remaining)} to go</span>
+                <span className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{formatCurrency(remaining)} to go</span>
               )}
             </div>
-            <div style={{ width: "100%", height: 10, background: "rgba(148,163,184,0.12)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
-              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 5 }} />
+            <div style={{ width: "100%", height: 10, background: "var(--lucid-surface-3)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "var(--lucid-accent)", borderRadius: 5 }} />
             </div>
-            <p style={{ fontSize: 12, color: "#475569" }}>
+            <p className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
               {isPassed ? "100%" : `${goalPct.toFixed(0)}%`} of {formatCurrency(profitTarget)} target achieved
             </p>
           </div>
@@ -363,23 +357,23 @@ export default function AccountDetailPage() {
           {/* Max Drawdown */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span style={{ fontSize: 13, color: "#94A3B8" }}>Max Drawdown</span>
-              <span style={{ fontSize: 13, color: "#64748B" }}>{formatCurrency(drawdownUsed)} used / {formatCurrency(drawdownLimit)}</span>
+              <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>Max Drawdown</span>
+              <span className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{formatCurrency(drawdownUsed)} used / {formatCurrency(drawdownLimit)}</span>
             </div>
-            <div style={{ width: "100%", height: 10, background: "rgba(148,163,184,0.12)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
+            <div style={{ width: "100%", height: 10, background: "var(--lucid-surface-3)", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
               <div style={{ width: `${pctUsed}%`, height: "100%", background: ddColor, borderRadius: 5 }} />
             </div>
-            <p style={{ fontSize: 12, color: pctUsed >= 80 ? "#EF4444" : pctUsed >= 60 ? "#F59E0B" : "#475569" }}>
+            <p className="lt-num" style={{ fontSize: 12, color: pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-ink-3)" }}>
               {pctUsed.toFixed(0)}% of max drawdown used
             </p>
 
             {isActive && pctUsed > 80 && (
               <div
                 className="mt-3 rounded-lg px-3 py-2.5 flex items-start gap-2"
-                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
+                style={{ background: "var(--lucid-neg-bg)", border: "1px solid var(--lucid-neg-bd)" }}
               >
                 <span style={{ fontSize: 14 }}>⚠</span>
-                <p style={{ fontSize: 12, color: "#FCA5A5", lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: "var(--lucid-neg)", lineHeight: 1.5 }}>
                   Approaching max drawdown. <strong>{formatCurrency(fromBlown)}</strong> from blown account.
                 </p>
               </div>
@@ -391,21 +385,20 @@ export default function AccountDetailPage() {
 
       {/* ── Balance over time (Recharts) ─────────────────────────────── */}
       <div
-        className="rounded-2xl p-4 sm:p-6 mb-6"
-        style={{ background: "rgba(20,28,40,0.7)", border: "1px solid rgba(148,163,184,0.1)" }}
+        className="lt-card p-4 sm:p-6 mb-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <h3 className="lt-serif" style={{ fontSize: 14, fontWeight: 600, color: "var(--lucid-ink-2)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Balance Over Time
           </h3>
-          <div className="flex items-center gap-4" style={{ fontSize: 12, color: "#64748B" }}>
+          <div className="flex items-center gap-4" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 24, height: 2, background: "#3B82F6", display: "inline-block", borderRadius: 1 }} />
+              <span style={{ width: 24, height: 2, background: "var(--lucid-accent)", display: "inline-block", borderRadius: 1 }} />
               Balance
             </span>
             {prop && (
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 24, height: 2, background: "#EF4444", display: "inline-block", borderRadius: 1, borderTop: "1px dashed #EF4444" }} />
+                <span style={{ width: 24, height: 2, background: "var(--lucid-neg)", display: "inline-block", borderRadius: 1, borderTop: "1px dashed var(--lucid-neg)" }} />
                 Max Drawdown Limit
               </span>
             )}
@@ -414,31 +407,31 @@ export default function AccountDetailPage() {
 
         {chartData.length < 2 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p style={{ fontSize: 13, color: "#64748B" }}>No trade data yet to chart balance progression.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No trade data yet to chart balance progression.</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
               <defs>
                 <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--lucid-accent)" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="var(--lucid-accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(148,163,184,0.06)"
+                stroke="var(--lucid-line)"
                 vertical={false}
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11, fill: "#475569" }}
+                tick={{ fontSize: 11, fill: "var(--lucid-ink-3)" }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#475569" }}
+                tick={{ fontSize: 11, fill: "var(--lucid-ink-3)" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={v => `$${(v / 1000).toFixed(1)}k`}
@@ -447,27 +440,27 @@ export default function AccountDetailPage() {
               <Tooltip content={<DrawdownChartTooltip />} />
               <ReferenceLine
                 y={account.account_size}
-                stroke="rgba(148,163,184,0.3)"
+                stroke="var(--lucid-line-3)"
                 strokeDasharray="4 4"
-                label={{ value: "Start", fontSize: 10, fill: "#475569", position: "right" }}
+                label={{ value: "Start", fontSize: 10, fill: "var(--lucid-ink-3)", position: "right" }}
               />
               {prop && (
                 <ReferenceLine
                   y={ddThreshold}
-                  stroke="#EF4444"
+                  stroke="var(--lucid-neg)"
                   strokeDasharray="6 3"
                   strokeOpacity={0.6}
-                  label={{ value: "Max DD", fontSize: 10, fill: "#EF4444", position: "right" }}
+                  label={{ value: "Max DD", fontSize: 10, fill: "var(--lucid-neg)", position: "right" }}
                 />
               )}
               <Area
                 type="monotone"
                 dataKey="balance"
-                stroke="#3B82F6"
+                stroke="var(--lucid-accent)"
                 strokeWidth={2}
                 fill="url(#balanceGradient)"
-                dot={{ r: 3, fill: "#3B82F6", strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: "#3B82F6", stroke: "rgba(59,130,246,0.4)", strokeWidth: 3 }}
+                dot={{ r: 3, fill: "var(--lucid-accent)", strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: "var(--lucid-accent)", stroke: "var(--lucid-accent-bd)", strokeWidth: 3 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -476,22 +469,21 @@ export default function AccountDetailPage() {
 
       {/* ── Trade history ─────────────────────────────────────────────── */}
       <div
-        className="rounded-2xl mb-6 overflow-hidden"
-        style={{ border: "1px solid rgba(148,163,184,0.1)", background: "rgba(20,28,40,0.5)" }}
+        className="lt-card mb-6 overflow-hidden"
       >
 
         <div
           className="px-6 py-4"
-          style={{ borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(10,14,20,0.4)" }}
+          style={{ borderBottom: "1px solid var(--lucid-line)", background: "var(--lucid-surface-2)" }}
         >
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <h3 className="lt-serif" style={{ fontSize: 14, fontWeight: 600, color: "var(--lucid-ink-2)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Trade History
           </h3>
         </div>
 
         {closedTrades.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p style={{ fontSize: 13, color: "#64748B" }}>No closed trades on this account yet.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades on this account yet.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -500,13 +492,13 @@ export default function AccountDetailPage() {
               className="grid px-6 py-2.5"
               style={{
                 gridTemplateColumns: "80px 120px 100px 90px 80px 90px 110px",
-                borderBottom: "1px solid rgba(148,163,184,0.06)",
-                background: "rgba(10,14,20,0.3)",
+                borderBottom: "1px solid var(--lucid-line)",
+                background: "var(--lucid-surface-2)",
                 minWidth: 680,
               }}
             >
               {["Date", "Pair", "Model", "Direction", "Pips", "P&L", "Exit"].map(col => (
-                <span key={col} style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <span key={col} style={{ fontSize: 11, fontWeight: 600, color: "var(--lucid-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {col}
                 </span>
               ))}
@@ -514,32 +506,32 @@ export default function AccountDetailPage() {
 
             {closedTrades.map((trade, idx) => {
               const isLive = !trade.date_closed;
-              const pnlCol = trade.blended_pnl > 0 ? "var(--positive)" : trade.blended_pnl < 0 ? "var(--negative)" : "#94A3B8";
-              const pipsCol = trade.total_pips > 0 ? "var(--positive)" : trade.total_pips < 0 ? "var(--negative)" : "#94A3B8";
+              const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const pipsCol = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
               return (
                 <div
                   key={trade.id}
                   className="grid px-6 items-center"
                   style={{
                     gridTemplateColumns: "80px 120px 100px 90px 80px 90px 110px",
-                    background: idx % 2 === 0 ? "rgba(20,28,40,0.4)" : "rgba(15,23,35,0.2)",
-                    borderBottom: idx < closedTrades.length - 1 ? "1px solid rgba(148,163,184,0.04)" : "none",
+                    background: idx % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)",
+                    borderBottom: idx < closedTrades.length - 1 ? "1px solid var(--lucid-line)" : "none",
                     minHeight: 44,
                     minWidth: 680,
                   }}
                 >
-                  <span style={{ fontSize: 12, color: "#64748B" }}>
+                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
                     {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </span>
-                  <span style={{ fontSize: 12, color: "#E2E8F0" }}>{getPairDisplay(trade.pair)}</span>
-                  <span style={{ fontSize: 12, color: "#94A3B8" }}>{trade.model}</span>
-                  <span style={{ fontSize: 12, color: trade.direction === "Buy" ? "var(--positive)" : "var(--negative)" }}>
+                  <span style={{ fontSize: 12, color: "var(--lucid-ink)" }}>{getPairDisplay(trade.pair)}</span>
+                  <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>{trade.model}</span>
+                  <span style={{ fontSize: 12, color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
                   </span>
-                  <span style={{ fontSize: 12, color: pipsCol, fontVariantNumeric: "tabular-nums" }}>
+                  <span className="lt-num" style={{ fontSize: 12, color: pipsCol }}>
                     {trade.total_pips > 0 ? "+" : ""}{trade.total_pips}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: pnlCol, fontVariantNumeric: "tabular-nums" }}>
+                  <span className="lt-num" style={{ fontSize: 12, fontWeight: 700, color: pnlCol }}>
                     {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
                   </span>
                   <ExitTypePill type={trade.exit_type} />
@@ -552,14 +544,13 @@ export default function AccountDetailPage() {
 
       {/* ── Payout history ───────────────────────────────────────────── */}
       <div
-        className="rounded-2xl mb-6 overflow-hidden"
-        style={{ border: "1px solid rgba(148,163,184,0.1)", background: "rgba(20,28,40,0.5)" }}
+        className="lt-card mb-6 overflow-hidden"
       >
         <div
           className="px-6 py-4"
-          style={{ borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(10,14,20,0.4)" }}
+          style={{ borderBottom: "1px solid var(--lucid-line)", background: "var(--lucid-surface-2)" }}
         >
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <h3 className="lt-serif" style={{ fontSize: 14, fontWeight: 600, color: "var(--lucid-ink-2)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             {prop ? "Payout History" : "Deposits & Withdrawals"}
           </h3>
         </div>
@@ -567,32 +558,32 @@ export default function AccountDetailPage() {
         {prop ? (
           account.payouts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <p style={{ fontSize: 13, color: "#64748B" }}>No payouts logged yet.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No payouts logged yet.</p>
           </div>
         ) : (
           <div className="p-6">
             {/* Payout list */}
             <div
               className="rounded-xl overflow-hidden mb-6"
-              style={{ border: "1px solid rgba(148,163,184,0.08)" }}
+              style={{ border: "1px solid var(--lucid-line)" }}
             >
               {account.payouts.map((payout, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-4 px-4 py-3"
                   style={{
-                    background: i % 2 === 0 ? "rgba(20,28,40,0.6)" : "rgba(15,23,35,0.4)",
-                    borderBottom: i < account.payouts.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none",
+                    background: i % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)",
+                    borderBottom: i < account.payouts.length - 1 ? "1px solid var(--lucid-line)" : "none",
                   }}
                 >
-                  <span style={{ fontSize: 12, color: "#64748B", minWidth: 100 }}>
+                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)", minWidth: 100 }}>
                     {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--positive)", flex: 1 }}>
+                  <span className="lt-num" style={{ fontSize: 14, fontWeight: 700, color: "var(--lucid-pos)", flex: 1 }}>
                     +{formatCurrency(payout.amount)}
                   </span>
-                  <span style={{ fontSize: 12, color: "#64748B" }}>
-                    Running total: <strong style={{ color: "#E2E8F0" }}>{formatCurrency(payout.running_total)}</strong>
+                  <span style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+                    Running total: <strong className="lt-num" style={{ color: "var(--lucid-ink)" }}>{formatCurrency(payout.running_total)}</strong>
                   </span>
                 </div>
               ))}
@@ -602,26 +593,26 @@ export default function AccountDetailPage() {
             {payoutChartData.length >= 2 && (
               <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={payoutChartData} margin={{ top: 5, right: 10, bottom: 0, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.06)" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--lucid-line)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--lucid-ink-3)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--lucid-ink-3)" }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
                   <Tooltip
                     contentStyle={{
-                      background: "rgba(10,14,20,0.95)",
-                      border: "1px solid rgba(148,163,184,0.2)",
+                      background: "var(--lucid-surface-2)",
+                      border: "1px solid var(--lucid-line-2)",
                       borderRadius: 8,
                       fontSize: 12,
-                      color: "#E2E8F0",
+                      color: "var(--lucid-ink)",
                     }}
                     formatter={(v: unknown) => [formatCurrency(typeof v === "number" ? v : 0), "Running Total"]}
                   />
                   <Line
                     type="monotone"
                     dataKey="total"
-                    stroke="#10B981"
+                    stroke="var(--lucid-pos)"
                     strokeWidth={2}
-                    dot={{ r: 4, fill: "#10B981", strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: "#10B981" }}
+                    dot={{ r: 4, fill: "var(--lucid-pos)", strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: "var(--lucid-pos)" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -630,25 +621,25 @@ export default function AccountDetailPage() {
           )
         ) : account.cash_flows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <p style={{ fontSize: 13, color: "#64748B" }}>No deposits or withdrawals logged yet.</p>
+            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No deposits or withdrawals logged yet.</p>
           </div>
         ) : (
           <div className="p-6">
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(148,163,184,0.08)" }}>
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--lucid-line)" }}>
               {account.cash_flows.map((cf, i) => {
                 const isOut = cf.type === "withdrawal";
-                const color = isOut ? "var(--negative)" : "var(--positive)";
+                const color = isOut ? "var(--lucid-neg)" : "var(--lucid-pos)";
                 const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
                 return (
-                  <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ background: i % 2 === 0 ? "rgba(20,28,40,0.6)" : "rgba(15,23,35,0.4)", borderBottom: i < account.cash_flows.length - 1 ? "1px solid rgba(148,163,184,0.06)" : "none" }}>
-                    <span style={{ fontSize: 12, color: "#64748B", minWidth: 100 }}>
+                  <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ background: i % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)", borderBottom: i < account.cash_flows.length - 1 ? "1px solid var(--lucid-line)" : "none" }}>
+                    <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)", minWidth: 100 }}>
                       {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
-                    <span style={{ fontSize: 13, color: "#94A3B8", flex: 1 }}>
+                    <span style={{ fontSize: 13, color: "var(--lucid-ink-2)", flex: 1 }}>
                       {cfLabel}
-                      {cf.note ? <span style={{ color: "#475569" }}> · {cf.note}</span> : null}
+                      {cf.note ? <span style={{ color: "var(--lucid-ink-3)" }}> · {cf.note}</span> : null}
                     </span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color }}>{isOut ? "−" : "+"}{formatCurrency(cf.amount)}</span>
+                    <span className="lt-num" style={{ fontSize: 14, fontWeight: 700, color }}>{isOut ? "−" : "+"}{formatCurrency(cf.amount)}</span>
                   </div>
                 );
               })}

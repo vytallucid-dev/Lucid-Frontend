@@ -158,18 +158,18 @@ function computeDrawdownWindows(pts: CurvePoint[]): { x1: string; x2: string }[]
 function ConvictionPill({ conviction }: { conviction: string }) {
   if (conviction === "High")
     return (
-      <span className="pill" style={{ background: "rgba(59,130,246,0.15)", color: "#93C5FD", border: "1px solid rgba(59,130,246,0.25)" }}>
+      <span className="pill" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}>
         High
       </span>
     );
   if (conviction === "Medium")
     return (
-      <span className="pill" style={{ background: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.2)" }}>
+      <span className="pill" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)" }}>
         Medium
       </span>
     );
   return (
-    <span className="pill" style={{ background: "rgba(100,116,139,0.1)", color: "#64748B", border: "1px solid rgba(100,116,139,0.15)" }}>
+    <span className="pill" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}>
       Low
     </span>
   );
@@ -178,12 +178,12 @@ function ConvictionPill({ conviction }: { conviction: string }) {
 function PlannedStatusPill({ status }: { status: string }) {
   if (status === "Ready")
     return (
-      <span className="pill" style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.3)" }}>
+      <span className="pill" style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}>
         Ready
       </span>
     );
   return (
-    <span className="pill" style={{ background: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "1px solid rgba(59,130,246,0.2)" }}>
+    <span className="pill" style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)" }}>
       Watching
     </span>
   );
@@ -198,15 +198,14 @@ function PnlTooltip({ active, payload }: { active?: boolean; payload?: Array<{ p
     <div
       className="rounded-xl px-3 py-2.5"
       style={{
-        background: "rgba(10,14,20,0.95)",
-        border: "1px solid rgba(148,163,184,0.2)",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+        background: "var(--lucid-surface-2)",
+        border: "1px solid var(--lucid-line)",
       }}
     >
-      <p style={{ fontSize: 11, color: "#64748B", marginBottom: 4 }}>{d.date}</p>
-      <p style={{ fontSize: 15, fontWeight: 700, color: "#E2E8F0" }}>{formatCurrency(d.cumPnl)}</p>
+      <p className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4 }}>{d.date}</p>
+      <p className="lt-num" style={{ fontSize: 15, fontWeight: 700, color: "var(--lucid-ink)" }}>{formatCurrency(d.cumPnl)}</p>
       {d.pair && d.pnl !== 0 && (
-        <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+        <p className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-2)", marginTop: 2 }}>
           {d.pair} · {d.pnl >= 0 ? "+" : ""}{formatCurrency(d.pnl)}
         </p>
       )}
@@ -249,15 +248,15 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    background: "rgba(20,28,40,0.8)",
-    border: "1px solid rgba(148,163,184,0.12)",
+    background: "var(--lucid-surface-2)",
+    border: "1px solid var(--lucid-line)",
     borderRadius: 8,
     padding: "8px 12px",
     fontSize: 13,
-    color: "#E2E8F0",
+    color: "var(--lucid-ink)",
     outline: "none",
   };
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748B", display: "block", marginBottom: 6 };
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--lucid-ink-3)", display: "block", marginBottom: 6 };
 
   async function handleLog() {
     setError(null);
@@ -275,16 +274,16 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-        <div className="rounded-2xl pointer-events-auto w-full max-w-md mx-4" style={{ background: "rgba(12,18,30,0.98)", border: "1px solid rgba(148,163,184,0.12)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)", backdropFilter: "blur(16px)" }}>
-          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: "#E2E8F0" }}>Cash Flow</h2>
-            <button onClick={onClose} style={{ color: "#64748B", fontSize: 20, lineHeight: 1 }}>×</button>
+        <div className="rounded-2xl pointer-events-auto w-full max-w-md mx-4" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+            <h2 className="lt-serif" style={{ fontSize: 15, fontWeight: 600, color: "var(--lucid-ink)" }}>Cash Flow</h2>
+            <button onClick={onClose} style={{ color: "var(--lucid-ink-3)", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
           {accounts.length === 0 ? (
             <div className="px-6 py-8">
-              <p style={{ fontSize: 13, color: "#64748B", textAlign: "center" }}>No accounts yet. Add an account first.</p>
+              <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", textAlign: "center" }}>No accounts yet. Add an account first.</p>
             </div>
           ) : (
           <div className="px-6 py-5 flex flex-col gap-4">
@@ -316,12 +315,12 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
               <label style={labelStyle}>Note (optional)</label>
               <textarea rows={2} placeholder="Optional note..." style={{ ...inputStyle, resize: "none" }} value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
-            {error && <p style={{ fontSize: 12, color: "#FCA5A5" }}>{error}</p>}
+            {error && <p style={{ fontSize: 12, color: "var(--lucid-neg)" }}>{error}</p>}
             <div className="flex gap-3 pt-2">
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ background: "rgba(148,163,184,0.08)", color: "#94A3B8", border: "1px solid rgba(148,163,184,0.1)" }}>
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)" }}>
                 Cancel
               </button>
-              <button onClick={handleLog} disabled={addCashFlow.isPending} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#3B82F6", color: "#fff", opacity: addCashFlow.isPending ? 0.6 : 1 }}>
+              <button onClick={handleLog} disabled={addCashFlow.isPending} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)", opacity: addCashFlow.isPending ? 0.6 : 1 }}>
                 {addCashFlow.isPending ? "Logging…" : "Log"}
               </button>
             </div>
@@ -340,42 +339,34 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
-  const pnlColor = pnl > 0 ? "#10B981" : pnl < 0 ? "#EF4444" : "#94A3B8";
+  const pnlColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
   const { pct: goalPct } = calcGoalProgress(account);
   const { pctUsed: ddPct } = calcDrawdown(account);
-  const ddColor = ddPct >= 80 ? "#EF4444" : ddPct >= 60 ? "#F59E0B" : "#10B981";
+  const ddColor = ddPct >= 80 ? "var(--lucid-neg)" : ddPct >= 60 ? "var(--lucid-warn)" : "var(--lucid-pos)";
   const isPassed = account.status === "Passed";
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-xl p-4 transition-all duration-150"
+      className="lt-lift w-full text-left rounded-xl p-4 transition-all duration-150"
       style={{
-        background: "rgba(20,28,40,0.6)",
-        border: "1px solid rgba(148,163,184,0.08)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(28,38,54,0.8)";
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(59,130,246,0.2)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(20,28,40,0.6)";
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(148,163,184,0.08)";
+        background: "var(--lucid-surface-2)",
+        border: "1px solid var(--lucid-line)",
       }}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0">
           <AccountTypePill type={account.account_type} />
-          <span className="truncate" style={{ fontSize: 12, color: "#94A3B8" }}>{account.account_name}</span>
+          <span className="truncate" style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>{account.account_name}</span>
         </div>
         <StatusPill status={account.status} />
       </div>
 
       <div className="flex items-center gap-3 mb-3">
-        <span style={{ fontSize: 18, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+        <span className="lt-num" style={{ fontSize: 18, fontWeight: 700, color: pnlColor }}>
           {formatCurrency(account.current_balance)}
         </span>
-        <span style={{ fontSize: 12, color: pnlColor }}>
+        <span className="lt-num" style={{ fontSize: 12, color: pnlColor }}>
           {pnl >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
         </span>
       </div>
@@ -384,27 +375,27 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
       {prop ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>Target</span>
-            <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 2 }} />
+            <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>Target</span>
+            <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "var(--lucid-ink-2)", borderRadius: 2 }} />
             </div>
-            <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{isPassed ? "✓" : `${goalPct.toFixed(0)}%`}</span>
+            <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{isPassed ? "✓" : `${goalPct.toFixed(0)}%`}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>DD</span>
-            <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
+            <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>DD</span>
+            <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{ width: `${ddPct}%`, height: "100%", background: ddColor, borderRadius: 2 }} />
             </div>
-            <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{ddPct.toFixed(0)}%</span>
+            <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{ddPct.toFixed(0)}%</span>
           </div>
         </div>
       ) : hasGoal ? (
         <div className="flex items-center gap-2">
-          <span style={{ fontSize: 10, color: "#475569", width: 36, flexShrink: 0 }}>Goal</span>
-          <div style={{ flex: 1, height: 4, background: "rgba(148,163,184,0.12)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: `${goalPct}%`, height: "100%", background: "#3B82F6", borderRadius: 2 }} />
+          <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>Goal</span>
+          <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${goalPct}%`, height: "100%", background: "var(--lucid-ink-2)", borderRadius: 2 }} />
           </div>
-          <span style={{ fontSize: 10, color: "#64748B", width: 28, textAlign: "right", flexShrink: 0 }}>{goalPct.toFixed(0)}%</span>
+          <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{goalPct.toFixed(0)}%</span>
         </div>
       ) : null}
     </button>
@@ -416,12 +407,12 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
 /** Visual treatment for an Oracle asset/pair bias. */
 function biasVisual(bias: AssetBias | null): { color: string; bg: string; border: string; label: string } {
   switch (bias) {
-    case "Strong Bullish": return { color: "#10B981", bg: "rgba(16,185,129,0.14)", border: "rgba(16,185,129,0.3)", label: "Strong Bull" };
-    case "Bullish":        return { color: "#34D399", bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.25)", label: "Bullish" };
-    case "Neutral":        return { color: "#94A3B8", bg: "rgba(148,163,184,0.1)",  border: "rgba(148,163,184,0.2)",  label: "Neutral" };
-    case "Bearish":        return { color: "#F97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.25)", label: "Bearish" };
-    case "Strong Bearish": return { color: "#EF4444", bg: "rgba(239,68,68,0.14)",  border: "rgba(239,68,68,0.3)",  label: "Strong Bear" };
-    default:               return { color: "#475569", bg: "rgba(20,28,40,0.6)",     border: "rgba(148,163,184,0.08)", label: "No data" };
+    case "Strong Bullish": return { color: "var(--lucid-scale-4)", bg: "rgba(78,161,230,0.14)",  border: "rgba(78,161,230,0.3)",  label: "Strong Bull" };
+    case "Bullish":        return { color: "var(--lucid-scale-3)", bg: "rgba(72,186,124,0.12)",  border: "rgba(72,186,124,0.25)", label: "Bullish" };
+    case "Neutral":        return { color: "var(--lucid-scale-2)", bg: "rgba(205,167,79,0.1)",   border: "rgba(205,167,79,0.2)",  label: "Neutral" };
+    case "Bearish":        return { color: "var(--lucid-scale-1)", bg: "rgba(224,145,63,0.12)",  border: "rgba(224,145,63,0.25)", label: "Bearish" };
+    case "Strong Bearish": return { color: "var(--lucid-scale-0)", bg: "rgba(226,88,77,0.14)",   border: "rgba(226,88,77,0.3)",   label: "Strong Bear" };
+    default:               return { color: "var(--lucid-ink-3)",  bg: "var(--lucid-surface-2)", border: "var(--lucid-line)",     label: "No data" };
   }
 }
 
@@ -441,21 +432,19 @@ function FundamentalBiasTile({
   return (
     <button
       onClick={onClick}
-      className="rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all duration-150"
+      className="lt-lift rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all duration-150"
       style={{ background: v.bg, border: `1px solid ${v.border}` }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = has ? v.color : "rgba(148,163,184,0.2)"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = v.border; }}
     >
       <span style={{ fontSize: 18 }}>{flagA}{flagB}</span>
-      <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8" }}>{name}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--lucid-ink-2)" }}>{name}</span>
       {has ? (
-        <span style={{ fontSize: 20, fontWeight: 700, color: v.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+        <span className="lt-num" style={{ fontSize: 20, fontWeight: 700, color: v.color, lineHeight: 1 }}>
           {data!.score != null ? `${data!.score > 0 ? "+" : ""}${data!.score}` : "—"}
         </span>
       ) : (
-        <span style={{ fontSize: 18, color: "#334155", lineHeight: 1 }}>—</span>
+        <span style={{ fontSize: 18, color: "var(--lucid-ink-3)", lineHeight: 1 }}>—</span>
       )}
-      <span style={{ fontSize: 9.5, fontWeight: 600, color: has ? v.color : "#334155", letterSpacing: "0.02em" }}>
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: has ? v.color : "var(--lucid-ink-3)", letterSpacing: "0.02em" }}>
         {v.label}
       </span>
     </button>
@@ -465,8 +454,8 @@ function FundamentalBiasTile({
 function NiftyMetric({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
   return (
     <div className="flex flex-col">
-      <span style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>{label}</span>
-      <span style={{ fontSize: big ? 24 : 16, fontWeight: 700, color: color ?? "#E2E8F0", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
+      <span style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--lucid-ink-3)" }}>{label}</span>
+      <span className="lt-num" style={{ fontSize: big ? 24 : 16, fontWeight: 700, color: color ?? "var(--lucid-ink)", lineHeight: 1.1 }}>
         {value}
       </span>
     </div>
@@ -486,7 +475,7 @@ function NiftyPulseCard({ latest, history }: { latest: PublicScorecard; history:
         <div className="flex items-center gap-2.5">
           <span style={{ fontSize: 22 }}>🇮🇳</span>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#E2E8F0" }}>NIFTY 50 Macro</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--lucid-ink)" }}>NIFTY 50 Macro</p>
             <p style={{ fontSize: 12, fontWeight: 600, color }}>{latest.band}</p>
           </div>
         </div>
@@ -501,7 +490,7 @@ function NiftyPulseCard({ latest, history }: { latest: PublicScorecard; history:
         {/* Trend + CTA */}
         <div className="flex items-center gap-3 ml-auto">
           {history.length >= 2 && <Sparkline data={history} width={100} height={32} />}
-          <span style={{ fontSize: 11, color: "#3B82F6", whiteSpace: "nowrap" }}>View scorecard →</span>
+          <span style={{ fontSize: 11, color: "var(--lucid-ink-2)", whiteSpace: "nowrap" }}>View scorecard →</span>
         </div>
       </div>
     </Link>
@@ -628,8 +617,9 @@ export default function DashboardPage() {
       (a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime()
     );
     const last20 = closedSorted.slice(0, 20);
-    const wins = last20.filter((t) => t.blended_rr > 0);
-    const losses = last20.filter((t) => t.blended_rr < 0);
+    // Outcome decided by manual net P&L (blended_pnl), matching the journal.
+    const wins = last20.filter((t) => t.blended_pnl > 0);
+    const losses = last20.filter((t) => t.blended_pnl < 0);
     const wr = wins.length + losses.length > 0 ? (wins.length / (wins.length + losses.length)) * 100 : 0;
 
     // Adaptive 4th metric: challenges if any prop accounts exist, else best performer.
@@ -680,17 +670,17 @@ export default function DashboardPage() {
   const pairsConfig = pairs;
 
   return (
-    <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
+    <div className="min-h-screen" style={{ color: "var(--lucid-ink)" }}>
       <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-350 mx-auto">
 
         {/* ── Section 1: Hero ────────────────────────────────────────────────── */}
-        <div className="glass-card -z-1 p-5 sm:p-8">
+        <div className="lt-edge lt-hero-wash -z-1 p-5 sm:p-8" style={{ border: "1px solid var(--lucid-line)", borderRadius: "var(--lucid-r-lg)" }}>
           {/* Greeting + status */}
           <div className="mb-6">
-            <h1 style={{ fontSize: 28, fontWeight: 600, color: "#F1F5F9", lineHeight: 1.2, marginBottom: 8 }}>
+            <h1 className="lt-serif" style={{ fontSize: 34, fontWeight: 700, color: "var(--lucid-ink)", lineHeight: 1.15, marginBottom: 8, letterSpacing: "-0.01em" }}>
               {greeting}{firstName ? `, ${firstName}` : ""}.
             </h1>
-            <p style={{ fontSize: 14, color: "#94A3B8" }}>{statusLine}</p>
+            <p style={{ fontSize: 14, color: "var(--lucid-ink-2)" }}>{statusLine}</p>
           </div>
 
           {/* Lucid chat input bar */}
@@ -698,33 +688,29 @@ export default function DashboardPage() {
             className="rounded-xl flex items-center gap-3 px-4"
             style={{
               height: 56,
-              background: "rgba(28,38,54,0.75)",
-              border: "1px solid rgba(59,130,246,0.2)",
-              boxShadow: "0 0 24px rgba(59,130,246,0.06)",
-              backdropFilter: "blur(12px)",
+              background: "var(--lucid-surface-2)",
+              border: "1px solid var(--lucid-line)",
             }}
           >
-            <Sparkles size={18} style={{ color: "#3B82F6", flexShrink: 0 }} />
+            <Sparkles size={18} style={{ color: "var(--lucid-accent)", flexShrink: 0 }} />
             <input
               value={chatValue}
               onChange={(e) => setChatValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleChatSubmit(); }}
               placeholder="Ask Lucid anything about your trading..."
               className="flex-1 bg-transparent outline-none text-sm"
-              style={{ color: "#E2E8F0", caretColor: "#3B82F6" } as React.CSSProperties}
+              style={{ color: "var(--lucid-ink)", caretColor: "var(--lucid-accent)" } as React.CSSProperties}
             />
             <button
               onClick={handleChatSubmit}
-              className="flex items-center justify-center rounded-lg transition-all"
-              style={{ width: 36, height: 36, background: "#3B82F6", flexShrink: 0 }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#2563EB")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#3B82F6")}
+              className="lt-hover flex items-center justify-center rounded-lg transition-all"
+              style={{ width: 36, height: 36, background: "var(--lucid-accent)", flexShrink: 0 }}
             >
-              <ArrowRight size={16} style={{ color: "#fff" }} />
+              <ArrowRight size={16} style={{ color: "var(--lucid-bg)" }} />
             </button>
           </div>
-          <p style={{ fontSize: 11, color: "#475569", marginTop: 10 }}>
-            <span className="pill" style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)", fontSize: 10, marginRight: 6 }}>
+          <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginTop: 10 }}>
+            <span className="pill" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)", fontSize: 10, marginRight: 6 }}>
               Phase 3
             </span>
             Lucid AI activates with full context of your trading system.
@@ -732,7 +718,12 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 2: Quick Actions ───────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div>
+          <div className="lt-eyebrow mb-3">
+            Quick Actions
+            <span className="lt-eyebrow-ln" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             {
               icon: <Plus size={20} />,
@@ -762,36 +753,19 @@ export default function DashboardPage() {
             <button
               key={item.label}
               onClick={item.action}
-              className="text-left rounded-xl p-5 flex flex-col gap-3 transition-all duration-150"
-              style={{
-                height: 88,
-                background: "rgba(20,28,40,0.6)",
-                border: "1px solid rgba(148,163,184,0.1)",
-                backdropFilter: "blur(12px)",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.transform = "translateY(-2px)";
-                el.style.border = "1px solid rgba(59,130,246,0.35)";
-                el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3), 0 0 20px rgba(59,130,246,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.transform = "translateY(0)";
-                el.style.border = "1px solid rgba(148,163,184,0.1)";
-                el.style.boxShadow = "none";
-              }}
+              className="lt-card-2 lt-lift text-left rounded-xl p-5 flex flex-col gap-3 transition-all duration-150"
+              style={{ height: 88, cursor: "pointer" }}
             >
               <div className="flex items-center gap-3">
-                <span style={{ color: "#3B82F6" }}>{item.icon}</span>
+                <span style={{ color: "var(--lucid-ink-2)" }}>{item.icon}</span>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#E2E8F0", lineHeight: 1.2 }}>{item.label}</p>
-                  <p style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>{item.desc}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--lucid-ink)", lineHeight: 1.2 }}>{item.label}</p>
+                  <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginTop: 2 }}>{item.desc}</p>
                 </div>
               </div>
             </button>
           ))}
+          </div>
         </div>
 
         {isLoading ? (
@@ -805,99 +779,108 @@ export default function DashboardPage() {
         ) : (
         <>
         {/* ── Section 3: Metric Cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div>
+          <div className="lt-eyebrow mb-3">
+            Overview
+            <span className="lt-eyebrow-ln" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Total Balance */}
-          <div className="glass-card p-5 flex flex-col gap-1.5">
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+            <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Total Balance
             </span>
-            <span style={{ fontSize: 28, fontWeight: 700, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>
+            <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ink)" }}>
               {formatCurrency(metrics.totalBalance)}
             </span>
-            <span style={{ fontSize: 11, color: "#475569" }}>Across all accounts</span>
+            <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Across all accounts</span>
           </div>
 
           {/* Overall P&L */}
-          <div className="glass-card p-5 flex flex-col gap-1.5">
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+            <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Overall P&amp;L
             </span>
             <span
+              className="lt-num"
               style={{
-                fontSize: 28,
+                fontSize: 30,
                 fontWeight: 700,
-                color: metrics.overallPnl > 0 ? "#10B981" : metrics.overallPnl < 0 ? "#EF4444" : "#94A3B8",
-                fontVariantNumeric: "tabular-nums",
+                color: metrics.overallPnl > 0 ? "var(--lucid-pos)" : metrics.overallPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)",
               }}
             >
               {metrics.overallPnl >= 0 ? "+" : ""}{formatCurrency(metrics.overallPnl)}
             </span>
-            <span style={{ fontSize: 11, color: "#475569" }}>Across all accounts</span>
+            <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Across all accounts</span>
           </div>
 
           {/* Active Accounts */}
-          <div className="glass-card p-5 flex flex-col gap-1.5">
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+            <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Active Accounts
             </span>
-            <span style={{ fontSize: 28, fontWeight: 700, color: "#E2E8F0", fontVariantNumeric: "tabular-nums" }}>
+            <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ink)" }}>
               {metrics.activeCount}
             </span>
-            <span style={{ fontSize: 11, color: "#475569" }}>
+            <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
               {allAccounts.length} total accounts
             </span>
           </div>
 
-          {/* Rolling Win Rate */}
-          <div className="glass-card p-5 flex flex-col gap-1.5">
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+          {/* Rolling Win Rate — a neutral stat, not a loss signal, so it stays ink-toned regardless of value */}
+          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+            <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Rolling Win Rate
             </span>
             <span
+              className="lt-num"
               style={{
-                fontSize: 28,
+                fontSize: 30,
                 fontWeight: 700,
-                color: metrics.wr > 40 ? "#10B981" : metrics.wr < 35 ? "#EF4444" : "#F59E0B",
-                fontVariantNumeric: "tabular-nums",
+                color: "var(--lucid-ink)",
               }}
             >
               {metrics.wr.toFixed(0)}%
             </span>
-            <span style={{ fontSize: 11, color: "#475569" }}>Last {metrics.tradeCount} trades</span>
+            <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Last {metrics.tradeCount} trades</span>
           </div>
 
           {/* Adaptive: Challenges Active (if prop accounts) else Best Performer */}
-          <div className="glass-card p-5 flex flex-col gap-1.5">
+          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
             {metrics.hasProp ? (
               <>
-                <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+                <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
                   Challenges Active
                 </span>
-                <span style={{ fontSize: 28, fontWeight: 700, color: "#818CF8", fontVariantNumeric: "tabular-nums" }}>
+                <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ctx)" }}>
                   {metrics.challengesActive}
                 </span>
-                <span style={{ fontSize: 11, color: "#475569" }}>In challenge phase</span>
+                <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>In challenge phase</span>
               </>
             ) : (
               <>
-                <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B" }}>
+                <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
                   Best Performing Account
                 </span>
-                <span className="truncate" style={{ fontSize: 18, fontWeight: 700, color: "#E2E8F0" }}>
+                <span className="truncate" style={{ fontSize: 18, fontWeight: 700, color: "var(--lucid-ink)" }}>
                   {metrics.bestName}
                 </span>
-                <span style={{ fontSize: 11, color: metrics.bestPct >= 0 ? "#10B981" : "#EF4444" }}>
+                <span className="lt-num" style={{ fontSize: 11, color: metrics.bestPct >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                   {metrics.bestPct >= 0 ? "+" : ""}{metrics.bestPct.toFixed(2)}%
                 </span>
               </>
             )}
           </div>
+          </div>
         </div>
 
         {/* ── Section 4: P&L Curve ───────────────────────────────────────────── */}
-        <div className="glass-card p-6">
+        <div className="lt-card lt-edge p-5">
           <div className="flex items-center justify-between mb-5">
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0" }}>Cumulative P&amp;L</h2>
+            <div className="lt-eyebrow" style={{ flex: 1, marginRight: 16 }}>
+              Performance
+              <span className="lt-eyebrow-ln" />
+            </div>
 
             {/* Date range dropdown */}
             <div ref={rangeRef} className="relative">
@@ -906,9 +889,9 @@ export default function DashboardPage() {
                 className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors"
                 style={{
                   fontSize: 12,
-                  color: "#94A3B8",
-                  background: "rgba(148,163,184,0.06)",
-                  border: "1px solid rgba(148,163,184,0.12)",
+                  color: "var(--lucid-ink-2)",
+                  background: "var(--lucid-surface-2)",
+                  border: "1px solid var(--lucid-line)",
                 }}
               >
                 {dateRange}
@@ -918,9 +901,8 @@ export default function DashboardPage() {
                 <div
                   className="absolute right-0 top-full mt-1 rounded-xl py-1 z-20"
                   style={{
-                    background: "rgba(14,22,34,0.98)",
-                    border: "1px solid rgba(148,163,184,0.15)",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    background: "var(--lucid-surface-2)",
+                    border: "1px solid var(--lucid-line-2)",
                     minWidth: 120,
                   }}
                 >
@@ -928,10 +910,8 @@ export default function DashboardPage() {
                     <button
                       key={p}
                       onClick={() => { setDateRange(p); setRangeDropdown(false); }}
-                      className="w-full text-left px-3 py-2 text-sm transition-colors"
-                      style={{ color: dateRange === p ? "#E2E8F0" : "#94A3B8" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(59,130,246,0.08)")}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-(--lucid-line) transition-colors"
+                      style={{ color: dateRange === p ? "var(--lucid-ink)" : "var(--lucid-ink-2)" }}
                     >
                       {p}
                     </button>
@@ -945,44 +925,44 @@ export default function DashboardPage() {
             <AreaChart data={curveData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
               <defs>
                 <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--lucid-accent)" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="var(--lucid-accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--lucid-line)" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "#64748B" }}
+                tick={{ fontSize: 10, fill: "var(--lucid-ink-3)" }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "#64748B" }}
+                tick={{ fontSize: 10, fill: "var(--lucid-ink-3)" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `$${v}`}
                 width={52}
               />
               <Tooltip content={<PnlTooltip />} />
-              <ReferenceLine y={0} stroke="rgba(148,163,184,0.2)" strokeDasharray="4 4" />
+              <ReferenceLine y={0} stroke="var(--lucid-line-2)" strokeDasharray="4 4" />
               {drawdownWindows.map((w, i) => (
                 <ReferenceArea
                   key={i}
                   x1={w.x1}
                   x2={w.x2}
-                  fill="rgba(239,68,68,0.08)"
-                  fillOpacity={1}
+                  fill="var(--lucid-neg)"
+                  fillOpacity={0.08}
                 />
               ))}
               <Area
                 type="monotone"
                 dataKey="cumPnl"
-                stroke="#3B82F6"
+                stroke="var(--lucid-accent)"
                 strokeWidth={2}
                 fill="url(#pnlGrad)"
                 dot={false}
-                activeDot={{ r: 4, fill: "#3B82F6" }}
+                activeDot={{ r: 4, fill: "var(--lucid-accent)" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -992,22 +972,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Left — Live + Planned Trades */}
-          <div className="glass-card p-5 flex flex-col gap-6">
+          <div className="lt-card lt-edge p-5 flex flex-col gap-6">
 
             {/* Sub-section A: Live Trades */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <h3 style={{ fontSize: 13, fontWeight: 600, color: "#E2E8F0" }}>Live Trades</h3>
+                <h3 className="lt-serif" style={{ fontSize: 13, fontWeight: 600, color: "var(--lucid-ink)" }}>Live Trades</h3>
                 <span
-                  className="pill"
-                  style={{ background: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "1px solid rgba(59,130,246,0.2)", fontSize: 10 }}
+                  className="pill lt-num"
+                  style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)", fontSize: 10 }}
                 >
                   {liveTrades.length}
                 </span>
               </div>
 
               {liveTrades.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#475569" }}>No live trades running.</p>
+                <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No live trades running.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {liveTrades.map((t) => {
@@ -1016,24 +996,21 @@ export default function DashboardPage() {
                       <button
                         key={t.id}
                         onClick={() => setTradeDrawer(t)}
-                        className="w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
-                        style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.12)" }}
-                        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(59,130,246,0.12)")}
-                        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(59,130,246,0.06)")}
+                        className="lt-lift lt-card-2 w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
                       >
                         <span style={{ fontSize: 15 }}>
                           {pairConf?.flag_a}{pairConf?.flag_b}
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0" }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--lucid-ink)" }}>
                               {pairConf?.display_name ?? t.pair}
                             </span>
-                            <span style={{ fontSize: 12, color: t.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+                            <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                               {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
                             </span>
                           </div>
-                          <span style={{ fontSize: 11, color: "#64748B" }}>
+                          <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
                             Entry {t.entry_price}
                           </span>
                         </div>
@@ -1041,9 +1018,9 @@ export default function DashboardPage() {
                           <span
                             className="pill"
                             style={{
-                              background: "rgba(59,130,246,0.12)",
-                              color: "#60A5FA",
-                              border: "1px solid rgba(59,130,246,0.2)",
+                              background: "var(--lucid-pos-bg)",
+                              color: "var(--lucid-pos)",
+                              border: "1px solid var(--lucid-pos-bd)",
                               fontSize: 10,
                               display: "flex",
                               alignItems: "center",
@@ -1055,7 +1032,7 @@ export default function DashboardPage() {
                                 width: 6,
                                 height: 6,
                                 borderRadius: "50%",
-                                background: "#3B82F6",
+                                background: "var(--lucid-pos)",
                                 animation: "pulse 2s infinite",
                               }}
                             />
@@ -1071,18 +1048,18 @@ export default function DashboardPage() {
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, background: "rgba(148,163,184,0.06)" }} />
+            <div style={{ height: 1, background: "var(--lucid-line)" }} />
 
             {/* Sub-section B: Planned Trades */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <h3 style={{ fontSize: 13, fontWeight: 600, color: "#E2E8F0" }}>Planned Trades</h3>
+                <h3 className="lt-serif" style={{ fontSize: 13, fontWeight: 600, color: "var(--lucid-ink)" }}>Planned Trades</h3>
                 <span
-                  className="pill"
+                  className="pill lt-num"
                   style={{
-                    background: readyCount > 0 ? "rgba(245,158,11,0.15)" : "rgba(59,130,246,0.12)",
-                    color: readyCount > 0 ? "#F59E0B" : "#93C5FD",
-                    border: readyCount > 0 ? "1px solid rgba(245,158,11,0.25)" : "1px solid rgba(59,130,246,0.2)",
+                    background: readyCount > 0 ? "var(--lucid-warn-bg)" : "var(--lucid-ctx-bg)",
+                    color: readyCount > 0 ? "var(--lucid-warn)" : "var(--lucid-ctx)",
+                    border: readyCount > 0 ? "1px solid var(--lucid-warn-bd)" : "1px solid var(--lucid-ctx-bd)",
                     fontSize: 10,
                   }}
                 >
@@ -1091,7 +1068,7 @@ export default function DashboardPage() {
               </div>
 
               {activePlanned.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#475569" }}>No setups planned.</p>
+                <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No setups planned.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {activePlanned.map((p) => {
@@ -1103,43 +1080,35 @@ export default function DashboardPage() {
                         : `${dist.pips}p ${dist.direction}`;
                     const distColor =
                       dist.direction === "at"
-                        ? "#10B981"
+                        ? "var(--lucid-pos)"
                         : dist.pips <= 10
-                        ? "#F59E0B"
+                        ? "var(--lucid-warn)"
                         : dist.pips <= 50
-                        ? "#E2E8F0"
-                        : "#64748B";
+                        ? "var(--lucid-ink)"
+                        : "var(--lucid-ink-3)";
                     return (
                       <button
                         key={p.id}
                         onClick={() => setPlannedDrawer(p)}
-                        className="w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
-                        style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.08)" }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(28,38,54,0.8)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(148,163,184,0.14)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(20,28,40,0.6)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(148,163,184,0.08)";
-                        }}
+                        className="lt-lift w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
+                        style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
                       >
                         <span style={{ fontSize: 15 }}>{pairConf?.flag_a}{pairConf?.flag_b}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0" }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--lucid-ink)" }}>
                               {pairConf?.display_name ?? p.pair}
                             </span>
-                            <span style={{ fontSize: 12, color: p.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+                            <span style={{ fontSize: 12, color: p.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                               {p.direction === "Buy" ? "↑" : "↓"}
                             </span>
                           </div>
-                          <span style={{ fontSize: 11, color: "#64748B" }}>
+                          <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
                             @ {p.planned_entry}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span style={{ fontSize: 11, color: distColor, fontVariantNumeric: "tabular-nums" }}>
+                          <span className="lt-num" style={{ fontSize: 11, color: distColor }}>
                             {distLabel}
                           </span>
                           <PlannedStatusPill status={p.status} />
@@ -1153,19 +1122,22 @@ export default function DashboardPage() {
           </div>
 
           {/* Right — Account Snapshot */}
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: "#E2E8F0" }}>Account Snapshot</h3>
+          <div className="lt-card lt-edge p-5">
+            <div className="flex items-center justify-between mb-4 gap-4">
+              <div className="lt-eyebrow" style={{ flex: 1 }}>
+                Accounts
+                <span className="lt-eyebrow-ln" />
+              </div>
               <Link
                 href="/trading/accounts"
-                style={{ fontSize: 11, color: "#3B82F6", textDecoration: "none" }}
+                style={{ fontSize: 11, color: "var(--lucid-ink-2)", textDecoration: "none", flexShrink: 0 }}
               >
                 View all →
               </Link>
             </div>
 
             {allAccounts.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#475569" }}>No accounts yet. Add one to get started.</p>
+              <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No accounts yet. Add one to get started.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {allAccounts.map((account) => (
@@ -1181,27 +1153,30 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 6: Fundamental Bias (FX + Gold) + NIFTY Macro ──────────── */}
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <h2 style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0" }}>Fundamental Bias</h2>
+        <div className="lt-card lt-edge p-5">
+          <div className="flex items-center justify-between mb-5 gap-4">
+            <div className="flex items-center gap-3" style={{ flex: 1 }}>
+              <div className="lt-eyebrow" style={{ flex: 1 }}>
+                Fundamental Bias
+                <span className="lt-eyebrow-ln" />
+              </div>
               <span
                 className="pill"
-                style={{ background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", fontSize: 10, display: "flex", alignItems: "center", gap: 4 }}
+                style={{ background: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "1px solid var(--lucid-pos-bd)", fontSize: 10, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", animation: "pulse 2s infinite" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--lucid-pos)", animation: "pulse 2s infinite" }} />
                 Live
               </span>
             </div>
-            <Link href="/oracle" style={{ fontSize: 11, color: "#3B82F6", textDecoration: "none" }}>
+            <Link href="/oracle" style={{ fontSize: 11, color: "var(--lucid-ink-2)", textDecoration: "none", flexShrink: 0 }}>
               Open Scanner →
             </Link>
           </div>
 
           {/* NIFTY macro pulse */}
           {niftyLatestQuery.isLoading ? (
-            <div className="rounded-xl p-4 mb-5" style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.08)" }}>
-              <p style={{ fontSize: 12, color: "#64748B" }}>Loading NIFTY macro…</p>
+            <div className="rounded-xl p-4 mb-5" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
+              <p style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>Loading NIFTY macro…</p>
             </div>
           ) : niftyLatestQuery.data ? (
             <NiftyPulseCard latest={niftyLatestQuery.data} history={niftyHistory} />
@@ -1209,16 +1184,16 @@ export default function DashboardPage() {
             <Link
               href="/nifty/scorecard"
               className="block rounded-xl p-4 mb-5"
-              style={{ background: "rgba(20,28,40,0.6)", border: "1px solid rgba(148,163,184,0.08)", textDecoration: "none" }}
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)", textDecoration: "none" }}
             >
-              <p style={{ fontSize: 12, color: "#64748B" }}>
-                🇮🇳 NIFTY macro scorecard not available yet — <span style={{ color: "#3B82F6" }}>open the scorecard →</span>
+              <p style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+                🇮🇳 NIFTY macro scorecard not available yet — <span style={{ color: "var(--lucid-ink-2)" }}>open the scorecard →</span>
               </p>
             </Link>
           )}
 
           {/* FX + Gold bias for the user's tracked pairs */}
-          <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748B", marginBottom: 10 }}>
+          <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--lucid-ink-3)", marginBottom: 10 }}>
             Your pairs · fundamental bias
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
@@ -1243,7 +1218,7 @@ export default function DashboardPage() {
             })}
           </div>
 
-          <p style={{ fontSize: 11, color: "#475569", marginTop: 14 }}>
+          <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginTop: 14 }}>
             {biasLoading
               ? "Loading fundamental bias…"
               : "Bias blends fundamental scores and COT positioning from the Scanner."}

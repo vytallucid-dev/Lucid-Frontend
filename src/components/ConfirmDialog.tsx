@@ -48,13 +48,16 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const accent = danger ? "#EF4444" : "#3B82F6";
+  const accent = danger ? "var(--lucid-neg)" : "var(--lucid-accent)";
+  const accentBg = danger ? "var(--lucid-neg-bg)" : "var(--lucid-accent-bg)";
+  const accentBd = danger ? "var(--lucid-neg-bd)" : "var(--lucid-accent-bd)";
+  const confirmText = danger ? "var(--lucid-ink)" : "var(--lucid-bg)";
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div
         className="fixed inset-0"
-        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)" }}
+        style={{ background: "rgba(0,0,0,0.6)" }}
         onClick={() => { if (!loading) onCancel(); }}
         aria-hidden="true"
       />
@@ -62,11 +65,10 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-sm rounded-2xl"
+        className="lt-edge relative w-full max-w-sm rounded-2xl"
         style={{
-          background: "rgba(12,18,30,0.98)",
-          border: "1px solid rgba(148,163,184,0.14)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+          background: "var(--lucid-surface-2)",
+          border: "1px solid var(--lucid-line)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -74,26 +76,26 @@ export function ConfirmDialog({
           <div className="flex items-start gap-3">
             <div
               className="flex items-center justify-center rounded-full shrink-0"
-              style={{ width: 38, height: 38, background: `${accent}1f`, border: `1px solid ${accent}40` }}
+              style={{ width: 38, height: 38, background: accentBg, border: `1px solid ${accentBd}` }}
             >
               <AlertTriangle size={18} style={{ color: accent }} />
             </div>
             <div className="min-w-0">
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#E2E8F0" }}>{title}</h2>
+              <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>{title}</h2>
               {message && (
-                <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.55, marginTop: 6 }}>{message}</p>
+                <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.55, marginTop: 6 }}>{message}</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
+        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--lucid-line)" }}>
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-            style={{ color: "#94A3B8", opacity: loading ? 0.5 : 1 }}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)", opacity: loading ? 0.5 : 1 }}
           >
             {cancelLabel}
           </button>
@@ -102,7 +104,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
             className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-            style={{ background: accent, color: "#fff", opacity: loading ? 0.6 : 1 }}
+            style={{ background: accent, color: confirmText, opacity: loading ? 0.6 : 1 }}
           >
             {loading ? "Working…" : confirmLabel}
           </button>

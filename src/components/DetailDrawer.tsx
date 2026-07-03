@@ -42,7 +42,7 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-40"
-        style={{ background: "rgba(0, 0, 0, 0.4)" }}
+        style={{ background: "rgba(0, 0, 0, 0.6)" }}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -52,10 +52,8 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
         ref={drawerRef}
         className="fixed top-0 right-0 h-screen z-50 flex flex-col drawer-enter w-full max-w-120"
         style={{
-          background: "rgba(10, 18, 30, 0.97)",
-          backdropFilter: "blur(16px)",
-          borderLeft: "1px solid rgba(148, 163, 184, 0.12)",
-          boxShadow: "-8px 0 40px rgba(0, 0, 0, 0.5)",
+          background: "var(--lucid-surface-2)",
+          borderLeft: "1px solid var(--lucid-line)",
         }}
         role="dialog"
         aria-modal="true"
@@ -64,11 +62,11 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-          style={{ borderBottom: "1px solid rgba(148, 163, 184, 0.1)" }}
+          style={{ borderBottom: "1px solid var(--lucid-line)" }}
         >
           <h2
-            className="text-base font-semibold truncate"
-            style={{ color: "#E2E8F0" }}
+            className="lt-serif text-base font-semibold truncate"
+            style={{ color: "var(--lucid-ink)" }}
           >
             {title}
           </h2>
@@ -77,7 +75,7 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
               <Link
                 href={expandHref}
                 className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-                style={{ color: "#64748B" }}
+                style={{ color: "var(--lucid-ink-3)" }}
                 title="Open full page"
               >
                 <Maximize2 size={15} />
@@ -86,7 +84,7 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
             <button
               onClick={onClose}
               className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--lucid-ink-3)" }}
               title="Close"
             >
               <X size={15} />

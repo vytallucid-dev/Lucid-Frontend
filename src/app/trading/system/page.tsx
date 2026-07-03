@@ -26,20 +26,19 @@ import { toast } from "@/components/toast";
 // ─── Design helpers ──────────────────────────────────────────────────────────
 
 const CARD: React.CSSProperties = {
-  background: "rgba(20,28,40,0.6)",
-  border: "1px solid rgba(148,163,184,0.1)",
+  background: "var(--lucid-surface)",
+  border: "1px solid var(--lucid-line)",
   borderRadius: 12,
-  backdropFilter: "blur(12px)",
 };
 
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
-  background: "rgba(20,28,40,0.8)",
-  border: "1px solid rgba(148,163,184,0.12)",
+  background: "var(--lucid-surface-2)",
+  border: "1px solid var(--lucid-line)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
-  color: "#E2E8F0",
+  color: "var(--lucid-ink)",
   outline: "none",
 };
 
@@ -48,7 +47,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.05em",
   textTransform: "uppercase" as const,
-  color: "#64748B",
+  color: "var(--lucid-ink-3)",
   marginBottom: 6,
   display: "block",
 };
@@ -57,7 +56,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
       className="uppercase font-semibold"
-      style={{ fontSize: 10, letterSpacing: "0.08em", color: "#64748B" }}
+      style={{ fontSize: 10, letterSpacing: "0.08em", color: "var(--lucid-ink-3)" }}
     >
       {children}
     </p>
@@ -66,7 +65,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#64748B", letterSpacing: "0.08em" }}>
+    <p className="lt-serif text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
       {children}
     </p>
   );
@@ -77,8 +76,8 @@ function StatusPill({ status }: { status: "Active" | "Inactive" }) {
     <span
       style={
         status === "Active"
-          ? { background: "rgba(16,185,129,0.15)", color: "#10B981", border: "1px solid rgba(16,185,129,0.25)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, display: "inline-flex", alignItems: "center" }
-          : { background: "rgba(148,163,184,0.1)", color: "#64748B", border: "1px solid rgba(148,163,184,0.2)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, display: "inline-flex", alignItems: "center" }
+          ? { background: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "1px solid var(--lucid-pos-bd)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, display: "inline-flex", alignItems: "center" }
+          : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line-2)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, display: "inline-flex", alignItems: "center" }
       }
     >
       {status}
@@ -88,9 +87,9 @@ function StatusPill({ status }: { status: "Active" | "Inactive" }) {
 
 function ModelPill({ model }: { model: string }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
-    "4HPullBack": { bg: "rgba(59,130,246,0.12)", color: "#93C5FD", border: "rgba(59,130,246,0.2)" },
-    Breakout: { bg: "rgba(168,85,247,0.12)", color: "#C084FC", border: "rgba(168,85,247,0.2)" },
-    Short: { bg: "rgba(148,163,184,0.1)", color: "#94A3B8", border: "rgba(148,163,184,0.2)" },
+    "4HPullBack": { bg: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "var(--lucid-accent-bd)" },
+    Breakout: { bg: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "var(--lucid-ctx-bd)" },
+    Short: { bg: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "var(--lucid-line-2)" },
   };
   const s = styles[model] ?? styles["Short"];
   return (
@@ -103,8 +102,8 @@ function ModelPill({ model }: { model: string }) {
 function StatCell({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span style={{ fontSize: 11, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 600, color: color ?? "#E2E8F0" }}>{value}</span>
+      <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+      <span className="lt-num" style={{ fontSize: 15, fontWeight: 600, color: color ?? "var(--lucid-ink)" }}>{value}</span>
     </div>
   );
 }
@@ -120,9 +119,9 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 
 function kv(label: string, value: React.ReactNode) {
   return (
-    <div key={label} className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid rgba(148,163,184,0.06)" }}>
-      <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
-      <span style={{ fontSize: 13, color: "#E2E8F0" }}>{value}</span>
+    <div key={label} className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
+      <span style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{label}</span>
+      <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{value}</span>
     </div>
   );
 }
@@ -140,8 +139,8 @@ function formatExp(exp: number | null) {
   return formatCurrency(exp);
 }
 function wrColor(wr: number | null) {
-  if (wr === null) return "#64748B";
-  return wr > 0.4 ? "#10B981" : wr < 0.35 ? "#EF4444" : "#94A3B8";
+  if (wr === null) return "var(--lucid-ink-3)";
+  return wr > 0.4 ? "var(--lucid-pos)" : wr < 0.35 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
 }
 
 // ─── Model Modal ─────────────────────────────────────────────────────────────
@@ -171,10 +170,10 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
       <div className="flex flex-col gap-5 p-4 sm:p-6 w-full" style={{ ...CARD, maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
         <div className="flex items-center justify-between">
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#E2E8F0" }}>
+          <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 600, color: "var(--lucid-ink)" }}>
             {initial?.name ? "Edit Model" : "Add Model"}
           </h2>
-          <button onClick={onClose} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
+          <button onClick={onClose} style={{ color: "var(--lucid-ink-3)", background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
         </div>
 
         <FieldGroup label="Name">
@@ -184,7 +183,7 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
         <FieldGroup label="Description (max 100 chars)">
           <input style={INPUT_STYLE} value={description} maxLength={100}
             onChange={(e) => setDescription(e.target.value)} placeholder="Short description of the model" />
-          <p style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>{description.length}/100</p>
+          <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginTop: 4 }}>{description.length}/100</p>
         </FieldGroup>
 
         <FieldGroup label="Rules">
@@ -208,9 +207,9 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
                   fontSize: 13,
                   fontWeight: 500,
                   border: "1px solid",
-                  borderColor: status === s ? "#3B82F6" : "rgba(148,163,184,0.15)",
-                  background: status === s ? "rgba(59,130,246,0.15)" : "transparent",
-                  color: status === s ? "#93C5FD" : "#64748B",
+                  borderColor: status === s ? "var(--lucid-accent)" : "var(--lucid-line-2)",
+                  background: status === s ? "var(--lucid-accent-bg)" : "transparent",
+                  color: status === s ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
                   cursor: "pointer",
                 }}
               >
@@ -220,13 +219,13 @@ function ModelModal({ open, onClose, initial, onSave }: ModelModalProps) {
           </div>
         </FieldGroup>
 
-        <div className="flex gap-3 justify-end pt-2" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, color: "#64748B", background: "transparent", border: "none", cursor: "pointer" }}>
+        <div className="flex gap-3 justify-end pt-2" style={{ borderTop: "1px solid var(--lucid-line)" }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, color: "var(--lucid-ink-3)", background: "transparent", border: "none", cursor: "pointer" }}>
             Cancel
           </button>
           <button
             onClick={handleSave}
-            style={{ padding: "8px 20px", fontSize: 13, fontWeight: 600, background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}
+            style={{ padding: "8px 20px", fontSize: 13, fontWeight: 600, background: "var(--lucid-accent)", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}
           >
             {initial?.name ? "Save Changes" : "Add Model"}
           </button>
@@ -265,10 +264,10 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
       <div className="flex flex-col gap-5 p-4 sm:p-6 w-full" style={{ ...CARD, maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
         <div className="flex items-center justify-between">
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#E2E8F0" }}>
+          <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 600, color: "var(--lucid-ink)" }}>
             {initial?.symbol ? "Edit Pair" : "Add Pair"}
           </h2>
-          <button onClick={onClose} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
+          <button onClick={onClose} style={{ color: "var(--lucid-ink-3)", background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -302,9 +301,9 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
                   fontSize: 13,
                   fontWeight: 500,
                   border: "1px solid",
-                  borderColor: status === s ? "#3B82F6" : "rgba(148,163,184,0.15)",
-                  background: status === s ? "rgba(59,130,246,0.15)" : "transparent",
-                  color: status === s ? "#93C5FD" : "#64748B",
+                  borderColor: status === s ? "var(--lucid-accent)" : "var(--lucid-line-2)",
+                  background: status === s ? "var(--lucid-accent-bg)" : "transparent",
+                  color: status === s ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
                   cursor: "pointer",
                 }}
               >
@@ -314,13 +313,13 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
           </div>
         </FieldGroup>
 
-        <div className="flex gap-3 justify-end pt-2" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, color: "#64748B", background: "transparent", border: "none", cursor: "pointer" }}>
+        <div className="flex gap-3 justify-end pt-2" style={{ borderTop: "1px solid var(--lucid-line)" }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, color: "var(--lucid-ink-3)", background: "transparent", border: "none", cursor: "pointer" }}>
             Cancel
           </button>
           <button
             onClick={handleSave}
-            style={{ padding: "8px 20px", fontSize: 13, fontWeight: 600, background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}
+            style={{ padding: "8px 20px", fontSize: 13, fontWeight: 600, background: "var(--lucid-accent)", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}
           >
             {initial?.symbol ? "Save Changes" : "Add Pair"}
           </button>
@@ -342,26 +341,26 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-2">
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#E2E8F0" }}>{model.name}</span>
+          <span className="lt-serif" style={{ fontSize: 18, fontWeight: 700, color: "var(--lucid-ink)" }}>{model.name}</span>
           <StatusPill status={model.status} />
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
-          <button onClick={onDelete} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16} /></button>
+          <button onClick={onEdit} style={{ color: "var(--lucid-ink-3)", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
+          <button onClick={onDelete} style={{ color: "var(--lucid-neg)", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16} /></button>
         </div>
       </div>
 
       {/* Description */}
-      <div style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6 }}>{model.description}</div>
+      <div style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{model.description}</div>
 
       {/* Rules */}
       <div>
         <SectionTitle>Rules</SectionTitle>
         <div
           style={{
-            fontSize: 13, color: "#94A3B8", lineHeight: 1.8,
-            background: "rgba(20,28,40,0.6)", borderRadius: 8, padding: "12px 14px",
-            border: "1px solid rgba(148,163,184,0.08)",
+            fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.8,
+            background: "var(--lucid-surface)", borderRadius: 8, padding: "12px 14px",
+            border: "1px solid var(--lucid-line)",
             whiteSpace: "pre-line",
           }}
         >
@@ -375,15 +374,15 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
-            { label: "Avg RR", value: formatRR(stats.rr), color: "#E2E8F0" },
-            { label: "Total Trades", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "#E2E8F0" },
-            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "#10B981" : "#EF4444" },
-            { label: "Expectancy", value: formatExp(stats.expectancy), color: "#E2E8F0" },
-            { label: "Best Pair", value: stats.best_pair ?? "—", color: "#E2E8F0" },
+            { label: "Avg RR", value: formatRR(stats.rr), color: "var(--lucid-ink)" },
+            { label: "Total Trades", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "var(--lucid-ink)" },
+            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
+            { label: "Expectancy", value: formatExp(stats.expectancy), color: "var(--lucid-ink)" },
+            { label: "Best Pair", value: stats.best_pair ?? "—", color: "var(--lucid-ink)" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...CARD, padding: "12px 14px" }}>
-              <span style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>{label}</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color }}>{value}</span>
+              <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", display: "block", marginBottom: 4 }}>{label}</span>
+              <span className="lt-num" style={{ fontSize: 18, fontWeight: 700, color }}>{value}</span>
             </div>
           ))}
         </div>
@@ -393,23 +392,23 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
       <div>
         <SectionTitle>Linked Trades</SectionTitle>
         {modelTrades.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#64748B" }}>No closed trades yet.</p>
+          <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1">
             {modelTrades.slice(0, 10).map((t) => (
               <div
                 key={t.id}
                 className="flex items-center justify-between px-3 py-2 rounded-lg"
-                style={{ background: "rgba(20,28,40,0.5)", border: "1px solid rgba(148,163,184,0.06)" }}
+                style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
               >
                 <div className="flex items-center gap-3">
-                  <span style={{ fontSize: 12, color: "#64748B" }}>{formatDate(t.date_closed)}</span>
-                  <span style={{ fontSize: 13, color: "#E2E8F0" }}>{t.pair}</span>
-                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed)}</span>
+                  <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{t.pair}</span>
+                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
                   </span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "#10B981" : "#EF4444" }}>
+                <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                   {formatCurrency(t.blended_pnl)}
                 </span>
               </div>
@@ -433,13 +432,13 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 24 }}>{pair.flag_a}{pair.flag_b}</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#E2E8F0" }}>{pair.display_name}</span>
+            <span className="lt-serif" style={{ fontSize: 18, fontWeight: 700, color: "var(--lucid-ink)" }}>{pair.display_name}</span>
           </div>
           <StatusPill status={pair.status} />
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} style={{ color: "#64748B", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
-          <button onClick={onDelete} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16} /></button>
+          <button onClick={onEdit} style={{ color: "var(--lucid-ink-3)", background: "none", border: "none", cursor: "pointer" }}><Pencil size={16} /></button>
+          <button onClick={onDelete} style={{ color: "var(--lucid-neg)", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16} /></button>
         </div>
       </div>
 
@@ -449,12 +448,12 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
-            { label: "Trade Count", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "#E2E8F0" },
-            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "#10B981" : "#EF4444" },
+            { label: "Trade Count", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "var(--lucid-ink)" },
+            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...CARD, padding: "12px 14px" }}>
-              <span style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>{label}</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color }}>{value}</span>
+              <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", display: "block", marginBottom: 4 }}>{label}</span>
+              <span className="lt-num" style={{ fontSize: 18, fontWeight: 700, color }}>{value}</span>
             </div>
           ))}
         </div>
@@ -473,23 +472,23 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
       <div>
         <SectionTitle>All Trades</SectionTitle>
         {pairTrades.length === 0 ? (
-          <p style={{ fontSize: 13, color: "#64748B" }}>No closed trades yet.</p>
+          <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1" style={{ maxHeight: 300, overflowY: "auto" }}>
             {pairTrades.map((t) => (
               <div
                 key={t.id}
                 className="flex items-center justify-between px-3 py-2 rounded-lg"
-                style={{ background: "rgba(20,28,40,0.5)", border: "1px solid rgba(148,163,184,0.06)" }}
+                style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
               >
                 <div className="flex items-center gap-3">
-                  <span style={{ fontSize: 12, color: "#64748B" }}>{formatDate(t.date_closed)}</span>
+                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed)}</span>
                   <ModelPill model={t.model} />
-                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
                   </span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "#10B981" : "#EF4444" }}>
+                <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                   {formatCurrency(t.blended_pnl)}
                 </span>
               </div>
@@ -518,25 +517,23 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
       style={{
         ...CARD,
         padding: "20px 24px",
-        transition: "border-color 0.15s, box-shadow 0.15s",
+        transition: "border-color 0.15s",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,0.3)";
-        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(59,130,246,0.1)";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--lucid-line-3)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = "rgba(148,163,184,0.1)";
-        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--lucid-line)";
       }}
     >
       <div className="flex items-center justify-between mb-1">
-        <span style={{ fontSize: 17, fontWeight: 700, color: "#E2E8F0" }}>{model.name}</span>
+        <span className="lt-serif" style={{ fontSize: 17, fontWeight: 700, color: "var(--lucid-ink)" }}>{model.name}</span>
         <StatusPill status={model.status} />
       </div>
 
-      <p style={{ fontSize: 13, color: "#94A3B8", marginBottom: 16, lineHeight: 1.5 }}>{model.description}</p>
+      <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", marginBottom: 16, lineHeight: 1.5 }}>{model.description}</p>
 
-      <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 16, marginBottom: 16 }}>
+      <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 16, marginBottom: 16 }}>
         <SectionLabel>Performance</SectionLabel>
         <div className="flex flex-wrap items-center gap-5 sm:gap-8 mt-3">
           <StatCell label="WR" value={formatWR(stats.wr)} color={wrColor(stats.wr)} />
@@ -553,7 +550,7 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
           setShowRules((v) => !v);
         }}
         className="flex items-center gap-1"
-        style={{ fontSize: 12, color: "#3B82F6", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        style={{ fontSize: 12, color: "var(--lucid-accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         {showRules ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         {showRules ? "Hide Rules" : "Show Rules"}
@@ -563,9 +560,9 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
         <div
           style={{
             marginTop: 12,
-            fontSize: 13, color: "#94A3B8", lineHeight: 1.8,
-            background: "rgba(20,28,40,0.5)", borderRadius: 8, padding: "12px 14px",
-            border: "1px solid rgba(148,163,184,0.08)",
+            fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.8,
+            background: "var(--lucid-surface-2)", borderRadius: 8, padding: "12px 14px",
+            border: "1px solid var(--lucid-line)",
             whiteSpace: "pre-line",
           }}
         >
@@ -625,7 +622,7 @@ function ModelsTab() {
         <button
           onClick={() => { setEditTarget(null); setModalOpen(true); }}
           className="flex items-center gap-2"
-          style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "var(--lucid-accent)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
           <Plus size={15} /> Add Model
         </button>
@@ -690,25 +687,23 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
       style={{
         ...CARD,
         padding: "20px 20px",
-        transition: "border-color 0.15s, box-shadow 0.15s",
+        transition: "border-color 0.15s",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,0.3)";
-        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 1px rgba(59,130,246,0.1)";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--lucid-line-3)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = "rgba(148,163,184,0.1)";
-        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--lucid-line)";
       }}
     >
       <div style={{ fontSize: 28, marginBottom: 6 }}>{pair.flag_a} {pair.flag_b}</div>
 
       <div className="flex items-center justify-between mb-4">
-        <span style={{ fontSize: 17, fontWeight: 700, color: "#E2E8F0" }}>{pair.display_name}</span>
+        <span className="lt-serif" style={{ fontSize: 17, fontWeight: 700, color: "var(--lucid-ink)" }}>{pair.display_name}</span>
         <StatusPill status={pair.status} />
       </div>
 
-      <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 12, marginBottom: 12 }}>
+      <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 12, marginBottom: 12 }}>
         <SectionLabel>Performance</SectionLabel>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-2">
           <StatCell label="Trades" value={stats.trade_count > 0 ? String(stats.trade_count) : "—"} />
@@ -716,30 +711,30 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
           <StatCell
             label="Net P&L"
             value={stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—"}
-            color={stats.net_pnl >= 0 ? "#10B981" : "#EF4444"}
+            color={stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)"}
           />
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 12 }}>
+      <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 12 }}>
         <SectionLabel>Recent</SectionLabel>
         {recentTrades.length === 0 ? (
-          <p style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>No trades yet.</p>
+          <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginTop: 6 }}>No trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
             {recentTrades.map((t) => (
               <div key={t.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span style={{ fontSize: 11, color: "#64748B" }}>{formatDate(t.date_closed).replace(", 2026", "")}</span>
-                  <span style={{ fontSize: 11, color: t.direction === "Buy" ? "#10B981" : "#EF4444" }}>
+                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed).replace(", 2026", "")}</span>
+                  <span style={{ fontSize: 11, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span style={{ fontSize: 12, fontWeight: 600, color: t.blended_pnl >= 0 ? "#10B981" : "#EF4444" }}>
+                  <span className="lt-num" style={{ fontSize: 12, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {t.blended_pnl > 0 ? "+" : ""}{formatCurrency(t.blended_pnl)}
                   </span>
-                  <span style={{ fontSize: 12, color: t.blended_rr > 0 ? "#10B981" : t.blended_rr < 0 ? "#EF4444" : "#64748B" }}>
+                  <span style={{ fontSize: 12, color: t.blended_rr > 0 ? "var(--lucid-pos)" : t.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
                     {t.blended_rr > 0 ? "✓" : t.blended_rr < 0 ? "✗" : "—"}
                   </span>
                 </div>
@@ -810,7 +805,7 @@ function PairsTab() {
         <button
           onClick={() => { setEditTarget(null); setModalOpen(true); }}
           className="flex items-center gap-2"
-          style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "var(--lucid-accent)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
           <Plus size={15} /> Add Pair
         </button>
@@ -877,31 +872,31 @@ function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] 
     <div style={{ ...CARD, padding: "20px 20px" }}>
       <div className="flex items-center gap-2 mb-1">
         <span style={{ fontSize: 20 }}>{session.emoji}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#E2E8F0" }}>{session.label}</span>
+        <span className="lt-serif" style={{ fontSize: 15, fontWeight: 700, color: "var(--lucid-ink)" }}>{session.label}</span>
       </div>
-      <p style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}>{session.time}</p>
+      <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginBottom: 16 }}>{session.time}</p>
 
       <div className="flex flex-col">
-        {kv("Trade Count", <span style={{ color: "#E2E8F0", fontWeight: 600 }}>{stats.trade_count > 0 ? stats.trade_count : "—"}</span>)}
-        {kv("Win Rate", <span style={{ color: wrColor(stats.wr), fontWeight: 600 }}>{formatWR(stats.wr)}</span>)}
-        {kv("Avg P&L", <span style={{ color: stats.avg_pnl !== null && stats.avg_pnl >= 0 ? "#10B981" : "#EF4444", fontWeight: 600 }}>
+        {kv("Trade Count", <span className="lt-num" style={{ color: "var(--lucid-ink)", fontWeight: 600 }}>{stats.trade_count > 0 ? stats.trade_count : "—"}</span>)}
+        {kv("Win Rate", <span className="lt-num" style={{ color: wrColor(stats.wr), fontWeight: 600 }}>{formatWR(stats.wr)}</span>)}
+        {kv("Avg P&L", <span className="lt-num" style={{ color: stats.avg_pnl !== null && stats.avg_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
           {stats.avg_pnl !== null ? formatCurrency(stats.avg_pnl) : "—"}
         </span>)}
-        {kv("Best Pair", <span style={{ color: "#E2E8F0", fontWeight: 600 }}>{stats.best_pair ?? "—"}</span>)}
+        {kv("Best Pair", <span style={{ color: "var(--lucid-ink)", fontWeight: 600 }}>{stats.best_pair ?? "—"}</span>)}
       </div>
 
-      <div style={{ borderTop: "1px solid rgba(148,163,184,0.08)", paddingTop: 12, marginTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 12, marginTop: 8 }}>
         <div className="flex items-center justify-between mb-2">
-          <span style={{ fontSize: 11, color: "#64748B" }}>% of total trades</span>
-          <span style={{ fontSize: 11, color: "#64748B" }}>{stats.trade_count} trade{stats.trade_count !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>% of total trades</span>
+          <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{stats.trade_count} trade{stats.trade_count !== 1 ? "s" : ""}</span>
         </div>
-        <div style={{ height: 6, borderRadius: 4, background: "rgba(148,163,184,0.12)", overflow: "hidden" }}>
+        <div style={{ height: 6, borderRadius: 4, background: "var(--lucid-surface-3)", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
               width: `${(pct * 100).toFixed(1)}%`,
               borderRadius: 4,
-              background: "linear-gradient(90deg, #3B82F6, #60A5FA)",
+              background: "var(--lucid-accent)",
               transition: "width 0.4s ease",
             }}
           />
@@ -914,7 +909,7 @@ function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] 
 function SessionsTab() {
   return (
     <>
-      <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20, fontStyle: "italic" }}>
+      <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginBottom: 20, fontStyle: "italic" }}>
         Sessions are auto-tagged from trade entry time. No manual configuration required.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -937,14 +932,14 @@ export default function SystemPage() {
     <div className="px-4 sm:px-8 py-5 sm:py-8 pb-12">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: "#E2E8F0", marginBottom: 4 }}>System</h1>
-        <p style={{ fontSize: 13, color: "#64748B" }}>Building blocks. Performance. Configuration.</p>
+        <h1 className="lt-serif" style={{ fontSize: 24, fontWeight: 600, color: "var(--lucid-ink)", marginBottom: 4 }}>System</h1>
+        <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>Building blocks. Performance. Configuration.</p>
       </div>
 
       {/* Sub-tab nav */}
       <div
         className="flex items-center gap-1 mb-8"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ borderBottom: "1px solid var(--lucid-line)" }}
       >
         {(["Models", "Pairs", "Sessions"] as Tab[]).map((tab) => {
           const active = activeTab === tab;
@@ -954,7 +949,7 @@ export default function SystemPage() {
               onClick={() => setActiveTab(tab)}
               className="relative h-10 px-4 text-sm font-medium"
               style={{
-                color: active ? "#F1F5F9" : "#64748B",
+                color: active ? "var(--lucid-ink)" : "var(--lucid-ink-3)",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
@@ -970,7 +965,7 @@ export default function SystemPage() {
                     right: 0,
                     height: 2,
                     borderRadius: "2px 2px 0 0",
-                    background: "#3B82F6",
+                    background: "var(--lucid-accent)",
                   }}
                 />
               )}

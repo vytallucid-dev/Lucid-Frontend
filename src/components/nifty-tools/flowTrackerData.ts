@@ -55,27 +55,22 @@ function entryValues(res: NiftyIndicatorDetailResponse): Map<string, number> {
   return m;
 }
 
-export interface FlowTrackerRangeOpts {
-  /** Last N readings each — ignored when `from`/`to` are set. */
-  limit?: number;
-  /** ISO YYYY-MM-DD. When set with `to`, filters to this exact window instead of `limit`. */
-  from?: string;
-  to?: string;
-}
-
 /**
- * Fetch + align the three raw flow series, either over the last `limit`
- * readings each (default 90) or over an exact `[from, to]` window when both
- * are given. The union of all three date sets forms the axis; a series with
- * no reading on a given date stays null (rendered as a gap, never zero-filled).
+ * Fetch + align the three raw flow series over the last `limit` readings each.
+ * The union of all three date sets forms the axis; a series with no reading on a
+ * given date stays null (rendered as a gap, never zero-filled).
  */
-export async function loadFlowTrackerData(opts: FlowTrackerRangeOpts | number = 90): Promise<FlowTrackerData> {
-  const { limit = 90, from, to } = typeof opts === "number" ? { limit: opts } : opts;
-  const rangeOpts = from && to ? { from, to } : { limit };
+export async function loadFlowTrackerData(
+  opts: { limit?: number; from?: string; to?: string } = {},
+): Promise<FlowTrackerData> {
+  // A custom date range (from/to) takes precedence; otherwise fall back to the
+  // rolling `limit` window (default 90 readings).
+  const query =
+    opts.from || opts.to ? { from: opts.from, to: opts.to } : { limit: opts.limit ?? 90 };
   const [fiiRes, diiRes, lsRes] = await Promise.all([
-    getIndicatorDetail(FII_FLOW_CODE, rangeOpts),
-    getIndicatorDetail(DII_ABSORPTION_CODE, rangeOpts),
-    getIndicatorDetail(FII_LS_CODE, rangeOpts),
+    getIndicatorDetail(FII_FLOW_CODE, query),
+    getIndicatorDetail(DII_ABSORPTION_CODE, query),
+    getIndicatorDetail(FII_LS_CODE, query),
   ]);
 
   const fii = entryValues(fiiRes);

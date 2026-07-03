@@ -32,40 +32,34 @@ import {
 function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
   const pipeline = getEdgefinderPipeline(indicator);
   const freshness = getFreshnessStatus(indicator);
-  const sourceColor = DATA_SOURCE_COLORS[indicator.dataSource] ?? "#64748B";
+  const sourceColor = DATA_SOURCE_COLORS[indicator.dataSource] ?? "var(--lucid-ink-2)";
   const freshnessColor = FRESHNESS_COLORS[freshness];
 
   return (
     <Link
       href={`/data/edgefinder/${encodeURIComponent(indicator.code)}`}
-      className="flex flex-col gap-3 rounded-xl p-4 transition-all duration-200 group hover:scale-[1.01]"
-      style={{
-        background: "rgba(10, 22, 40, 0.6)",
-        border: "1px solid rgba(255,255,255,0.06)",
-      }}
+      className="lt-card lt-hover flex flex-col gap-3 rounded-xl p-4 transition-all duration-200 group hover:scale-[1.01]"
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(59,130,246,0.3)";
-        (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 20px rgba(59,130,246,0.06)";
+        (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--lucid-accent-bd)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.06)";
-        (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none";
+        (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--lucid-line)";
       }}
     >
       {/* Top row */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: "#F1F5F9" }}>
+          <p className="text-sm font-medium truncate" style={{ color: "var(--lucid-ink)" }}>
             {indicator.name}
           </p>
-          <p className="text-[10px] font-mono truncate" style={{ color: "#475569" }}>
+          <p className="text-[10px] font-mono truncate" style={{ color: "var(--lucid-ink-3)" }}>
             {indicator.code}
           </p>
         </div>
         <ChevronRight
           size={14}
           className="shrink-0 mt-1 transition-transform group-hover:translate-x-0.5"
-          style={{ color: "#334155" }}
+          style={{ color: "var(--lucid-ink-3)" }}
         />
       </div>
 
@@ -85,9 +79,9 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
           <span
             className="rounded-full px-2 py-0.5 text-[10px] font-medium"
             style={{
-              background: "rgba(167,139,250,0.12)",
-              color: "#A78BFA",
-              border: "1px solid rgba(167,139,250,0.25)",
+              background: "var(--lucid-ctx-bg)",
+              color: "var(--lucid-ctx)",
+              border: "1px solid var(--lucid-ctx-bd)",
             }}
           >
             Manual Entry
@@ -97,9 +91,9 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
           <span
             className="rounded-full px-2 py-0.5 text-[10px] font-medium"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              color: "#64748B",
-              border: "1px solid rgba(255,255,255,0.06)",
+              background: "var(--lucid-surface-2)",
+              color: "var(--lucid-ink-2)",
+              border: "1px solid var(--lucid-line)",
             }}
           >
             {indicator.uiGroup}
@@ -120,40 +114,40 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
       {/* Last data point */}
       <div
         className="rounded-lg px-3 py-2 flex items-center justify-between"
-        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.04)" }}
+        style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
       >
         {indicator.latestDataPoint ? (
           <>
             <div>
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 Last value
               </p>
-              <p className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+              <p className="lt-num text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                 {indicator.latestDataPoint.value}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 As of
               </p>
-              <p className="text-xs" style={{ color: "#94A3B8" }}>
+              <p className="lt-num text-xs" style={{ color: "var(--lucid-ink-2)" }}>
                 {indicator.latestDataPoint.observationDate}
               </p>
-              <p className="text-[10px]" style={{ color: "#475569" }}>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
                 {formatRelativeDate(indicator.latestDataPoint.fetchedAt)}
               </p>
             </div>
           </>
         ) : (
-          <p className="text-xs" style={{ color: "#475569" }}>
+          <p className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
             No data yet
           </p>
         )}
       </div>
 
-      <p className="text-[10px]" style={{ color: "#475569" }}>
+      <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
         Pipeline:{" "}
-        <span style={{ color: "#64748B" }}>{PIPELINE_LABELS[pipeline]}</span>
+        <span style={{ color: "var(--lucid-ink-2)" }}>{PIPELINE_LABELS[pipeline]}</span>
       </p>
     </Link>
   );
@@ -169,9 +163,9 @@ const CURRENCY_FLAGS: Record<string, string> = {
 };
 
 const STANCE_CONFIG: Record<CycleStance, { label: string; color: string; bg: string; border: string }> = {
-  CUTTING: { label: "Cutting", color: "#F97316", bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.3)" },
-  NEUTRAL: { label: "Neutral", color: "#94A3B8", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.2)" },
-  HIKING:  { label: "Hiking",  color: "#10B981", bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.3)"  },
+  CUTTING: { label: "Cutting", color: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)", border: "var(--lucid-neg-bd)" },
+  NEUTRAL: { label: "Neutral", color: "var(--lucid-ink-2)", bg: "var(--lucid-surface-2)", border: "var(--lucid-line)" },
+  HIKING:  { label: "Hiking",  color: "var(--lucid-pos)", bg: "var(--lucid-pos-bg)",  border: "var(--lucid-pos-bd)"  },
 };
 
 function StanceBadge({ stance }: { stance: CycleStance }) {
@@ -219,28 +213,27 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
   }, [row.stance, row.effectiveFrom, row.notes]);
 
   const inputStyle = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F1F5F9",
+    background: "var(--lucid-surface-2)",
+    border: "1px solid var(--lucid-line-2)",
+    color: "var(--lucid-ink)",
   } as const;
 
   const selectStyle = {
-    background: "#0f172a",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F1F5F9",
+    background: "var(--lucid-surface-3)",
+    border: "1px solid var(--lucid-line-2)",
+    color: "var(--lucid-ink)",
     colorScheme: "dark",
   } as const;
 
   return (
     <div
-      className="rounded-xl p-4 flex flex-col gap-3"
-      style={{ background: "rgba(10,22,40,0.6)", border: "1px solid rgba(255,255,255,0.06)" }}
+      className="lt-card rounded-xl p-4 flex flex-col gap-3"
     >
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xl leading-none">{CURRENCY_FLAGS[row.currencyCode] ?? "🏦"}</span>
-          <span className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
             {row.currencyCode}
           </span>
         </div>
@@ -248,9 +241,9 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
           <button
             onClick={() => setEditing(true)}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors"
-            style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", border: "1px solid rgba(255,255,255,0.08)" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#94A3B8"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#64748B"; }}
+            style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--lucid-ink)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--lucid-ink-2)"; }}
           >
             <Pencil size={11} /> Edit
           </button>
@@ -258,9 +251,9 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
           <button
             onClick={() => setEditing(false)}
             className="rounded-lg p-1 transition-colors"
-            style={{ color: "#64748B" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#94A3B8"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#64748B"; }}
+            style={{ color: "var(--lucid-ink-2)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--lucid-ink)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--lucid-ink-2)"; }}
           >
             <X size={14} />
           </button>
@@ -271,11 +264,11 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
       {!editing && (
         <>
           <StanceBadge stance={row.stance} />
-          <p className="text-[10px]" style={{ color: "#475569" }}>
+          <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
             Since {row.effectiveFrom}
           </p>
           {row.notes && (
-            <p className="text-[10px]" style={{ color: "#64748B" }}>
+            <p className="text-[10px]" style={{ color: "var(--lucid-ink-2)" }}>
               {row.notes}
             </p>
           )}
@@ -286,25 +279,25 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
       {editing && (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
-              Stance <span style={{ color: "#EF4444" }}>*</span>
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--lucid-ink-2)" }}>
+              Stance <span style={{ color: "var(--lucid-neg)" }}>*</span>
             </label>
             <select
               value={stance}
               onChange={(e) => setStance(e.target.value as CycleStance)}
               className="rounded-lg px-3 py-2 text-sm outline-none"
               style={selectStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
             >
-              <option value="CUTTING" style={{ background: "#0f172a", color: "#F1F5F9" }}>Cutting</option>
-              <option value="NEUTRAL" style={{ background: "#0f172a", color: "#F1F5F9" }}>Neutral</option>
-              <option value="HIKING" style={{ background: "#0f172a", color: "#F1F5F9" }}>Hiking</option>
+              <option value="CUTTING" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>Cutting</option>
+              <option value="NEUTRAL" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>Neutral</option>
+              <option value="HIKING" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>Hiking</option>
             </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--lucid-ink-2)" }}>
               Effective From (optional)
             </label>
             <input
@@ -313,13 +306,13 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
               onChange={(e) => setEffectiveFrom(e.target.value)}
               className="rounded-lg px-3 py-2 text-sm outline-none"
               style={{ ...inputStyle, colorScheme: "dark" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "#64748B" }}>
+            <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--lucid-ink-2)" }}>
               Notes (optional)
             </label>
             <input
@@ -330,13 +323,13 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
               onChange={(e) => setNotes(e.target.value)}
               className="rounded-lg px-3 py-2 text-sm outline-none"
               style={inputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3B82F6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
             />
           </div>
 
           {mutation.error && (
-            <p className="text-xs" style={{ color: "#EF4444" }}>
+            <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
               {(mutation.error as Error).message}
             </p>
           )}
@@ -345,7 +338,7 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
             className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all disabled:opacity-50"
-            style={{ background: mutation.isPending ? "rgba(59,130,246,0.3)" : "#3B82F6", color: "#fff" }}
+            style={{ background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "var(--lucid-bg)" }}
           >
             {mutation.isPending ? (
               <><Loader2 size={13} className="animate-spin" /> Saving...</>
@@ -376,31 +369,30 @@ function CycleStanceManager() {
 
   return (
     <div
-      className="mb-6 rounded-2xl p-4 sm:p-5"
-      style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+      className="lt-card mb-6 rounded-2xl p-4 sm:p-5"
     >
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
-          <h2 className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+          <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
             Central Bank Cycle Stances
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+          <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
             Controls how CPI releases are scored per currency region.
           </p>
         </div>
         <div className="group relative shrink-0">
-          <Info size={14} style={{ color: "#475569", cursor: "pointer" }} />
+          <Info size={14} style={{ color: "var(--lucid-ink-3)", cursor: "pointer" }} />
           <div
-            className="absolute right-0 top-5 z-10 hidden group-hover:block w-64 sm:w-72 rounded-xl p-3 text-[11px] leading-relaxed shadow-xl"
+            className="absolute right-0 top-5 z-10 hidden group-hover:block w-64 sm:w-72 rounded-xl p-3 text-[11px] leading-relaxed"
             style={{
-              background: "rgba(15,23,42,0.98)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#94A3B8",
+              background: "var(--lucid-surface-3)",
+              border: "1px solid var(--lucid-line-2)",
+              color: "var(--lucid-ink-2)",
             }}
           >
-            During <span style={{ color: "#10B981" }}>HIKING</span> cycles, a CPI miss scores 0 (not &minus;1) because high
+            During <span style={{ color: "var(--lucid-pos)" }}>HIKING</span> cycles, a CPI miss scores 0 (not &minus;1) because high
             inflation supports the hiking narrative. During{" "}
-            <span style={{ color: "#F97316" }}>CUTTING</span> cycles, both beats and meets score +1 because lower
+            <span style={{ color: "var(--lucid-neg)" }}>CUTTING</span> cycles, both beats and meets score +1 because lower
             inflation supports further cuts.
           </div>
         </div>
@@ -410,18 +402,18 @@ function CycleStanceManager() {
         <div
           className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
           style={{
-            background: "rgba(16,185,129,0.08)",
-            border: "1px solid rgba(16,185,129,0.25)",
-            color: "#6EE7B7",
+            background: "var(--lucid-pos-bg)",
+            border: "1px solid var(--lucid-pos-bd)",
+            color: "var(--lucid-pos)",
           }}
         >
-          <CheckCircle2 size={14} style={{ color: "#10B981" }} />
+          <CheckCircle2 size={14} style={{ color: "var(--lucid-pos)" }} />
           {toast}
         </div>
       )}
 
       {isLoading && (
-        <div className="flex items-center gap-2 py-6 justify-center" style={{ color: "#475569" }}>
+        <div className="flex items-center gap-2 py-6 justify-center" style={{ color: "var(--lucid-ink-3)" }}>
           <Loader2 size={16} className="animate-spin" />
           <span className="text-sm">Loading stances…</span>
         </div>
@@ -430,7 +422,7 @@ function CycleStanceManager() {
       {error && (
         <div
           className="mt-4 rounded-xl p-3 flex items-center gap-2"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}
+          style={{ background: "var(--lucid-neg-bg)", border: "1px solid var(--lucid-neg-bd)", color: "var(--lucid-neg)" }}
         >
           <AlertCircle size={14} />
           <span className="text-xs">Failed to load cycle stances</span>
@@ -458,12 +450,12 @@ const COUNTRY_GROUPS: { key: string; label: string; filter: (ind: AdminIndicator
 ];
 
 const EF_PIPELINE_JOBS: { label: string; job: CronJobName; color: string; description: string }[] = [
-  { label: "Forex Factory Fetch", job: "forex_factory_fetch", color: "#10B981", description: "Fetches weekly economic calendar events for all tracked currencies." },
-  { label: "CFTC COT Fetch", job: "cftc_cot_fetch", color: "#8B5CF6", description: "Fetches weekly Commitment of Traders data (runs Fridays)." },
-  { label: "Compass Inputs", job: "compass_inputs_fetch", color: "#3B82F6", description: "Ingests all 6 Compass regime input signals." },
-  { label: "Compass Classifier", job: "compass_classifier_run", color: "#06B6D4", description: "Classifies today's regime from Compass inputs." },
-  { label: "EF Scorecard", job: "scorecard_assembly", color: "#F59E0B", description: "Assembles EdgeFinder asset scorecards." },
-  { label: "Pair Score", job: "pair_score_assembly", color: "#F97316", description: "Computes pair scores from asset scorecards + Compass regime." },
+  { label: "Forex Factory Fetch", job: "forex_factory_fetch", color: "var(--lucid-pos)", description: "Fetches weekly economic calendar events for all tracked currencies." },
+  { label: "CFTC COT Fetch", job: "cftc_cot_fetch", color: "var(--lucid-ctx)", description: "Fetches weekly Commitment of Traders data (runs Fridays)." },
+  { label: "Compass Inputs", job: "compass_inputs_fetch", color: "var(--lucid-accent)", description: "Ingests all 6 Compass regime input signals." },
+  { label: "Compass Classifier", job: "compass_classifier_run", color: "var(--lucid-cool)", description: "Classifies today's regime from Compass inputs." },
+  { label: "EF Scorecard", job: "scorecard_assembly", color: "var(--lucid-warn)", description: "Assembles EdgeFinder asset scorecards." },
+  { label: "Pair Score", job: "pair_score_assembly", color: "var(--lucid-neg)", description: "Computes pair scores from asset scorecards + Compass regime." },
 ];
 
 function PipelineButton({ label, job, color, description }: { label: string; job: CronJobName; color: string; description: string }) {
@@ -537,17 +529,17 @@ function PipelineButton({ label, job, color, description }: { label: string; job
   }, [logsData, isPolling, triggerTime, storageKey]);
 
   const isPending = mutation.isPending || isPolling;
-  const statusColor = lastLog?.status === "success" ? "#10B981" : lastLog?.status === "failed" ? "#EF4444" : "#F59E0B";
+  const statusColor = lastLog?.status === "success" ? "var(--lucid-pos)" : lastLog?.status === "failed" ? "var(--lucid-neg)" : "var(--lucid-warn)";
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-      <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>{label}</p>
-      <p className="text-[10px]" style={{ color: "#475569" }}>{description}</p>
+    <div className="lt-card-2 flex flex-col gap-2 rounded-xl p-4">
+      <p className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>{label}</p>
+      <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>{description}</p>
       <button
         onClick={() => { mutation.mutate(); }}
         disabled={isPending}
         className="flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 mt-1"
-        style={{ background: isPending ? `${color}40` : color, color: "#000" }}
+        style={{ background: isPending ? `color-mix(in srgb, ${color} 40%, transparent)` : color, color: "#000" }}
       >
         {mutation.isPending
           ? <><Loader2 size={11} className="animate-spin" /> Triggering...</>
@@ -558,32 +550,32 @@ function PipelineButton({ label, job, color, description }: { label: string; job
 
       {triggerError && (
         <div className="flex items-center gap-1.5">
-          <XCircle size={11} style={{ color: "#EF4444" }} />
-          <span className="text-[10px]" style={{ color: "#FCA5A5" }}>{triggerError}</span>
+          <XCircle size={11} style={{ color: "var(--lucid-neg)" }} />
+          <span className="text-[10px]" style={{ color: "var(--lucid-neg)" }}>{triggerError}</span>
         </div>
       )}
 
       {isPolling && !lastLog && (
         <div className="flex items-center gap-1.5">
-          <Clock size={11} style={{ color: "#64748B" }} />
-          <span className="text-[10px]" style={{ color: "#64748B" }}>Waiting for job to complete…</span>
+          <Clock size={11} style={{ color: "var(--lucid-ink-2)" }} />
+          <span className="text-[10px]" style={{ color: "var(--lucid-ink-2)" }}>Waiting for job to complete…</span>
         </div>
       )}
 
       {lastLog && (
         <div
           className="rounded-lg px-2.5 py-2 flex flex-col gap-0.5"
-          style={{ background: `${statusColor}08`, border: `1px solid ${statusColor}20` }}
+          style={{ background: `color-mix(in srgb, ${statusColor} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${statusColor} 20%, transparent)` }}
         >
           <div className="flex items-center gap-1">
             {lastLog.status === "success"
-              ? <CheckCircle2 size={11} style={{ color: "#10B981" }} />
+              ? <CheckCircle2 size={11} style={{ color: "var(--lucid-pos)" }} />
               : lastLog.status === "failed"
-              ? <XCircle size={11} style={{ color: "#EF4444" }} />
-              : <AlertCircle size={11} style={{ color: "#F59E0B" }} />}
-            <span className="text-[10px] font-semibold capitalize" style={{ color: statusColor }}>{lastLog.status}</span>
+              ? <XCircle size={11} style={{ color: "var(--lucid-neg)" }} />
+              : <AlertCircle size={11} style={{ color: "var(--lucid-warn)" }} />}
+            <span className="lt-num text-[10px] font-semibold capitalize" style={{ color: statusColor }}>{lastLog.status}</span>
           </div>
-          <p className="text-[10px]" style={{ color: "#475569" }}>
+          <p className="lt-num text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
             {lastLog.durationMs != null
               ? lastLog.durationMs < 1000 ? `${lastLog.durationMs}ms` : `${(lastLog.durationMs / 1000).toFixed(1)}s`
               : "—"}
@@ -608,8 +600,8 @@ export default function EdgefinderDataPage() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle size={40} style={{ color: "#EF4444" }} />
-        <p className="text-lg font-medium" style={{ color: "#F1F5F9" }}>
+        <AlertCircle size={40} style={{ color: "var(--lucid-neg)" }} />
+        <p className="text-lg font-medium" style={{ color: "var(--lucid-ink)" }}>
           Admin access required
         </p>
       </div>
@@ -621,27 +613,27 @@ export default function EdgefinderDataPage() {
   return (
     <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "#475569" }}>
-        <Link href="/data" className="hover:text-[#94A3B8] transition-colors">
+      <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: "var(--lucid-ink-3)" }}>
+        <Link href="/data" className="hover:text-(--lucid-ink-2) transition-colors">
           Data
         </Link>
         <ChevronRight size={14} />
-        <span style={{ color: "#94A3B8" }}>EdgeFinder</span>
+        <span style={{ color: "var(--lucid-ink-2)" }}>EdgeFinder</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div
           className="p-2.5 rounded-xl shrink-0"
-          style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
+          style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)" }}
         >
-          <BarChart2 size={20} style={{ color: "#3B82F6" }} />
+          <BarChart2 size={20} style={{ color: "var(--lucid-accent)" }} />
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold" style={{ color: "#F1F5F9" }}>
+          <h1 className="lt-serif text-xl font-bold" style={{ color: "var(--lucid-ink)" }}>
             EdgeFinder Indicators
           </h1>
-          <p className="text-sm" style={{ color: "#64748B" }}>
+          <p className="text-sm" style={{ color: "var(--lucid-ink-2)" }}>
             {isLoading ? "Loading..." : `${indicators.length} indicators`} — click any card to manage its data
           </p>
         </div>
@@ -649,13 +641,12 @@ export default function EdgefinderDataPage() {
 
       {/* Pipeline Controls */}
       <div
-        className="mb-6 rounded-2xl p-4 sm:p-5"
-        style={{ background: "rgba(10,22,40,0.7)", border: "1px solid rgba(255,255,255,0.07)" }}
+        className="lt-card mb-6 rounded-2xl p-4 sm:p-5"
       >
-        <h2 className="text-sm font-semibold mb-1" style={{ color: "#F1F5F9" }}>
+        <h2 className="lt-serif text-sm font-semibold mb-1" style={{ color: "var(--lucid-ink)" }}>
           Pipeline Controls
         </h2>
-        <p className="text-xs mb-4" style={{ color: "#64748B" }}>
+        <p className="text-xs mb-4" style={{ color: "var(--lucid-ink-2)" }}>
           Manually trigger EdgeFinder processing jobs.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -669,14 +660,14 @@ export default function EdgefinderDataPage() {
       <CycleStanceManager />
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-20 justify-center" style={{ color: "#475569" }}>
+        <div className="flex items-center gap-2 py-20 justify-center" style={{ color: "var(--lucid-ink-3)" }}>
           <Loader2 size={20} className="animate-spin" />
           <span>Loading indicators...</span>
         </div>
       ) : error ? (
         <div
           className="rounded-xl p-4 flex items-center gap-2"
-          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}
+          style={{ background: "var(--lucid-neg-bg)", border: "1px solid var(--lucid-neg-bd)", color: "var(--lucid-neg)" }}
         >
           <AlertCircle size={16} />
           <span className="text-sm">Failed to load indicators</span>
@@ -688,7 +679,7 @@ export default function EdgefinderDataPage() {
             if (group.length === 0) return null;
             return (
               <section key={key}>
-                <h2 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "#475569" }}>
+                <h2 className="lt-serif text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: "var(--lucid-ink-3)" }}>
                   {label} ({group.length})
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
