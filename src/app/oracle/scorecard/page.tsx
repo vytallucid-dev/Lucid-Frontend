@@ -240,9 +240,12 @@ function IndicatorRow({ ind }: { ind: PublicScorecardIndicator }) {
   );
 }
 
-function SectionCard({ section }: { section: PublicScorecardSection }) {
+function SectionCard({ section, delay = 0 }: { section: PublicScorecardSection; delay?: number }) {
   return (
-    <div className="lt-card lt-edge overflow-hidden">
+    <div
+      className="lt-card lt-edge lt-rise overflow-hidden"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)", animationDelay: `${delay}s` }}
+    >
       <div
         className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: "1px solid var(--lucid-line)" }}
@@ -317,7 +320,7 @@ export default function ScorecardPage() {
   return (
     <div className="p-4 sm:p-6" style={{ color: "var(--lucid-ink)" }}>
       {/* Asset selector */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
+      <div className="lt-rise lt-stagger-1 flex items-center gap-2 mb-6 flex-wrap">
         {assetOptions.map((opt) => {
           const active = selectedKey === opt.key;
           const isDeferred = deferredKeys.has(opt.key);
@@ -338,6 +341,7 @@ export default function ScorecardPage() {
                 border: active
                   ? "1px solid var(--lucid-accent-bd)"
                   : "1px solid var(--lucid-line)",
+                boxShadow: active ? "0 0 18px rgba(205, 167, 79, 0.16)" : "none",
                 opacity: isDeferred && !active ? 0.6 : 1,
               }}
             >
@@ -362,7 +366,7 @@ export default function ScorecardPage() {
 
       {/* Content area */}
       {scorecardQuery.isLoading ? (
-        <LoadingState message="Loading scorecard..." />
+        <LoadingState stages={["Loading scorecard…", "Scoring indicators…", "Drawing gauge…"]} />
       ) : scorecardQuery.error ? (
         <ErrorState
           error={scorecardQuery.error}
@@ -449,12 +453,22 @@ export default function ScorecardPage() {
         /* ── Scored — full layout ────────────────────────────────────── */
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* LEFT PANEL */}
-          <div className="w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
+          <div className="lt-rise lt-stagger-2 w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
             {/* Score & Bias */}
             <button
               onClick={() => openScoreTrend(asset.key)}
               className="lt-card lt-edge p-5 text-center w-full transition-opacity hover:opacity-90 cursor-pointer"
               title="Open Score Trend"
+              style={{
+                background: `radial-gradient(120% 90% at 50% 0%, ${
+                  asset.totalScore !== null && asset.totalScore >= 3
+                    ? "rgba(72, 186, 124, 0.10)"
+                    : asset.totalScore !== null && asset.totalScore <= -3
+                      ? "rgba(226, 88, 77, 0.10)"
+                      : "rgba(205, 167, 79, 0.10)"
+                }, transparent 65%), var(--lucid-grad-surface)`,
+                boxShadow: "var(--lucid-elev-1)",
+              }}
             >
               {asset.totalScore !== null && <ScoreGauge score={asset.totalScore} />}
               <div className="mb-2 -mt-1">
@@ -672,9 +686,9 @@ export default function ScorecardPage() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
-            {asset.sections.map((section) => (
-              <SectionCard key={section.label} section={section} />
+          <div className="lt-rise lt-stagger-3 flex-1 flex flex-col gap-4 min-w-0">
+            {asset.sections.map((section, idx) => (
+              <SectionCard key={section.label} section={section} delay={Math.min(idx * 0.08, 0.4)} />
             ))}
 
             {/* Per-indicator drilldown flag */}

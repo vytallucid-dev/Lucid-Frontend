@@ -30,8 +30,8 @@ function GridBackground() {
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px)
+            linear-gradient(rgba(205,167,79,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(205,167,79,0.04) 1px, transparent 1px)
           `,
           backgroundSize: "64px 64px",
         }}
@@ -45,7 +45,7 @@ function GridBackground() {
           width: "60%",
           height: "80%",
           background:
-            "radial-gradient(ellipse, rgba(59,130,246,0.12) 0%, transparent 65%)",
+            "radial-gradient(ellipse, rgba(205,167,79,0.12) 0%, transparent 65%)",
           filter: "blur(40px)",
         }}
       />
@@ -58,7 +58,7 @@ function GridBackground() {
           width: "50%",
           height: "70%",
           background:
-            "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 65%)",
+            "radial-gradient(ellipse, rgba(184,147,63,0.1) 0%, transparent 65%)",
           filter: "blur(60px)",
         }}
       />
@@ -72,7 +72,7 @@ function GridBackground() {
           width: "80%",
           height: "40%",
           background:
-            "radial-gradient(ellipse, rgba(59,130,246,0.05) 0%, transparent 70%)",
+            "radial-gradient(ellipse, rgba(205,167,79,0.05) 0%, transparent 70%)",
           filter: "blur(80px)",
         }}
       />
@@ -100,8 +100,8 @@ function TickerStrip() {
     <div
       className="overflow-hidden py-3 border-y"
       style={{
-        borderColor: "rgba(59,130,246,0.12)",
-        background: "rgba(10,22,40,0.6)",
+        borderColor: "rgba(205,167,79,0.12)",
+        background: "rgba(17,19,25,0.6)",
       }}
     >
       <style>{`
@@ -112,9 +112,9 @@ function TickerStrip() {
       <div className="ticker-inner">
         {items.map((t, i) => (
           <span key={i} className="flex items-center gap-2 whitespace-nowrap text-xs">
-            <span style={{ color: "#64748B" }}>{t.sym}</span>
+            <span style={{ color: "#9b9c9c" }}>{t.sym}</span>
             <span
-              style={{ color: t.up ? "#10B981" : "#EF4444" }}
+              style={{ color: t.up ? "#48ba7c" : "#e2584d" }}
               className="font-mono font-medium"
             >
               {t.val}
@@ -130,7 +130,7 @@ function TickerStrip() {
 const FEATURES = [
   {
     icon: Globe,
-    color: "#3B82F6",
+    color: "#cda74f",
     title: "EdgeFinder",
     subtitle: "Multi-currency macro intelligence",
     description:
@@ -138,7 +138,7 @@ const FEATURES = [
   },
   {
     icon: Activity,
-    color: "#10B981",
+    color: "#48ba7c",
     title: "NIFTY Pulse",
     subtitle: "Indian market scorecard",
     description:
@@ -146,7 +146,7 @@ const FEATURES = [
   },
   {
     icon: Compass,
-    color: "#6366F1",
+    color: "#4ea1e6",
     title: "Compass",
     subtitle: "Macro regime classification",
     description:
@@ -162,7 +162,7 @@ const FEATURES = [
   },
   {
     icon: BookOpen,
-    color: "#F59E0B",
+    color: "#e0a13e",
     title: "Ledger",
     subtitle: "Trade journal & analytics",
     description:
@@ -183,7 +183,7 @@ const STEPS = [
   {
     num: "01",
     icon: Database,
-    color: "#3B82F6",
+    color: "#cda74f",
     title: "Data Ingestion",
     body: "Automated pipelines pull economic releases, COT positioning, price data, and sentiment — all normalised to a common timeline.",
   },
@@ -197,7 +197,7 @@ const STEPS = [
   {
     num: "03",
     icon: TrendingUp,
-    color: "#10B981",
+    color: "#48ba7c",
     title: "Trade with Conviction",
     body: "Regime, score, and pattern signal converge into a clear directional view — with the full evidence trail at a glance before you click.",
   },
@@ -246,14 +246,14 @@ export function LandingPageContent() {
   return (
     <div
       className="min-h-screen flex flex-col w-full"
-      style={{ background: "#020817", color: "#F1F5F9" }}
+      style={{ background: "#090a0d", color: "#f1efe9" }}
     >
 
       {/* ── Navbar ── */}
       <nav
         className="sticky top-0 z-50 w-full"
         style={{
-          background: "rgba(2,8,23,0.85)",
+          background: "rgba(9,10,13,0.85)",
           backdropFilter: "blur(16px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
@@ -263,13 +263,13 @@ export function LandingPageContent() {
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
-              boxShadow: "0 0 16px rgba(59,130,246,0.4)",
+              background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
+              boxShadow: "0 0 16px rgba(205,167,79,0.4)",
             }}
           >
-            <Zap size={14} color="#fff" />
+            <Zap size={14} color="#1a1608" />
           </div>
-          <span className="text-base font-bold tracking-wide" style={{ color: "#F1F5F9" }}>
+          <span className="text-base font-bold tracking-wide" style={{ color: "#f1efe9" }}>
             LUCID
           </span>
         </div>
@@ -277,12 +277,12 @@ export function LandingPageContent() {
           <Link
             href="/auth/login"
             className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ color: "#94A3B8" }}
+            style={{ color: "#9b9c9c" }}
             onMouseEnter={(e) =>
-              ((e.target as HTMLAnchorElement).style.color = "#F1F5F9")
+              ((e.target as HTMLAnchorElement).style.color = "#f1efe9")
             }
             onMouseLeave={(e) =>
-              ((e.target as HTMLAnchorElement).style.color = "#94A3B8")
+              ((e.target as HTMLAnchorElement).style.color = "#9b9c9c")
             }
           >
             Sign in
@@ -291,9 +291,9 @@ export function LandingPageContent() {
             href="/auth/signup"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all"
             style={{
-              background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
-              color: "#fff",
-              boxShadow: "0 0 20px rgba(59,130,246,0.3)",
+              background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
+              color: "#1a1608",
+              boxShadow: "0 0 20px rgba(205,167,79,0.3)",
             }}
           >
             Get Started
@@ -310,14 +310,14 @@ export function LandingPageContent() {
         <div
           className="relative mb-6 flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium"
           style={{
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid rgba(59,130,246,0.25)",
-            color: "#60A5FA",
+            background: "rgba(205,167,79,0.1)",
+            border: "1px solid rgba(205,167,79,0.25)",
+            color: "#dcbf78",
           }}
         >
           <span
             className="w-1.5 h-1.5 rounded-full pulse-live"
-            style={{ background: "#3B82F6" }}
+            style={{ background: "#cda74f" }}
           />
           Your Personal Trading Operating System
         </div>
@@ -327,7 +327,7 @@ export function LandingPageContent() {
           className="relative max-w-4xl text-5xl md:text-7xl font-extrabold leading-[1.08] tracking-tight mb-6"
           style={{
             background:
-              "linear-gradient(135deg, #F1F5F9 0%, #94A3B8 40%, #3B82F6 70%, #6366F1 100%)",
+              "linear-gradient(135deg, #f1efe9 0%, #9b9c9c 40%, #cda74f 70%, #a8842f 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -340,7 +340,7 @@ export function LandingPageContent() {
 
         <p
           className="relative max-w-xl text-lg leading-relaxed mb-10"
-          style={{ color: "#64748B" }}
+          style={{ color: "#9b9c9c" }}
         >
           LUCID quantifies macro data, regime context, and positioning signals
           into a unified score — so every trade decision is evidence-based,
@@ -352,9 +352,9 @@ export function LandingPageContent() {
             href="/auth/signup"
             className="flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-semibold transition-all hover:scale-[1.02]"
             style={{
-              background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
-              color: "#fff",
-              boxShadow: "0 0 32px rgba(59,130,246,0.35)",
+              background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
+              color: "#1a1608",
+              boxShadow: "0 0 32px rgba(205,167,79,0.35)",
             }}
           >
             Start for Free
@@ -366,7 +366,7 @@ export function LandingPageContent() {
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.1)",
-              color: "#94A3B8",
+              color: "#9b9c9c",
             }}
           >
             Sign in
@@ -378,10 +378,10 @@ export function LandingPageContent() {
         <div
           className="relative mt-16 sm:mt-20 w-full max-w-4xl rounded-2xl overflow-hidden"
           style={{
-            background: "rgba(10,22,40,0.7)",
-            border: "1px solid rgba(59,130,246,0.15)",
+            background: "rgba(17,19,25,0.7)",
+            border: "1px solid rgba(205,167,79,0.15)",
             boxShadow:
-              "0 0 0 1px rgba(59,130,246,0.08), 0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(59,130,246,0.08)",
+              "0 0 0 1px rgba(205,167,79,0.08), 0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(205,167,79,0.08)",
           }}
         >
           {/* fake topbar */}
@@ -389,24 +389,24 @@ export function LandingPageContent() {
             className="flex items-center gap-2 px-4 py-3"
             style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(239,68,68,0.5)" }} />
-            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(245,158,11,0.5)" }} />
-            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(16,185,129,0.5)" }} />
-            <div className="mx-auto text-[10px] font-mono" style={{ color: "#334155" }}>
+            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(226,88,77,0.5)" }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(224,161,62,0.5)" }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: "rgba(72,186,124,0.5)" }} />
+            <div className="mx-auto text-[10px] font-mono" style={{ color: "#62646c" }}>
               lucid — EdgeFinder Dashboard
             </div>
           </div>
           {/* mock dashboard grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 sm:p-5">
             {[
-              { label: "USD", score: "+1.8", color: "#10B981", trend: "Bullish" },
-              { label: "EUR", score: "-0.9", color: "#EF4444", trend: "Bearish" },
-              { label: "GBP", score: "+0.5", color: "#F59E0B", trend: "Neutral" },
-              { label: "JPY", score: "-1.4", color: "#EF4444", trend: "Bearish" },
-              { label: "XAU", score: "+1.2", color: "#10B981", trend: "Bullish" },
-              { label: "NIFTY", score: "+1.6", color: "#10B981", trend: "Bullish" },
-              { label: "Compass", score: "Risk-On", color: "#6366F1", trend: "" },
-              { label: "COT", score: "+2.0", color: "#10B981", trend: "Strong" },
+              { label: "USD", score: "+1.8", color: "#48ba7c", trend: "Bullish" },
+              { label: "EUR", score: "-0.9", color: "#e2584d", trend: "Bearish" },
+              { label: "GBP", score: "+0.5", color: "#e0a13e", trend: "Neutral" },
+              { label: "JPY", score: "-1.4", color: "#e2584d", trend: "Bearish" },
+              { label: "XAU", score: "+1.2", color: "#48ba7c", trend: "Bullish" },
+              { label: "NIFTY", score: "+1.6", color: "#48ba7c", trend: "Bullish" },
+              { label: "Compass", score: "Risk-On", color: "#4ea1e6", trend: "" },
+              { label: "COT", score: "+2.0", color: "#48ba7c", trend: "Strong" },
             ].map((c) => (
               <div
                 key={c.label}
@@ -416,7 +416,7 @@ export function LandingPageContent() {
                   border: `1px solid ${c.color}20`,
                 }}
               >
-                <p className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "#475569" }}>
+                <p className="text-[9px] font-medium uppercase tracking-wider" style={{ color: "#62646c" }}>
                   {c.label}
                 </p>
                 <p className="text-base font-bold" style={{ color: c.color }}>
@@ -444,14 +444,14 @@ export function LandingPageContent() {
               key={s.label}
               className="rounded-2xl p-6 text-center"
               style={{
-                background: "rgba(10,22,40,0.6)",
+                background: "rgba(17,19,25,0.6)",
                 border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
               <p
                 className="text-3xl font-extrabold mb-1"
                 style={{
-                  background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
+                  background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -459,7 +459,7 @@ export function LandingPageContent() {
               >
                 {s.value}
               </p>
-              <p className="text-xs" style={{ color: "#64748B" }}>
+              <p className="text-xs" style={{ color: "#9b9c9c" }}>
                 {s.label}
               </p>
             </div>
@@ -473,17 +473,17 @@ export function LandingPageContent() {
           <div className="text-center mb-14">
             <p
               className="text-xs font-semibold uppercase tracking-widest mb-3"
-              style={{ color: "#3B82F6" }}
+              style={{ color: "#cda74f" }}
             >
               Everything in one OS
             </p>
             <h2
               className="text-3xl md:text-4xl font-bold"
-              style={{ color: "#F1F5F9" }}
+              style={{ color: "#f1efe9" }}
             >
               Built for the macro-aware trader
             </h2>
-            <p className="mt-4 text-base max-w-xl mx-auto" style={{ color: "#64748B" }}>
+            <p className="mt-4 text-base max-w-xl mx-auto" style={{ color: "#9b9c9c" }}>
               Every module is connected. Regime drives scoring, scoring drives
               pattern relevance, and every trade lives in your journal — all
               in a single tab.
@@ -496,20 +496,20 @@ export function LandingPageContent() {
                 key={f.title}
                 className="group rounded-2xl p-6 flex flex-col gap-4 transition-all duration-300"
                 style={{
-                  background: "rgba(10,22,40,0.6)",
+                  background: "rgba(17,19,25,0.6)",
                   border: "1px solid rgba(255,255,255,0.06)",
                 }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget;
                   el.style.borderColor = `${f.color}30`;
                   el.style.boxShadow = `0 0 32px ${f.color}10`;
-                  el.style.background = "rgba(10,22,40,0.9)";
+                  el.style.background = "rgba(17,19,25,0.9)";
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget;
                   el.style.borderColor = "rgba(255,255,255,0.06)";
                   el.style.boxShadow = "none";
-                  el.style.background = "rgba(10,22,40,0.6)";
+                  el.style.background = "rgba(17,19,25,0.6)";
                 }}
               >
                 <div
@@ -519,13 +519,13 @@ export function LandingPageContent() {
                   <f.icon size={18} color={f.color} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold mb-0.5" style={{ color: "#F1F5F9" }}>
+                  <p className="text-sm font-semibold mb-0.5" style={{ color: "#f1efe9" }}>
                     {f.title}
                   </p>
                   <p className="text-[11px] font-medium mb-2" style={{ color: f.color }}>
                     {f.subtitle}
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9b9c9c" }}>
                     {f.description}
                   </p>
                 </div>
@@ -540,18 +540,18 @@ export function LandingPageContent() {
         className="py-20 px-4 sm:px-6 lg:px-8"
         style={{
           background:
-            "linear-gradient(180deg, transparent 0%, rgba(10,22,40,0.5) 50%, transparent 100%)",
+            "linear-gradient(180deg, transparent 0%, rgba(17,19,25,0.5) 50%, transparent 100%)",
         }}
       >
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <p
               className="text-xs font-semibold uppercase tracking-widest mb-3"
-              style={{ color: "#6366F1" }}
+              style={{ color: "#a8842f" }}
             >
               The workflow
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold" style={{ color: "#F1F5F9" }}>
+            <h2 className="text-3xl md:text-4xl font-bold" style={{ color: "#f1efe9" }}>
               From raw data to trade conviction
             </h2>
           </div>
@@ -561,7 +561,7 @@ export function LandingPageContent() {
             <div
               className="hidden md:block absolute top-12 left-1/6 right-1/6 h-px"
               style={{
-                background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)",
+                background: "linear-gradient(90deg, transparent, rgba(205,167,79,0.3), transparent)",
               }}
             />
             {STEPS.map((s, i) => (
@@ -569,7 +569,7 @@ export function LandingPageContent() {
                 key={s.num}
                 className="relative flex-1 rounded-2xl p-6 flex flex-col gap-4"
                 style={{
-                  background: "rgba(10,22,40,0.7)",
+                  background: "rgba(17,19,25,0.7)",
                   border: `1px solid ${s.color}20`,
                   boxShadow: `0 0 40px ${s.color}06`,
                 }}
@@ -589,10 +589,10 @@ export function LandingPageContent() {
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold mb-2" style={{ color: "#F1F5F9" }}>
+                  <p className="text-sm font-semibold mb-2" style={{ color: "#f1efe9" }}>
                     {s.title}
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#64748B" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9b9c9c" }}>
                     {s.body}
                   </p>
                 </div>
@@ -605,22 +605,22 @@ export function LandingPageContent() {
       {/* ── Data sources strip ── */}
       <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
-          <p className="text-xs uppercase tracking-widest mb-6" style={{ color: "#334155" }}>
+          <p className="text-xs uppercase tracking-widest mb-6" style={{ color: "#62646c" }}>
             Powered by
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             {[
-              { name: "FRED", color: "#3B82F6", desc: "US Federal Reserve" },
-              { name: "ForexFactory", color: "#10B981", desc: "Economic Calendar" },
+              { name: "FRED", color: "#cda74f", desc: "US Federal Reserve" },
+              { name: "ForexFactory", color: "#48ba7c", desc: "Economic Calendar" },
               { name: "CFTC COT", color: "#8B5CF6", desc: "Commitments of Traders" },
-              { name: "NSE", color: "#F59E0B", desc: "National Stock Exchange" },
+              { name: "NSE", color: "#e0a13e", desc: "National Stock Exchange" },
               { name: "Supabase", color: "#3ECF8E", desc: "Real-time Backend" },
             ].map((src) => (
               <div
                 key={src.name}
                 className="flex items-center gap-2 rounded-xl px-4 py-2.5"
                 style={{
-                  background: "rgba(10,22,40,0.6)",
+                  background: "rgba(17,19,25,0.6)",
                   border: "1px solid rgba(255,255,255,0.06)",
                 }}
               >
@@ -629,10 +629,10 @@ export function LandingPageContent() {
                   style={{ background: src.color }}
                 />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: "#94A3B8" }}>
+                  <p className="text-xs font-semibold" style={{ color: "#9b9c9c" }}>
                     {src.name}
                   </p>
-                  <p className="text-[9px]" style={{ color: "#475569" }}>
+                  <p className="text-[9px]" style={{ color: "#62646c" }}>
                     {src.desc}
                   </p>
                 </div>
@@ -649,16 +649,16 @@ export function LandingPageContent() {
           aria-hidden="true"
           style={{
             background:
-              "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(59,130,246,0.1) 0%, transparent 70%)",
+              "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(205,167,79,0.1) 0%, transparent 70%)",
           }}
         />
         <div className="relative max-w-2xl mx-auto text-center">
           <div
             className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-6 text-xs font-medium"
             style={{
-              background: "rgba(16,185,129,0.1)",
-              border: "1px solid rgba(16,185,129,0.2)",
-              color: "#10B981",
+              background: "rgba(72,186,124,0.1)",
+              border: "1px solid rgba(72,186,124,0.2)",
+              color: "#48ba7c",
             }}
           >
             <Shield size={11} />
@@ -666,33 +666,33 @@ export function LandingPageContent() {
           </div>
           <h2
             className="text-3xl md:text-5xl font-extrabold mb-5 leading-tight"
-            style={{ color: "#F1F5F9" }}
+            style={{ color: "#f1efe9" }}
           >
             Stop guessing.
             <br />
             Start scoring.
           </h2>
-          <p className="text-base mb-10" style={{ color: "#64748B" }}>
+          <p className="text-base mb-10" style={{ color: "#9b9c9c" }}>
             Join LUCID and bring institutional-grade clarity to every trade you make.
           </p>
           <Link
             href="/auth/signup"
             className="inline-flex items-center gap-2 rounded-xl px-8 py-4 text-sm font-bold transition-all hover:scale-[1.03]"
             style={{
-              background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
-              color: "#fff",
-              boxShadow: "0 0 40px rgba(59,130,246,0.4)",
+              background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
+              color: "#1a1608",
+              boxShadow: "0 0 40px rgba(205,167,79,0.4)",
             }}
           >
             Create Your Account
             <ArrowRight size={16} />
           </Link>
-          <p className="mt-4 text-xs" style={{ color: "#334155" }}>
+          <p className="mt-4 text-xs" style={{ color: "#62646c" }}>
             Already have an account?{" "}
             <Link
               href="/auth/login"
               className="underline"
-              style={{ color: "#64748B" }}
+              style={{ color: "#9b9c9c" }}
             >
               Sign in
             </Link>
@@ -710,23 +710,23 @@ export function LandingPageContent() {
             <div
               className="w-6 h-6 rounded-md flex items-center justify-center"
               style={{
-                background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
+                background: "linear-gradient(135deg, #cda74f 0%, #a8842f 100%)",
               }}
             >
-              <Zap size={11} color="#fff" />
+              <Zap size={11} color="#1a1608" />
             </div>
-            <span className="text-sm font-bold tracking-wide" style={{ color: "#475569" }}>
+            <span className="text-sm font-bold tracking-wide" style={{ color: "#62646c" }}>
               LUCID
             </span>
           </div>
-          <p className="text-xs" style={{ color: "#334155" }}>
+          <p className="text-xs" style={{ color: "#62646c" }}>
             Personal Trading Operating System — built for serious traders.
           </p>
           <div className="flex items-center gap-4">
-            <Link href="/auth/login" className="text-xs transition-colors" style={{ color: "#334155" }}>
+            <Link href="/auth/login" className="text-xs transition-colors" style={{ color: "#62646c" }}>
               Sign in
             </Link>
-            <Link href="/auth/signup" className="text-xs transition-colors" style={{ color: "#334155" }}>
+            <Link href="/auth/signup" className="text-xs transition-colors" style={{ color: "#62646c" }}>
               Sign up
             </Link>
           </div>

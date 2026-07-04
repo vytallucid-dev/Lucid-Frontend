@@ -10,7 +10,6 @@ import {
   ArrowLeftRight,
   ClipboardList,
   Radar,
-  ChevronDown,
 } from "lucide-react";
 import {
   AreaChart,
@@ -58,6 +57,7 @@ import { PlannedDrawerContent } from "@/app/trading/planned/PlannedDrawerContent
 import { AddTradeModal } from "@/app/trading/journal/AddTradeModal";
 import { toast } from "@/components/toast";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatedNumber, AnimatedGreeting, usePrefersReducedMotion } from "@/components/motion";
 import { Sparkline } from "@/components/Sparkline";
 import { bandColor, bandBg, netDisplay } from "@/app/nifty/nifty-utils";
 import { getAllFxPairs, getScorecardAsset, type AssetBias } from "@/lib/api/oracle";
@@ -75,6 +75,79 @@ function getGreeting(): string {
   if (hour >= 12 && hour < 17) return "Good afternoon";
   if (hour >= 17 && hour < 22) return "Good evening";
   return "Good late night";
+}
+
+// ─── Motion helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Fires a one-shot sign-aware flash class whenever a numeric value changes
+ * (e.g. a trade closes and P&L moves). The baseline is taken on the first
+ * render where `ready` is true, so the loading→loaded transition never
+ * flashes. The class is toggled off/on across a frame so consecutive changes
+ * restart the animation.
+ */
+function useValueFlash(value: number, ready: boolean): string {
+  const prev = useRef<number | null>(null);
+  const [flash, setFlash] = useState<"pos" | "neg" | null>(null);
+
+  useEffect(() => {
+    if (!ready) return; // still loading — don't baseline placeholder values
+    if (prev.current === null) {
+      prev.current = value; // first loaded value = baseline, no flash
+      return;
+    }
+    if (value === prev.current) return;
+    const dir: "pos" | "neg" = value > prev.current ? "pos" : "neg";
+    prev.current = value;
+    // Clear then re-apply across two frames so back-to-back changes restart
+    // the CSS animation (all setState calls live in rAF callbacks).
+    let raf2: number | null = null;
+    const raf1 = requestAnimationFrame(() => {
+      setFlash(null);
+      raf2 = requestAnimationFrame(() => setFlash(dir));
+    });
+    const t = setTimeout(() => setFlash(null), 1600);
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== null) cancelAnimationFrame(raf2);
+      clearTimeout(t);
+    };
+  }, [value, ready]);
+
+  return flash ? `lt-flash-${flash}` : "";
+}
+
+/**
+ * Tracks which ids appeared since the previous render pass (e.g. a freshly
+ * logged trade) so their rows can play the gold "new" highlight. The baseline
+ * snapshot is taken on the first render where `ready` is true (data loaded),
+ * so the initial list never flashes — only genuinely new arrivals do.
+ */
+function useNewIds(ids: string[], ready: boolean): Set<string> {
+  const prevRef = useRef<Set<string> | null>(null);
+  const [fresh, setFresh] = useState<Set<string>>(() => new Set());
+  const key = ids.join("|");
+
+  useEffect(() => {
+    if (!ready) return; // still loading — don't take a baseline from empty data
+    const cur = new Set(ids);
+    if (prevRef.current === null) {
+      prevRef.current = cur; // first loaded snapshot = baseline, no flash
+      return;
+    }
+    const added = ids.filter((id) => !prevRef.current!.has(id));
+    prevRef.current = cur;
+    if (added.length === 0) return;
+    const raf = requestAnimationFrame(() => setFresh(new Set(added)));
+    const t = setTimeout(() => setFresh(new Set()), 2400);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, ready]);
+
+  return fresh;
 }
 
 // ─── P&L curve helpers ────────────────────────────────────────────────────────
@@ -274,9 +347,9 @@ function CashFlowModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose} />
+      <div className="lt-fade-in fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-        <div className="rounded-2xl pointer-events-auto w-full max-w-md mx-4" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
+        <div className="lt-modal-enter rounded-2xl pointer-events-auto w-full max-w-md mx-4" style={{ background: "var(--lucid-grad-surface-2)", border: "1px solid var(--lucid-line-2)", boxShadow: "var(--lucid-elev-2)" }}>
           <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
             <h2 className="lt-serif" style={{ fontSize: 15, fontWeight: 600, color: "var(--lucid-ink)" }}>Cash Flow</h2>
             <button onClick={onClose} style={{ color: "var(--lucid-ink-3)", fontSize: 20, lineHeight: 1 }}>×</button>
@@ -348,11 +421,7 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
   return (
     <button
       onClick={onClick}
-      className="lt-lift w-full text-left rounded-xl p-4 transition-all duration-150"
-      style={{
-        background: "var(--lucid-surface-2)",
-        border: "1px solid var(--lucid-line)",
-      }}
+      className="lt-row w-full text-left rounded-xl p-4"
     >
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -377,14 +446,14 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>Target</span>
             <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", background: "var(--lucid-ink-2)", borderRadius: 2 }} />
+              <div className="lt-bar lt-bar-gold" style={{ width: isPassed ? "100%" : `${goalPct}%`, height: "100%", borderRadius: 2 }} />
             </div>
             <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{isPassed ? "✓" : `${goalPct.toFixed(0)}%`}</span>
           </div>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>DD</span>
             <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: `${ddPct}%`, height: "100%", background: ddColor, borderRadius: 2 }} />
+              <div className="lt-bar" style={{ width: `${ddPct}%`, height: "100%", background: ddColor, borderRadius: 2 }} />
             </div>
             <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{ddPct.toFixed(0)}%</span>
           </div>
@@ -393,7 +462,7 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
         <div className="flex items-center gap-2">
           <span style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 36, flexShrink: 0 }}>Goal</span>
           <div style={{ flex: 1, height: 4, background: "var(--lucid-surface-3)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: `${goalPct}%`, height: "100%", background: "var(--lucid-ink-2)", borderRadius: 2 }} />
+            <div className="lt-bar lt-bar-gold" style={{ width: `${goalPct}%`, height: "100%", borderRadius: 2 }} />
           </div>
           <span className="lt-num" style={{ fontSize: 10, color: "var(--lucid-ink-3)", width: 28, textAlign: "right", flexShrink: 0 }}>{goalPct.toFixed(0)}%</span>
         </div>
@@ -404,15 +473,18 @@ function AccountSnapshotRow({ account, onClick }: { account: Account; onClick: (
 
 // ─── Fundamental Bias + NIFTY helpers ─────────────────────────────────────────
 
-/** Visual treatment for an Oracle asset/pair bias. */
+/** Visual treatment for an Oracle asset/pair bias. Backgrounds are top-lit
+ *  radial washes of the score color over the lit surface gradient. */
 function biasVisual(bias: AssetBias | null): { color: string; bg: string; border: string; label: string } {
+  const wash = (r: number, g: number, b: number, a: number) =>
+    `radial-gradient(130% 100% at 50% 0%, rgba(${r},${g},${b},${a}), rgba(${r},${g},${b},0.03) 78%), var(--lucid-grad-surface-2)`;
   switch (bias) {
-    case "Strong Bullish": return { color: "var(--lucid-scale-4)", bg: "rgba(78,161,230,0.14)",  border: "rgba(78,161,230,0.3)",  label: "Strong Bull" };
-    case "Bullish":        return { color: "var(--lucid-scale-3)", bg: "rgba(72,186,124,0.12)",  border: "rgba(72,186,124,0.25)", label: "Bullish" };
-    case "Neutral":        return { color: "var(--lucid-scale-2)", bg: "rgba(205,167,79,0.1)",   border: "rgba(205,167,79,0.2)",  label: "Neutral" };
-    case "Bearish":        return { color: "var(--lucid-scale-1)", bg: "rgba(224,145,63,0.12)",  border: "rgba(224,145,63,0.25)", label: "Bearish" };
-    case "Strong Bearish": return { color: "var(--lucid-scale-0)", bg: "rgba(226,88,77,0.14)",   border: "rgba(226,88,77,0.3)",   label: "Strong Bear" };
-    default:               return { color: "var(--lucid-ink-3)",  bg: "var(--lucid-surface-2)", border: "var(--lucid-line)",     label: "No data" };
+    case "Strong Bullish": return { color: "var(--lucid-scale-4)", bg: wash(78, 161, 230, 0.22),  border: "rgba(78,161,230,0.3)",  label: "Strong Bull" };
+    case "Bullish":        return { color: "var(--lucid-scale-3)", bg: wash(72, 186, 124, 0.18),  border: "rgba(72,186,124,0.25)", label: "Bullish" };
+    case "Neutral":        return { color: "var(--lucid-scale-2)", bg: wash(205, 167, 79, 0.16),  border: "rgba(205,167,79,0.2)",  label: "Neutral" };
+    case "Bearish":        return { color: "var(--lucid-scale-1)", bg: wash(224, 145, 63, 0.18),  border: "rgba(224,145,63,0.25)", label: "Bearish" };
+    case "Strong Bearish": return { color: "var(--lucid-scale-0)", bg: wash(226, 88, 77, 0.22),   border: "rgba(226,88,77,0.3)",   label: "Strong Bear" };
+    default:               return { color: "var(--lucid-ink-3)",  bg: "var(--lucid-grad-surface-2)", border: "var(--lucid-line)",  label: "No data" };
   }
 }
 
@@ -423,17 +495,21 @@ interface PairBias {
 }
 
 function FundamentalBiasTile({
-  flagA, flagB, name, data, onClick,
+  flagA, flagB, name, data, onClick, delay = 0,
 }: {
-  flagA: string; flagB: string; name: string; data: PairBias | undefined; onClick: () => void;
+  flagA: string; flagB: string; name: string; data: PairBias | undefined; onClick: () => void; delay?: number;
 }) {
   const has = !!data && data.bias != null;
   const v = biasVisual(data?.bias ?? null);
+  // Big score move — latest week vs previous (history is oldest → newest).
+  const hist = data?.history ?? null;
+  const scoreDelta = hist && hist.length >= 2 ? hist[hist.length - 1] - hist[hist.length - 2] : 0;
+  const pulseClass = Math.abs(scoreDelta) >= 3 ? (scoreDelta > 0 ? "lt-score-pulse-up" : "lt-score-pulse-down") : "";
   return (
     <button
       onClick={onClick}
-      className="lt-lift rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all duration-150"
-      style={{ background: v.bg, border: `1px solid ${v.border}` }}
+      className={`lt-lift lt-rise ${pulseClass} rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all duration-150`}
+      style={{ background: v.bg, border: `1px solid ${v.border}`, animationDelay: `${delay}s` }}
     >
       <span style={{ fontSize: 18 }}>{flagA}{flagB}</span>
       <span style={{ fontSize: 11, fontWeight: 600, color: "var(--lucid-ink-2)" }}>{name}</span>
@@ -467,8 +543,13 @@ function NiftyPulseCard({ latest, history }: { latest: PublicScorecard; history:
   return (
     <Link
       href="/nifty/scorecard"
-      className="block rounded-xl p-4 mb-5 transition-all duration-150"
-      style={{ background: bandBg(latest.band), border: `1px solid ${color}33`, textDecoration: "none" }}
+      className="lt-lift block rounded-xl p-4 mb-5 transition-all duration-150"
+      style={{
+        background: `linear-gradient(115deg, ${bandBg(latest.band)} 0%, transparent 60%), var(--lucid-grad-surface)`,
+        border: `1px solid ${color}33`,
+        boxShadow: "var(--lucid-elev-1)",
+        textDecoration: "none",
+      }}
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {/* Identity */}
@@ -520,10 +601,11 @@ export default function DashboardPage() {
   // Chat input
   const [chatValue, setChatValue] = useState("");
 
+  // Respect reduced-motion for the (recharts) chart draw-in.
+  const reducedMotion = usePrefersReducedMotion();
+
   // P&L curve date range
   const [dateRange, setDateRange] = useState<DateRangePreset>("All Time");
-  const [rangeDropdown, setRangeDropdown] = useState(false);
-  const rangeRef = useRef<HTMLDivElement>(null);
 
   // Live data
   const tradesQuery = useTrades();
@@ -579,6 +661,10 @@ export default function DashboardPage() {
     [allPlanned]
   );
   const readyCount = useMemo(() => allPlanned.filter((p) => p.status === "Ready").length, [allPlanned]);
+
+  // Living feedback — newly arrived rows get a one-shot gold highlight.
+  const newLiveIds = useNewIds(useMemo(() => liveTrades.map((t) => t.id), [liveTrades]), !isLoading);
+  const newPlannedIds = useNewIds(useMemo(() => activePlanned.map((p) => p.id), [activePlanned]), !isLoading);
 
   // Status line — type-agnostic, framed off whatever accounts exist
   const statusLine = useMemo(() => {
@@ -643,6 +729,11 @@ export default function DashboardPage() {
     };
   }, [allAccounts, allTrades]);
 
+  // Living feedback — metric cards flash their sign color when the value moves
+  // (fires on trade add/close/delete via the react-query refetch).
+  const pnlFlash = useValueFlash(metrics.overallPnl, !isLoading);
+  const wrFlash = useValueFlash(metrics.wr, !isLoading);
+
   // P&L Curve
   const curveData = useMemo(() => {
     const filtered = applyDateFilter(allTrades, dateRange);
@@ -650,16 +741,6 @@ export default function DashboardPage() {
   }, [allTrades, dateRange]);
 
   const drawdownWindows = useMemo(() => computeDrawdownWindows(curveData), [curveData]);
-
-  // Close range dropdown on outside click
-  useEffect(() => {
-    if (!rangeDropdown) return;
-    function handle(e: MouseEvent) {
-      if (rangeRef.current && !rangeRef.current.contains(e.target as Node)) setRangeDropdown(false);
-    }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [rangeDropdown]);
 
   function handleChatSubmit() {
     toast.info("Lucid AI activates with full context of your trading system in Phase 3.", {
@@ -670,27 +751,23 @@ export default function DashboardPage() {
   const pairsConfig = pairs;
 
   return (
-    <div className="min-h-screen" style={{ color: "var(--lucid-ink)" }}>
+    <div className="min-h-screen lt-backdrop" style={{ color: "var(--lucid-ink)" }}>
       <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-350 mx-auto">
 
         {/* ── Section 1: Hero ────────────────────────────────────────────────── */}
-        <div className="lt-edge lt-hero-wash -z-1 p-5 sm:p-8" style={{ border: "1px solid var(--lucid-line)", borderRadius: "var(--lucid-r-lg)" }}>
+        <div className="lt-edge lt-hero-wash lt-rise lt-stagger-1 p-5 sm:p-8" style={{ border: "1px solid var(--lucid-line)", borderRadius: "var(--lucid-r-lg)" }}>
           {/* Greeting + status */}
           <div className="mb-6">
             <h1 className="lt-serif" style={{ fontSize: 34, fontWeight: 700, color: "var(--lucid-ink)", lineHeight: 1.15, marginBottom: 8, letterSpacing: "-0.01em" }}>
-              {greeting}{firstName ? `, ${firstName}` : ""}.
+              <AnimatedGreeting text={`${greeting}${firstName ? `, ${firstName}` : ""}.`} />
             </h1>
             <p style={{ fontSize: 14, color: "var(--lucid-ink-2)" }}>{statusLine}</p>
           </div>
 
           {/* Lucid chat input bar */}
           <div
-            className="rounded-xl flex items-center gap-3 px-4"
-            style={{
-              height: 56,
-              background: "var(--lucid-surface-2)",
-              border: "1px solid var(--lucid-line)",
-            }}
+            className="lt-chatbar rounded-xl flex items-center gap-3 px-4"
+            style={{ height: 56 }}
           >
             <Sparkles size={18} style={{ color: "var(--lucid-accent)", flexShrink: 0 }} />
             <input
@@ -703,8 +780,8 @@ export default function DashboardPage() {
             />
             <button
               onClick={handleChatSubmit}
-              className="lt-hover flex items-center justify-center rounded-lg transition-all"
-              style={{ width: 36, height: 36, background: "var(--lucid-accent)", flexShrink: 0 }}
+              className="lt-btn-gold flex items-center justify-center rounded-lg"
+              style={{ width: 36, height: 36, flexShrink: 0 }}
             >
               <ArrowRight size={16} style={{ color: "var(--lucid-bg)" }} />
             </button>
@@ -718,7 +795,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 2: Quick Actions ───────────────────────────────────────── */}
-        <div>
+        <div className="lt-rise lt-stagger-2">
           <div className="lt-eyebrow mb-3">
             Quick Actions
             <span className="lt-eyebrow-ln" />
@@ -753,11 +830,11 @@ export default function DashboardPage() {
             <button
               key={item.label}
               onClick={item.action}
-              className="lt-card-2 lt-lift text-left rounded-xl p-5 flex flex-col gap-3 transition-all duration-150"
+              className="lt-quick text-left p-5 flex flex-col gap-3"
               style={{ height: 88, cursor: "pointer" }}
             >
               <div className="flex items-center gap-3">
-                <span style={{ color: "var(--lucid-ink-2)" }}>{item.icon}</span>
+                <span className="lt-chip">{item.icon}</span>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "var(--lucid-ink)", lineHeight: 1.2 }}>{item.label}</p>
                   <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginTop: 2 }}>{item.desc}</p>
@@ -769,7 +846,7 @@ export default function DashboardPage() {
         </div>
 
         {isLoading ? (
-          <LoadingState message="Loading your dashboard…" />
+          <LoadingState stages={["Loading your dashboard…", "Crunching your numbers…", "Preparing charts…"]} />
         ) : loadError ? (
           <ErrorState
             error={loadError}
@@ -779,25 +856,25 @@ export default function DashboardPage() {
         ) : (
         <>
         {/* ── Section 3: Metric Cards ────────────────────────────────────────── */}
-        <div>
+        <div className="lt-rise lt-stagger-3">
           <div className="lt-eyebrow mb-3">
             Overview
             <span className="lt-eyebrow-ln" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Total Balance */}
-          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+          <div className="lt-metric p-5 flex flex-col gap-2">
             <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Total Balance
             </span>
             <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ink)" }}>
-              {formatCurrency(metrics.totalBalance)}
+              <AnimatedNumber value={metrics.totalBalance} format={formatCurrency} />
             </span>
             <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Across all accounts</span>
           </div>
 
           {/* Overall P&L */}
-          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+          <div className={`lt-metric ${metrics.overallPnl > 0 ? "lt-metric-pos" : metrics.overallPnl < 0 ? "lt-metric-neg" : ""} ${pnlFlash} p-5 flex flex-col gap-2`}>
             <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Overall P&amp;L
             </span>
@@ -809,18 +886,18 @@ export default function DashboardPage() {
                 color: metrics.overallPnl > 0 ? "var(--lucid-pos)" : metrics.overallPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)",
               }}
             >
-              {metrics.overallPnl >= 0 ? "+" : ""}{formatCurrency(metrics.overallPnl)}
+              <AnimatedNumber value={metrics.overallPnl} format={(n) => `${n >= 0 ? "+" : ""}${formatCurrency(n)}`} />
             </span>
             <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Across all accounts</span>
           </div>
 
           {/* Active Accounts */}
-          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+          <div className="lt-metric p-5 flex flex-col gap-2">
             <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Active Accounts
             </span>
             <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ink)" }}>
-              {metrics.activeCount}
+              <AnimatedNumber value={metrics.activeCount} format={(n) => `${Math.round(n)}`} />
             </span>
             <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
               {allAccounts.length} total accounts
@@ -828,7 +905,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Rolling Win Rate — a neutral stat, not a loss signal, so it stays ink-toned regardless of value */}
-          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+          <div className={`lt-metric ${wrFlash} p-5 flex flex-col gap-2`}>
             <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
               Rolling Win Rate
             </span>
@@ -840,20 +917,20 @@ export default function DashboardPage() {
                 color: "var(--lucid-ink)",
               }}
             >
-              {metrics.wr.toFixed(0)}%
+              <AnimatedNumber value={metrics.wr} format={(n) => `${Math.round(n)}%`} />
             </span>
             <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>Last {metrics.tradeCount} trades</span>
           </div>
 
           {/* Adaptive: Challenges Active (if prop accounts) else Best Performer */}
-          <div className="lt-card lt-edge p-5 flex flex-col gap-2">
+          <div className="lt-metric p-5 flex flex-col gap-2">
             {metrics.hasProp ? (
               <>
                 <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--lucid-ink-3)" }}>
                   Challenges Active
                 </span>
                 <span className="lt-num" style={{ fontSize: 30, fontWeight: 700, color: "var(--lucid-ctx)" }}>
-                  {metrics.challengesActive}
+                  <AnimatedNumber value={metrics.challengesActive} format={(n) => `${Math.round(n)}`} />
                 </span>
                 <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>In challenge phase</span>
               </>
@@ -875,49 +952,24 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 4: P&L Curve ───────────────────────────────────────────── */}
-        <div className="lt-card lt-edge p-5">
-          <div className="flex items-center justify-between mb-5">
-            <div className="lt-eyebrow" style={{ flex: 1, marginRight: 16 }}>
+        <div className="lt-card lt-edge lt-rise lt-stagger-4 p-5">
+          <div className="flex items-center justify-between mb-5 gap-4">
+            <div className="lt-eyebrow" style={{ flex: 1 }}>
               Performance
               <span className="lt-eyebrow-ln" />
             </div>
 
-            {/* Date range dropdown */}
-            <div ref={rangeRef} className="relative">
-              <button
-                onClick={() => setRangeDropdown((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors"
-                style={{
-                  fontSize: 12,
-                  color: "var(--lucid-ink-2)",
-                  background: "var(--lucid-surface-2)",
-                  border: "1px solid var(--lucid-line)",
-                }}
-              >
-                {dateRange}
-                <ChevronDown size={12} />
-              </button>
-              {rangeDropdown && (
-                <div
-                  className="absolute right-0 top-full mt-1 rounded-xl py-1 z-20"
-                  style={{
-                    background: "var(--lucid-surface-2)",
-                    border: "1px solid var(--lucid-line-2)",
-                    minWidth: 120,
-                  }}
+            {/* Date range — segmented control */}
+            <div className="lt-segment">
+              {(["Last 30d", "Last 90d", "All Time"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setDateRange(p)}
+                  className={`lt-segment-btn ${dateRange === p ? "is-active" : ""}`}
                 >
-                  {(["Last 30d", "Last 90d", "All Time"] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => { setDateRange(p); setRangeDropdown(false); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-(--lucid-line) transition-colors"
-                      style={{ color: dateRange === p ? "var(--lucid-ink)" : "var(--lucid-ink-2)" }}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  {p}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -925,8 +977,13 @@ export default function DashboardPage() {
             <AreaChart data={curveData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
               <defs>
                 <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--lucid-accent)" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="var(--lucid-accent)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--lucid-accent)" stopOpacity={0.38} />
+                  <stop offset="55%" stopColor="var(--lucid-accent)" stopOpacity={0.10} />
+                  <stop offset="100%" stopColor="var(--lucid-accent)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="pnlStroke" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="var(--lucid-accent)" />
+                  <stop offset="100%" stopColor="#dcbf78" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--lucid-line)" />
@@ -958,18 +1015,21 @@ export default function DashboardPage() {
               <Area
                 type="monotone"
                 dataKey="cumPnl"
-                stroke="var(--lucid-accent)"
-                strokeWidth={2}
+                stroke="url(#pnlStroke)"
+                strokeWidth={2.5}
                 fill="url(#pnlGrad)"
                 dot={false}
-                activeDot={{ r: 4, fill: "var(--lucid-accent)" }}
+                activeDot={{ r: 5, fill: "var(--lucid-accent)", stroke: "var(--lucid-bg)", strokeWidth: 2 }}
+                isAnimationActive={!reducedMotion}
+                animationDuration={1400}
+                animationEasing="ease-out"
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* ── Section 5: Two-Column Strip ────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="lt-rise lt-stagger-5 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Left — Live + Planned Trades */}
           <div className="lt-card lt-edge p-5 flex flex-col gap-6">
@@ -996,7 +1056,7 @@ export default function DashboardPage() {
                       <button
                         key={t.id}
                         onClick={() => setTradeDrawer(t)}
-                        className="lt-lift lt-card-2 w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
+                        className={`lt-row ${newLiveIds.has(t.id) ? "lt-row-new" : ""} w-full text-left rounded-lg px-3 py-2.5 flex items-center gap-3`}
                       >
                         <span style={{ fontSize: 15 }}>
                           {pairConf?.flag_a}{pairConf?.flag_b}
@@ -1028,12 +1088,11 @@ export default function DashboardPage() {
                             }}
                           >
                             <span
+                              className="lt-pulse-dot"
                               style={{
                                 width: 6,
                                 height: 6,
-                                borderRadius: "50%",
                                 background: "var(--lucid-pos)",
-                                animation: "pulse 2s infinite",
                               }}
                             />
                             Live
@@ -1090,8 +1149,7 @@ export default function DashboardPage() {
                       <button
                         key={p.id}
                         onClick={() => setPlannedDrawer(p)}
-                        className="lt-lift w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 flex items-center gap-3"
-                        style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
+                        className={`lt-row ${newPlannedIds.has(p.id) ? "lt-row-new" : ""} w-full text-left rounded-lg px-3 py-2.5 flex items-center gap-3`}
                       >
                         <span style={{ fontSize: 15 }}>{pairConf?.flag_a}{pairConf?.flag_b}</span>
                         <div className="flex-1 min-w-0">
@@ -1153,7 +1211,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 6: Fundamental Bias (FX + Gold) + NIFTY Macro ──────────── */}
-        <div className="lt-card lt-edge p-5">
+        <div className="lt-card lt-edge lt-rise lt-stagger-6 p-5">
           <div className="flex items-center justify-between mb-5 gap-4">
             <div className="flex items-center gap-3" style={{ flex: 1 }}>
               <div className="lt-eyebrow" style={{ flex: 1 }}>
@@ -1164,7 +1222,7 @@ export default function DashboardPage() {
                 className="pill"
                 style={{ background: "var(--lucid-pos-bg)", color: "var(--lucid-pos)", border: "1px solid var(--lucid-pos-bd)", fontSize: 10, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--lucid-pos)", animation: "pulse 2s infinite" }} />
+                <span className="lt-pulse-dot" style={{ width: 6, height: 6, background: "var(--lucid-pos)" }} />
                 Live
               </span>
             </div>
@@ -1197,7 +1255,7 @@ export default function DashboardPage() {
             Your pairs · fundamental bias
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
-            {pairsConfig.map((pair) => {
+            {pairsConfig.map((pair, idx) => {
               const data = biasByPair.get(pair.symbol);
               const target =
                 pair.symbol === "XAUUSD"
@@ -1213,6 +1271,7 @@ export default function DashboardPage() {
                   name={pair.display_name}
                   data={data}
                   onClick={() => router.push(target)}
+                  delay={Math.min(idx * 0.045, 0.45)}
                 />
               );
             })}

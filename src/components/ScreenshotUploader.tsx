@@ -146,13 +146,13 @@ export function ScreenshotUploader({
           className="flex flex-col items-center justify-center gap-1.5 rounded-lg cursor-pointer transition-colors"
           style={{
             minHeight: 84,
-            border: `1.5px dashed ${dragOver ? "rgba(59,130,246,0.6)" : "rgba(148,163,184,0.2)"}`,
-            background: dragOver ? "rgba(59,130,246,0.06)" : "rgba(148,163,184,0.02)",
+            border: `1.5px dashed ${dragOver ? "rgba(205,167,79,0.6)" : "rgba(148,163,184,0.2)"}`,
+            background: dragOver ? "rgba(205,167,79,0.06)" : "rgba(148,163,184,0.02)",
             color: "#475569",
             padding: "12px",
           }}
         >
-          <ImagePlus size={20} style={{ color: dragOver ? "#60A5FA" : "#475569" }} />
+          <ImagePlus size={20} style={{ color: dragOver ? "#dcbf78" : "#475569" }} />
           <p style={{ fontSize: 12.5, color: "#94A3B8", textAlign: "center" }}>
             Drop, click to select, or paste an image
           </p>
@@ -186,9 +186,9 @@ export function ScreenshotUploader({
             <div
               key={`up-${i}`}
               className="flex items-center justify-center rounded-lg"
-              style={{ width: 84, height: 60, border: "1px solid rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.06)" }}
+              style={{ width: 84, height: 60, border: "1px solid rgba(205,167,79,0.2)", background: "rgba(205,167,79,0.06)" }}
             >
-              <Loader2 size={16} className="animate-spin" style={{ color: "#60A5FA" }} />
+              <Loader2 size={16} className="animate-spin" style={{ color: "#dcbf78" }} />
             </div>
           ))}
         </div>

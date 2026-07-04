@@ -734,8 +734,8 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
                   <span className="lt-num" style={{ fontSize: 12, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
                     {t.blended_pnl > 0 ? "+" : ""}{formatCurrency(t.blended_pnl)}
                   </span>
-                  <span style={{ fontSize: 12, color: t.blended_rr > 0 ? "var(--lucid-pos)" : t.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
-                    {t.blended_rr > 0 ? "✓" : t.blended_rr < 0 ? "✗" : "—"}
+                  <span style={{ fontSize: 12, color: t.blended_pnl > 0 ? "var(--lucid-pos)" : t.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
+                    {t.blended_pnl > 0 ? "✓" : t.blended_pnl < 0 ? "✗" : "—"}
                   </span>
                 </div>
               </div>

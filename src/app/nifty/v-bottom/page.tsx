@@ -74,7 +74,7 @@ export default function VBottomPage() {
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>V-Bottom</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
@@ -90,7 +90,10 @@ export default function VBottomPage() {
       </div>
 
       {/* ── Date Picker (always mounted) ─────────────────────────────── */}
-      <div className="lt-card p-4 sm:p-5">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-2 p-4 sm:p-5"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <label
@@ -272,7 +275,7 @@ function ResultArea({
   refetch: () => void;
 }) {
   if (isLoading) {
-    return <LoadingState message="Running diagnostic..." />;
+    return <LoadingState stages={["Running diagnostic…", "Checking trough signature…", "Classifying the bounce…"]} />;
   }
   if (error) {
     if (is404(error)) {

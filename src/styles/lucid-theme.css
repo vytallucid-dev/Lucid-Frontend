@@ -170,3 +170,413 @@ td.lt-eyebrow {
     backdrop-filter: blur(10px);
   }
 }
+
+/* ============================================================
+   DEPTH LAYER v2 — elevation + gradient surfaces
+   Opt-in. The flat .lt-card surfaces stay the default; these add
+   lit dimensionality where it earns attention (dashboard first).
+   ============================================================ */
+:root {
+  --lucid-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 3px 10px rgba(0, 0, 0, 0.22);
+  --lucid-elev-2: 0 4px 14px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.32);
+  --lucid-elev-accent: 0 6px 26px rgba(205, 167, 79, 0.14);
+  /* Top-lit surface gradients — a ~2° vertical wash so cards read as lit from above. */
+  --lucid-grad-surface: linear-gradient(180deg, #14161c 0%, #101217 100%);
+  --lucid-grad-surface-2: linear-gradient(180deg, #191c23 0%, #14161b 100%);
+  --lucid-gold-bright: #dcbf78;
+}
+
+/* ── Page backdrop — layered gold aura + fine grid. Scoped via .lt-backdrop
+   so it only paints on pages that opt in. GPU-cheap (fixed, no blur).
+   IMPORTANT: must not create a stacking context or touch children's
+   position/z-index — pages render their own `fixed` z-40/z-50 modals and
+   drawers inside this element. The pseudos sit at z-index -1 in the ROOT
+   stacking context (the same proven pattern as the app-wide Starfield
+   canvas), painting above the body background but below all content. ── */
+.lt-backdrop {
+  position: relative;
+}
+.lt-backdrop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(205, 167, 79, 0.07), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 100% 2%, rgba(78, 161, 230, 0.035), transparent 55%);
+}
+.lt-backdrop::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, black 15%, transparent 78%);
+  mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, black 15%, transparent 78%);
+}
+
+/* ============================================================
+   MOTION — entrance choreography + reveal
+   ============================================================ */
+@keyframes lt-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lt-rise {
+  animation: lt-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.lt-stagger-1 { animation-delay: 0.03s; }
+.lt-stagger-2 { animation-delay: 0.09s; }
+.lt-stagger-3 { animation-delay: 0.16s; }
+.lt-stagger-4 { animation-delay: 0.24s; }
+.lt-stagger-5 { animation-delay: 0.32s; }
+.lt-stagger-6 { animation-delay: 0.40s; }
+.lt-stagger-7 { animation-delay: 0.48s; }
+.lt-stagger-8 { animation-delay: 0.56s; }
+
+/* Word-by-word greeting reveal */
+@keyframes lt-word {
+  from { opacity: 0; transform: translateY(0.4em); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.lt-word {
+  display: inline-block;
+  animation: lt-word 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-rise,
+  .lt-word {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   HERO WASH v2 — layered gold + faint cool corner light
+   (dashboard hero only — verified single use)
+   ============================================================ */
+.lt-hero-wash {
+  position: relative;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(205, 167, 79, 0.11), transparent 46%),
+    radial-gradient(100% 130% at 100% 0%, rgba(78, 161, 230, 0.05), transparent 52%),
+    linear-gradient(180deg, var(--lucid-accent-bg), transparent 42%),
+    var(--lucid-grad-surface);
+  box-shadow: var(--lucid-elev-1);
+}
+
+/* Chat/command bar — gradient hairline that lights gold on focus */
+.lt-chatbar {
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line-2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lt-chatbar:focus-within {
+  border-color: var(--lucid-accent-bd);
+  box-shadow:
+    0 0 0 3px rgba(205, 167, 79, 0.10),
+    0 0 30px rgba(205, 167, 79, 0.06);
+}
+
+/* Gold gradient button (send / primary) */
+.lt-btn-gold {
+  background: linear-gradient(180deg, #d8b45f 0%, #c19a3f 100%);
+  box-shadow:
+    0 2px 8px rgba(205, 167, 79, 0.25),
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  transition: transform 0.14s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.lt-btn-gold:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 14px rgba(205, 167, 79, 0.36),
+    0 1px 0 rgba(255, 255, 255, 0.25) inset;
+}
+.lt-btn-gold:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   QUICK-ACTION cards + icon chip
+   ============================================================ */
+.lt-quick {
+  position: relative;
+  background: var(--lucid-grad-surface-2);
+  border: 1px solid var(--lucid-line);
+  border-radius: var(--lucid-r-lg);
+  box-shadow: var(--lucid-elev-1);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lt-quick:hover {
+  transform: translateY(-3px);
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-elev-2), var(--lucid-elev-accent);
+}
+.lt-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--lucid-r-md);
+  background: var(--lucid-accent-bg);
+  border: 1px solid var(--lucid-accent-bd);
+  color: var(--lucid-accent);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.lt-quick:hover .lt-chip {
+  color: var(--lucid-gold-bright);
+  transform: scale(1.06);
+}
+
+/* ============================================================
+   METRIC cards — elevated, top-accented, sign-aware aura
+   ============================================================ */
+.lt-metric {
+  position: relative;
+  overflow: hidden;
+  background: var(--lucid-grad-surface);
+  border: 1px solid var(--lucid-line);
+  border-radius: var(--lucid-r-lg);
+  box-shadow: var(--lucid-elev-1);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.lt-metric::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lucid-accent-bd), transparent);
+  z-index: 2;
+}
+.lt-metric:hover {
+  transform: translateY(-3px);
+  border-color: var(--lucid-line-3);
+  box-shadow: var(--lucid-elev-2);
+}
+/* Sign-aware aura in the top-right corner */
+.lt-metric-pos::after,
+.lt-metric-neg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.lt-metric-pos::after {
+  background: radial-gradient(ellipse 95% 75% at 100% 0%, var(--lucid-pos-bg), transparent 62%);
+}
+.lt-metric-neg::after {
+  background: radial-gradient(ellipse 95% 75% at 100% 0%, var(--lucid-neg-bg), transparent 62%);
+}
+.lt-metric > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   LIST rows — gradient surface + gold accent edge on hover
+   ============================================================ */
+.lt-row {
+  position: relative;
+  background: var(--lucid-grad-surface-2);
+  border: 1px solid var(--lucid-line);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.lt-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--lucid-accent);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.lt-row:hover {
+  transform: translateY(-1px);
+  border-color: var(--lucid-line-3);
+  box-shadow: var(--lucid-elev-1);
+}
+.lt-row:hover::before {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lt-row:hover {
+    transform: none;
+  }
+}
+
+/* ── Progress bars that grow from 0 to their inline width on mount ── */
+@keyframes lt-bar-grow {
+  from { width: 0; }
+}
+.lt-bar {
+  animation: lt-bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s backwards;
+}
+.lt-bar-gold {
+  background: linear-gradient(90deg, #a8842f 0%, #dcbf78 100%);
+}
+
+/* ── Breathing live dot — opacity + expanding ring. Self-contained
+   (no dependency on Tailwind's `pulse` keyframe). ── */
+@keyframes lt-breathe {
+  0%   { opacity: 1;    box-shadow: 0 0 0 0 rgba(72, 186, 124, 0.45); }
+  70%  { opacity: 0.65; box-shadow: 0 0 0 6px rgba(72, 186, 124, 0); }
+  100% { opacity: 1;    box-shadow: 0 0 0 0 rgba(72, 186, 124, 0); }
+}
+.lt-pulse-dot {
+  border-radius: 50%;
+  animation: lt-breathe 2s ease-in-out infinite;
+}
+
+/* ── Modal entrance — backdrop fade + panel rise/scale ── */
+@keyframes lt-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.lt-fade-in {
+  animation: lt-fade 0.22s ease-out backwards;
+}
+@keyframes lt-modal {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.lt-modal-enter {
+  animation: lt-modal 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-bar,
+  .lt-pulse-dot,
+  .lt-fade-in,
+  .lt-modal-enter {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   LIVING FEEDBACK — value flashes, new-row highlight,
+   big-score-move pulse, skeleton shimmer
+   ============================================================ */
+
+/* ── Metric card flash when its value moves (sign-aware). One-shot;
+   re-triggered by toggling the class. Keeps the resting elevation. ── */
+@keyframes lt-flash-pos {
+  0%   { box-shadow: var(--lucid-elev-1); }
+  30%  { box-shadow: var(--lucid-elev-1), 0 0 0 2px rgba(72, 186, 124, 0.35), 0 0 36px rgba(72, 186, 124, 0.2); }
+  100% { box-shadow: var(--lucid-elev-1); }
+}
+@keyframes lt-flash-neg {
+  0%   { box-shadow: var(--lucid-elev-1); }
+  30%  { box-shadow: var(--lucid-elev-1), 0 0 0 2px rgba(226, 88, 77, 0.35), 0 0 36px rgba(226, 88, 77, 0.2); }
+  100% { box-shadow: var(--lucid-elev-1); }
+}
+.lt-flash-pos { animation: lt-flash-pos 1.4s ease-out backwards; }
+.lt-flash-neg { animation: lt-flash-neg 1.4s ease-out backwards; }
+
+/* ── Newly added list row — slides in with a gold highlight that fades ── */
+@keyframes lt-row-new {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  30%  { opacity: 1; transform: none; border-color: var(--lucid-accent-bd); box-shadow: 0 0 22px rgba(205, 167, 79, 0.16); }
+  60%  { border-color: var(--lucid-accent-bd); box-shadow: 0 0 22px rgba(205, 167, 79, 0.12); }
+  100% { transform: none; border-color: var(--lucid-line); box-shadow: none; }
+}
+.lt-row-new {
+  animation: lt-row-new 2.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* ── Big score move — directional ring pulse on a tile. Lives on ::after so
+   it composes with the element's own entrance animation. ── */
+.lt-score-pulse-up,
+.lt-score-pulse-down {
+  position: relative;
+}
+.lt-score-pulse-up::after,
+.lt-score-pulse-down::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+@keyframes lt-score-up {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(72, 186, 124, 0); }
+  50%      { box-shadow: 0 0 0 3px rgba(72, 186, 124, 0.28), 0 0 26px rgba(72, 186, 124, 0.22); }
+}
+@keyframes lt-score-down {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(226, 88, 77, 0); }
+  50%      { box-shadow: 0 0 0 3px rgba(226, 88, 77, 0.28), 0 0 26px rgba(226, 88, 77, 0.22); }
+}
+.lt-score-pulse-up::after   { animation: lt-score-up 1.8s ease-in-out 0.9s 2 backwards; }
+.lt-score-pulse-down::after { animation: lt-score-down 1.8s ease-in-out 0.9s 2 backwards; }
+
+/* ── Skeleton shimmer — for loading placeholders ── */
+.lt-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--lucid-surface-2);
+  border-radius: var(--lucid-r-sm);
+}
+.lt-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: lt-shimmer 1.6s infinite;
+}
+@keyframes lt-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-flash-pos,
+  .lt-flash-neg,
+  .lt-row-new,
+  .lt-score-pulse-up::after,
+  .lt-score-pulse-down::after,
+  .lt-shimmer::after {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   SEGMENTED control (replaces range dropdown)
+   ============================================================ */
+.lt-segment {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line);
+}
+.lt-segment-btn {
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 7px;
+  color: var(--lucid-ink-3);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.lt-segment-btn:hover {
+  color: var(--lucid-ink-2);
+}
+.lt-segment-btn.is-active {
+  color: var(--lucid-ink);
+  background: var(--lucid-surface-3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}

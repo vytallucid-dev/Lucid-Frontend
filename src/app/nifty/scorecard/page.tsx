@@ -11,6 +11,7 @@ import {
   getIndicatorDetail,
 } from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
+import { AnimatedNumber } from "@/components/motion";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
@@ -124,7 +125,7 @@ function ScorecardPageInner() {
   if (historyLoading || (!!selectedDate && scLoading && !sc)) {
     return (
       <div className="p-4 sm:p-6">
-        <LoadingState message="Loading scorecards..." />
+        <LoadingState stages={["Loading scorecards…", "Scoring 13 indicators…", "Building composites…"]} />
       </div>
     );
   }
@@ -159,7 +160,7 @@ function ScorecardPageInner() {
     <div className="p-4 sm:p-6 space-y-5 max-w-[1400px]">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Scorecard</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
@@ -178,11 +179,11 @@ function ScorecardPageInner() {
           </button>
           {selectorOpen && (
             <div
-              className="absolute right-0 top-11 z-50 rounded-xl overflow-hidden"
+              className="lt-modal-enter absolute right-0 top-11 z-50 rounded-xl overflow-hidden"
               style={{
-                background: "var(--lucid-surface-2)",
+                background: "var(--lucid-grad-surface-2)",
                 border: "1px solid color-mix(in srgb, var(--lucid-ctx) 12%, transparent)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                boxShadow: "var(--lucid-elev-2)",
                 width: 260,
                 maxHeight: 320,
                 overflowY: "auto",
@@ -220,8 +221,12 @@ function ScorecardPageInner() {
 
       {/* ── Summary Strip ───────────────────────────────────────────── */}
       <div
-        className="lt-card lt-edge px-4 sm:px-6 py-5 grid grid-cols-3 gap-2 sm:gap-4"
-        style={{ background: bandBg(sc.band), borderColor: `color-mix(in srgb, ${bandColor(sc.band)} 30%, transparent)` }}
+        className="lt-card lt-edge lt-rise lt-stagger-2 px-4 sm:px-6 py-5 grid grid-cols-3 gap-2 sm:gap-4"
+        style={{
+          background: `radial-gradient(120% 140% at 0% 0%, ${bandBg(sc.band)}, transparent 60%), var(--lucid-grad-surface)`,
+          borderColor: `color-mix(in srgb, ${bandColor(sc.band)} 30%, transparent)`,
+          boxShadow: "var(--lucid-elev-1)",
+        }}
       >
         {[
           { label: "Domestic", value: sc.domestic_composite, desc: "Structural floor", color: "var(--lucid-accent)" },
@@ -238,7 +243,7 @@ function ScorecardPageInner() {
               className="lt-num text-3xl sm:text-4xl font-bold leading-none"
               style={{ color: isNet ? bandColor(sc.band) : color }}
             >
-              {netDisplay(value)}
+              <AnimatedNumber value={value} format={(n) => netDisplay(Math.round(n))} />
             </div>
             <div className="text-xs mt-0.5 truncate" style={{ color: "var(--lucid-ink-2)" }}>{desc}</div>
           </div>
@@ -260,7 +265,7 @@ function ScorecardPageInner() {
             {groups.filter((g) => g.items.length > 0).map((group) => {
               const groupSum = group.items.reduce((a, ind) => a + (ind.score ?? 0), 0);
               return (
-                <div key={group.key} className="space-y-3">
+                <div key={group.key} className="lt-rise lt-stagger-3 space-y-3">
                   <div className="flex items-center gap-3">
                     <span className="lt-eyebrow" style={{ color: group.accent }}>{group.label}</span>
                     <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>{group.sub}</span>
@@ -270,7 +275,7 @@ function ScorecardPageInner() {
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {group.items.map((ind) => {
+                    {group.items.map((ind, cardIdx) => {
                       const safeScore = ind.score ?? 0;
                       const isCarried = ind.outcome === "carry_forward";
                       const isInsufficient = ind.outcome === "insufficient_data";
@@ -286,8 +291,13 @@ function ScorecardPageInner() {
                       return (
                       <button
                         key={ind.id}
-                        className="lt-card lt-hover p-4 text-left transition-colors group"
-                        style={{ borderLeft: `3px solid ${borderColor}` }}
+                        className="lt-card lt-lift lt-rise p-4 text-left group"
+                        style={{
+                          borderLeft: `3px solid ${borderColor}`,
+                          background: "var(--lucid-grad-surface)",
+                          boxShadow: "var(--lucid-elev-1)",
+                          animationDelay: `${Math.min(cardIdx * 0.04, 0.35)}s`,
+                        }}
                         onClick={() => setDrawerIndId(ind.id)}
                       >
                         {/* Header */}
@@ -401,7 +411,10 @@ function ScorecardPageInner() {
       })()}
 
       {/* ── Composite Bar — centred ± bars from a zero baseline ──────── */}
-      <div className="lt-card p-4 sm:p-5">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-5 p-4 sm:p-5"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="lt-eyebrow mb-4">
           Indicator Composite
           <span className="lt-eyebrow-ln" />
@@ -434,7 +447,7 @@ function ScorecardPageInner() {
                 <div className="absolute top-0 bottom-0 left-1/2 w-px" style={{ background: "var(--lucid-line-2)" }} />
                 {!isInsufficient && safeScore !== 0 && (
                   <div
-                    className="absolute top-0 bottom-0 rounded-full transition-all"
+                    className="lt-bar absolute top-0 bottom-0 rounded-full transition-all"
                     style={{
                       background: barColor,
                       opacity: isCarried ? 0.5 : 1,

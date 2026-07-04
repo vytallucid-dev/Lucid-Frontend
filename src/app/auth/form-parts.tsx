@@ -63,9 +63,9 @@ export function Banner({
             Icon: CheckCircle2,
           }
         : {
-            bg: "rgba(59, 130, 246, 0.07)",
-            border: "rgba(59, 130, 246, 0.22)",
-            color: "#93C5FD",
+            bg: "rgba(205, 167, 79, 0.07)",
+            border: "rgba(205, 167, 79, 0.22)",
+            color: "#e0c987",
             Icon: Info,
           };
   const Icon = styles.Icon;

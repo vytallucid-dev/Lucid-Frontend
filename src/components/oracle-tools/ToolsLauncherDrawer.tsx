@@ -43,7 +43,7 @@ function ToolRow({
   return (
     <button
       onClick={onClick}
-      className="lt-card lt-hover w-full flex items-start gap-3 p-4 text-left transition-colors"
+      className="lt-card lt-lift w-full flex items-start gap-3 p-4 text-left"
     >
       <div
         className="shrink-0 flex items-center justify-center w-9 h-9 rounded-md"

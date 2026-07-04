@@ -197,12 +197,14 @@ function CategoryCard({
   currAFlag,
   currBName,
   currBFlag,
+  delay = 0,
 }: {
   cat: PublicFxCategory;
   currAName: string;
   currAFlag: string;
   currBName: string;
   currBFlag: string;
+  delay?: number;
 }) {
   const scoredRows = cat.indicators.filter(
     (r): r is PublicFxIndicatorRow & { pairScore: number } => r.pairScore !== null,
@@ -215,7 +217,10 @@ function CategoryCard({
   const subtotalBias = getBias(cat.subtotal);
 
   return (
-    <div className="lt-card lt-edge overflow-hidden">
+    <div
+      className="lt-card lt-edge lt-rise overflow-hidden"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)", animationDelay: `${delay}s` }}
+    >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"
@@ -347,7 +352,10 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
   };
 
   return (
-    <div className="lt-card lt-edge overflow-hidden">
+    <div
+      className="lt-card lt-edge lt-rise overflow-hidden"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"
@@ -470,7 +478,7 @@ export default function FxScorecardPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Pair selector */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
+      <div className="lt-rise lt-stagger-1 flex items-center gap-2 mb-6 flex-wrap">
         {pairOptions.map((opt) => {
           const active = selectedKey === opt.key;
           return (
@@ -482,6 +490,7 @@ export default function FxScorecardPage() {
                 background: active ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
                 color: active ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
                 border: active ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
+                boxShadow: active ? "0 0 18px rgba(205, 167, 79, 0.16)" : "none",
               }}
             >
               {opt.label}
@@ -492,7 +501,7 @@ export default function FxScorecardPage() {
 
       {/* Content area */}
       {isLoading ? (
-        <LoadingState message="Loading FX scorecard..." />
+        <LoadingState stages={["Loading FX scorecard…", "Comparing economies…", "Drawing gauge…"]} />
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : !pair ? (
@@ -568,12 +577,22 @@ export default function FxScorecardPage() {
         /* ── Scored — full layout ────────────────────────────────────── */
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* LEFT PANEL */}
-          <div className="w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
+          <div className="lt-rise lt-stagger-2 w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
             {/* Score & Bias */}
             <button
               onClick={() => openScoreTrend(pair.key)}
               className="lt-card p-5 text-center w-full transition-opacity hover:opacity-90 cursor-pointer"
               title="Open Score Trend"
+              style={{
+                background: `radial-gradient(120% 90% at 50% 0%, ${
+                  pair.totalScore !== null && pair.totalScore >= 3
+                    ? "rgba(72, 186, 124, 0.10)"
+                    : pair.totalScore !== null && pair.totalScore <= -3
+                      ? "rgba(226, 88, 77, 0.10)"
+                      : "rgba(205, 167, 79, 0.10)"
+                }, transparent 65%), var(--lucid-grad-surface)`,
+                boxShadow: "var(--lucid-elev-1)",
+              }}
             >
               {pair.totalScore !== null && <ScoreGauge score={pair.totalScore} />}
               <div className="mb-2 -mt-1">
@@ -710,12 +729,12 @@ export default function FxScorecardPage() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="lt-rise lt-stagger-3 flex-1 flex flex-col gap-4 min-w-0">
             {/* COT card first */}
             <CotCard pair={pair} />
 
             {/* Category cards */}
-            {pair.categories.map((cat) => (
+            {pair.categories.map((cat, idx) => (
               <CategoryCard
                 key={cat.label}
                 cat={cat}
@@ -723,6 +742,7 @@ export default function FxScorecardPage() {
                 currAFlag={pair.currAFlag}
                 currBName={pair.currBName}
                 currBFlag={pair.currBFlag}
+                delay={Math.min((idx + 1) * 0.08, 0.4)}
               />
             ))}
 

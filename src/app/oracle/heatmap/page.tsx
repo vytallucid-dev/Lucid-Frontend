@@ -11,6 +11,7 @@ import type {
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { AnimatedNumber } from "@/components/motion";
 
 const CATEGORIES = ["ECONOMIC GROWTH", "INFLATION", "JOBS MARKET"] as const;
 
@@ -133,14 +134,14 @@ export default function HeatmapPage() {
     return map;
   }, [indicators]);
 
-  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState message="Loading heatmap..." /></div>;
+  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState stages={["Loading heatmap…", "Mapping releases…", "Scoring surprises…"]} /></div>;
   if (error) return <div className="p-4 sm:p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
   if (!heatmap) return <div className="p-4 sm:p-6"><EmptyState title="No heatmap data available" /></div>;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+      <div className="lt-rise lt-stagger-1 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="lt-serif text-xl font-semibold truncate" style={{ color: "var(--lucid-ink)" }}>
             Economic Heatmap
@@ -155,7 +156,7 @@ export default function HeatmapPage() {
       </div>
 
       {/* Economy Selector */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="lt-rise lt-stagger-2 flex gap-2 flex-wrap">
         {economies.map((e) => {
           const active = economy === e.key;
           return (
@@ -165,7 +166,7 @@ export default function HeatmapPage() {
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
               style={
                 active
-                  ? { background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }
+                  ? { background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)", boxShadow: "0 0 18px rgba(205, 167, 79, 0.16)" }
                   : { background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-3)" }
               }
             >
@@ -176,7 +177,7 @@ export default function HeatmapPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="lt-rise lt-stagger-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: "Indicators Tracked", value: stats.total, color: "var(--lucid-ink-2)" },
           { label: "Bullish", value: stats.bullish, color: "var(--lucid-pos)" },
@@ -188,15 +189,24 @@ export default function HeatmapPage() {
             color: stats.allInsufficient ? "var(--lucid-warn)" : biasColor(stats.bullishPct),
           },
         ].map((card) => (
-          <div key={card.label} className="lt-card px-4 py-3">
+          <div key={card.label} className="lt-metric px-4 py-3">
             <p className="lt-eyebrow">{card.label}</p>
-            <p className="lt-num text-lg font-semibold mt-1" style={{ color: card.color }}>{card.value}</p>
+            <p className="lt-num text-lg font-semibold mt-1" style={{ color: card.color }}>
+              {typeof card.value === "number" ? (
+                <AnimatedNumber value={card.value} format={(n) => `${Math.round(n)}`} />
+              ) : (
+                card.value
+              )}
+            </p>
           </div>
         ))}
       </div>
 
       {/* Main Table */}
-      <div className="lt-card lt-edge overflow-x-auto">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-4 overflow-x-auto"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         {indicators.length === 0 ? (
           <div className="p-8">
             <EmptyState
@@ -230,7 +240,10 @@ export default function HeatmapPage() {
       </div>
 
       {/* Overall Economy Score */}
-      <div className="lt-card p-5">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-5 p-5"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="lt-eyebrow">Overall Bullish Bias</p>
@@ -240,7 +253,7 @@ export default function HeatmapPage() {
               ) : (
                 <>
                   <span className="lt-num text-2xl font-semibold" style={{ color: biasColor(stats.bullishPct) }}>
-                    {stats.bullishPct.toFixed(1)}%
+                    <AnimatedNumber value={stats.bullishPct} format={(n) => `${n.toFixed(1)}%`} />
                   </span>
                   <span className="text-sm font-medium" style={{ color: "var(--lucid-ink-2)" }}>{biasLabel(stats.bullishPct)}</span>
                 </>
@@ -252,7 +265,7 @@ export default function HeatmapPage() {
         {/* Progress bar */}
         <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--lucid-surface-3)" }}>
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="lt-bar h-full rounded-full transition-all duration-500"
             style={{ width: stats.allInsufficient ? "0%" : `${stats.bullishPct}%`, background: biasColor(stats.bullishPct) }}
           />
         </div>

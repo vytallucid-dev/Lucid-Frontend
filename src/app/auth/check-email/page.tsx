@@ -86,11 +86,11 @@ function CheckEmailInner() {
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{
-            background: "rgba(59, 130, 246, 0.12)",
-            border: "1px solid rgba(59, 130, 246, 0.25)",
+            background: "rgba(205, 167, 79, 0.12)",
+            border: "1px solid rgba(205, 167, 79, 0.25)",
           }}
         >
-          <Mail size={22} style={{ color: "#60A5FA" }} />
+          <Mail size={22} style={{ color: "#dcbf78" }} />
         </div>
       </div>
 
@@ -130,7 +130,7 @@ function CheckEmailInner() {
         className="mt-6 pt-6 text-center text-sm"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#64748B" }}
       >
-        <Link href="/auth/login" style={{ color: "#60A5FA" }}>
+        <Link href="/auth/login" style={{ color: "#dcbf78" }}>
           ← Back to login
         </Link>
       </div>

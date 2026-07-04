@@ -17,9 +17,14 @@ export function ScoreHistoryChart({
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
 
-  const minY = -8;
-  const maxY = 8;
+  // Symmetric auto-scale: at least ±8, expanding to fit the data (total scores
+  // can reach ±16 — a fixed ±8 window drew large scores outside the chart).
+  const bound = Math.max(8, ...data.map((v) => Math.ceil(Math.abs(v))));
+  const minY = -bound;
+  const maxY = bound;
   const range = maxY - minY;
+  const halfTick = Math.ceil(bound / 2);
+  const gridValues = [-bound, -halfTick, 0, halfTick, bound];
 
   const barWidth = Math.max(8, (chartW / data.length) * 0.6);
   const gap = (chartW - barWidth * data.length) / (data.length - 1 || 1);
@@ -40,7 +45,7 @@ export function ScoreHistoryChart({
       className="w-full"
     >
       {/* Grid lines */}
-      {[-8, -4, 0, 4, 8].map((v) => (
+      {gridValues.map((v) => (
         <line
           key={v}
           x1={padding.left}
@@ -58,7 +63,7 @@ export function ScoreHistoryChart({
         x2={width - padding.right}
         y1={thresholdPosY}
         y2={thresholdPosY}
-        stroke="rgba(59,130,246,0.3)"
+        stroke="rgba(205,167,79,0.3)"
         strokeWidth={1}
         strokeDasharray="4 3"
       />
@@ -67,7 +72,7 @@ export function ScoreHistoryChart({
         x2={width - padding.right}
         y1={thresholdNegY}
         y2={thresholdNegY}
-        stroke="rgba(59,130,246,0.3)"
+        stroke="rgba(205,167,79,0.3)"
         strokeWidth={1}
         strokeDasharray="4 3"
       />
@@ -83,7 +88,7 @@ export function ScoreHistoryChart({
       />
 
       {/* Y-axis labels */}
-      {[-8, -4, 0, 4, 8].map((v) => (
+      {gridValues.map((v) => (
         <text
           key={v}
           x={padding.left - 4}

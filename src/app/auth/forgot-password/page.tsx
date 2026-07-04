@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
           link expires in 1 hour.
         </p>
         <div className="mt-6 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <Link href="/auth/login" className="text-sm" style={{ color: "#60A5FA" }}>
+          <Link href="/auth/login" className="text-sm" style={{ color: "#dcbf78" }}>
             ← Back to login
           </Link>
         </div>
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
         className="mt-6 pt-6 text-center text-sm"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#64748B" }}
       >
-        <Link href="/auth/login" style={{ color: "#60A5FA" }}>
+        <Link href="/auth/login" style={{ color: "#dcbf78" }}>
           ← Back to login
         </Link>
       </div>

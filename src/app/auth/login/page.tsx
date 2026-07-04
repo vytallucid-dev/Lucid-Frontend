@@ -137,7 +137,7 @@ function LoginInner() {
           <Link
             href="/auth/forgot-password"
             className="text-xs"
-            style={{ color: "#60A5FA" }}
+            style={{ color: "#dcbf78" }}
           >
             Forgot password?
           </Link>
@@ -153,7 +153,7 @@ function LoginInner() {
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#64748B" }}
       >
         Don&apos;t have an account?{" "}
-        <Link href="/auth/signup" style={{ color: "#60A5FA" }}>
+        <Link href="/auth/signup" style={{ color: "#dcbf78" }}>
           Sign up
         </Link>
       </div>

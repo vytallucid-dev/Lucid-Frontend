@@ -5,7 +5,7 @@ export default function LedgerPage() {
     <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
       <div className="glass-card p-6 sm:p-10 max-w-130 w-full text-center">
         <div className="flex justify-center mb-5">
-          <BookOpen size={48} style={{ color: "#3B82F6" }} />
+          <BookOpen size={48} style={{ color: "#cda74f" }} />
         </div>
         <h2
           className="text-2xl font-bold mb-3"
@@ -27,10 +27,10 @@ export default function LedgerPage() {
           <span
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
             style={{
-              background: "rgba(59, 130, 246, 0.12)",
-              color: "#60A5FA",
-              border: "1px solid rgba(59, 130, 246, 0.25)",
-              boxShadow: "0 0 16px rgba(59, 130, 246, 0.1)",
+              background: "rgba(205, 167, 79, 0.12)",
+              color: "#dcbf78",
+              border: "1px solid rgba(205, 167, 79, 0.25)",
+              boxShadow: "0 0 16px rgba(205, 167, 79, 0.1)",
             }}
           >
             ⚡ In Development

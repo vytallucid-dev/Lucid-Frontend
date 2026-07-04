@@ -12,6 +12,7 @@ import { useCompass } from "@/hooks/useCompass";
 import { useQueries } from "@tanstack/react-query";
 import { getScoreHistory, type PublicAssetData } from "@/lib/api/oracle";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
+import { AnimatedNumber } from "@/components/motion";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
@@ -326,14 +327,14 @@ export default function TopSetupsPage() {
     return { total: list.length, bullish, bearish, neutral };
   }, [assets]);
 
-  if (isLoading) return <LoadingState message="Loading top setups..." />;
+  if (isLoading) return <LoadingState stages={["Scanning markets…", "Ranking setups…", "Surfacing movers…"]} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!assets || assets.length === 0) return <EmptyState title="No assets available" />;
 
   return (
     <div className="p-4 sm:p-6 relative">
       {/* Page header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-5">
+      <div className="lt-rise lt-stagger-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-5">
         <div className="min-w-0">
           <h1 className="lt-serif text-xl font-semibold mb-1 truncate" style={{ color: "var(--lucid-ink)" }}>
             Top Setups
@@ -353,7 +354,10 @@ export default function TopSetupsPage() {
       </div>
 
       {/* ── MOVERS STRIP ── */}
-      <div className="lt-card lt-edge px-4 py-3 mb-3">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-2 px-4 py-3 mb-3"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="lt-eyebrow shrink-0">
             <TrendingUp size={12} style={{ display: "inline", marginRight: 6 }} />
@@ -374,7 +378,7 @@ export default function TopSetupsPage() {
                   <button
                     key={m.asset}
                     onClick={() => openScoreTrend(m.asset)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors"
+                    className="lt-hover inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs"
                     style={{ background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line)" }}
                     title={`Open Score Trend for ${m.asset}`}
                   >
@@ -392,7 +396,7 @@ export default function TopSetupsPage() {
 
       {/* ── REGIME LINE ── */}
       {regime && (
-        <div className="lt-card px-4 py-2.5 mb-4 flex items-center gap-3 flex-wrap">
+        <div className="lt-card lt-rise lt-stagger-3 px-4 py-2.5 mb-4 flex items-center gap-3 flex-wrap">
           <span className="lt-eyebrow shrink-0">Regime</span>
           <span
             className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
@@ -419,7 +423,7 @@ export default function TopSetupsPage() {
       )}
 
       {/* Filter bar */}
-      <div className="lt-card px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="lt-card lt-rise lt-stagger-3 px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="lt-eyebrow">Bias</span>
           {(["All", "Bullish", "Bearish", "Neutral"] as BiasFilter[]).map((f) => (
@@ -461,22 +465,27 @@ export default function TopSetupsPage() {
       </div>
 
       {/* Summary stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="lt-rise lt-stagger-4 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
           { label: "Total Assets Tracked", value: counts.total, color: "var(--lucid-ink)" },
           { label: "Bullish", value: counts.bullish, color: "var(--lucid-pos)" },
           { label: "Bearish", value: counts.bearish, color: "var(--lucid-neg)" },
           { label: "Neutral", value: counts.neutral, color: "var(--lucid-ink-2)" },
         ].map((card) => (
-          <div key={card.label} className="lt-card px-4 py-3">
+          <div key={card.label} className="lt-metric px-4 py-3">
             <p className="lt-eyebrow mb-1">{card.label}</p>
-            <p className="lt-num text-2xl font-semibold" style={{ color: card.color }}>{card.value}</p>
+            <p className="lt-num text-2xl font-semibold" style={{ color: card.color }}>
+              <AnimatedNumber value={card.value} format={(n) => `${Math.round(n)}`} />
+            </p>
           </div>
         ))}
       </div>
 
       {/* Main table */}
-      <div className="lt-card overflow-x-auto">
+      <div
+        className="lt-card lt-rise lt-stagger-5 overflow-x-auto"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>No assets match your current filters.</p>
@@ -638,9 +647,9 @@ export default function TopSetupsPage() {
       {/* Detail sidebar (opened via the info button — quick glance without leaving the page) */}
       {selectedAsset && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setSelectedAsset(null)} />
+          <div className="lt-fade-in fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setSelectedAsset(null)} />
           <div
-            className="fixed top-0 right-0 h-full w-full sm:w-95 z-50 p-4 sm:p-6 flex flex-col"
+            className="drawer-enter fixed top-0 right-0 h-full w-full sm:w-95 z-50 p-4 sm:p-6 flex flex-col"
             style={{ background: "var(--lucid-surface-2)", borderLeft: "1px solid var(--lucid-line)" }}
           >
             <div className="flex items-center justify-between mb-6">

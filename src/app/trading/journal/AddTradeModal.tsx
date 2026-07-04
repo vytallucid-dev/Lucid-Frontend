@@ -178,8 +178,14 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
   const [partialExit, setPartialExit] = useState("");
   const [partialPct, setPartialPct] = useState("");
   const [mainExit, setMainExit] = useState("");
+  // Whether the exit price should still auto-fill from the trade's stored TP/SL
+  // when the exit type changes. Set false once the user types an exit price.
+  const [mainExitAuto, setMainExitAuto] = useState(true);
   const [dateClosed, setDateClosed] = useState("");
   const [exitType, setExitType] = useState<ExitType>("TP");
+  // Manual, user-entered realized net P&L (+profit / −loss / 0 = break-even).
+  // Stored verbatim as the trade result — never auto-calculated from prices.
+  const [netPnl, setNetPnl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Lucid (Oracle) score for the selected pair — auto-prefills the field.
@@ -218,8 +224,12 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     setPartialExit(e?.partial_exit_price != null ? String(e.partial_exit_price) : "");
     setPartialPct(e?.partial_exit_lot_pct != null ? String(e.partial_exit_lot_pct) : "");
     setMainExit(closed && e?.main_exit_price ? String(e.main_exit_price) : "");
+    // Edit mode keeps the saved exit price; create mode auto-fills from TP/SL.
+    setMainExitAuto(!e);
     setDateClosed(closed && e?.date_closed ? toLocalDatetimeInput(new Date(e.date_closed)) : "");
     setExitType(e?.exit_type ?? "TP");
+    // Seed the manual net P&L from the stored result on a closed trade.
+    setNetPnl(closed && e?.blended_pnl != null ? String(e.blended_pnl) : "");
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -248,6 +258,16 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     setLucidAuto(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pair]);
+
+  // Auto-fill the exit price from the trade's stored TP/SL when closing: exit
+  // type TP → Main TP, SL → Stop Loss. Convenience prefill only — editable, and
+  // never clobbers a hand-typed exit (mainExitAuto flips false once the user
+  // types). Blank when there's no stored price. Other exit types are left alone.
+  useEffect(() => {
+    if (!open || !isClosed || !mainExitAuto) return;
+    if (exitType === "TP") setMainExit(mainTp);
+    else if (exitType === "SL") setMainExit(sl);
+  }, [open, isClosed, mainExitAuto, exitType, mainTp, sl]);
 
   if (!open) return null;
 
@@ -299,6 +319,8 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
             partial_exit_lot_pct: partialPct ? parseFloat(partialPct) : null,
             main_exit_price: mainExitNum,
             date_closed: dateClosed ? new Date(dateClosed).toISOString() : null,
+            // Manual net P&L, stored verbatim (never recomputed from prices).
+            net_pnl: netPnl !== "" ? parseFloat(netPnl) : null,
           }
         : {}),
     };
@@ -325,7 +347,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50"
+        className="lt-fade-in fixed inset-0 z-50"
         style={{ background: "rgba(0,0,0,0.6)" }}
         onClick={onClose}
       />
@@ -336,13 +358,14 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
         onClick={onClose}
       >
         <div
-          className="relative flex flex-col rounded-2xl"
+          className="lt-modal-enter relative flex flex-col rounded-2xl"
           style={{
             width: "100%",
             maxWidth: 720,
             maxHeight: "90vh",
-            background: "var(--lucid-surface-2)",
-            border: "1px solid var(--lucid-line)",
+            background: "var(--lucid-grad-surface-2)",
+            border: "1px solid var(--lucid-line-2)",
+            boxShadow: "var(--lucid-elev-2)",
           }}
           onClick={e => e.stopPropagation()}
         >
@@ -591,7 +614,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Main Exit Price">
-                      <input type="number" step="any" value={mainExit} onChange={e => setMainExit(e.target.value)} placeholder="1.0820" className="lt-num" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={mainExit} onChange={e => { setMainExit(e.target.value); setMainExitAuto(false); }} placeholder="1.0820" className="lt-num" style={INPUT_STYLE} />
                     </FieldGroup>
                     <FieldGroup label="Date Closed">
                       <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} style={INPUT_STYLE} />
@@ -603,6 +626,14 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                             <option key={t} value={t} style={OPTION_STYLE}>{t}</option>
                           ))}
                         </select>
+                      </FieldGroup>
+                    </div>
+                    <div className="col-span-2">
+                      <FieldGroup label="Net P&amp;L">
+                        <input type="number" step="any" value={netPnl} onChange={e => setNetPnl(e.target.value)} placeholder="e.g. 284 or -100" className="lt-num" style={INPUT_STYLE} />
+                        <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
+                          Your actual closed P&amp;L. Positive = profit, negative = loss, 0 = break-even. Decides the trade&apos;s outcome.
+                        </p>
                       </FieldGroup>
                     </div>
                   </div>

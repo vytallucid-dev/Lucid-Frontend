@@ -222,7 +222,7 @@ export default function SignupPage() {
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#64748B" }}
       >
         Already have an account?{" "}
-        <Link href="/auth/login" style={{ color: "#60A5FA" }}>
+        <Link href="/auth/login" style={{ color: "#dcbf78" }}>
           Sign in
         </Link>
       </div>

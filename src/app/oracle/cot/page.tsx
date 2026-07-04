@@ -181,7 +181,7 @@ export default function CotPage() {
     return sortDir === "asc" ? " ↑" : " ↓";
   }
 
-  if (isLoading) return <LoadingState message="Loading COT report..." />;
+  if (isLoading) return <LoadingState stages={["Loading COT report…", "Parsing CFTC positioning…", "Charting the field…"]} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!assets || assets.length === 0) return <EmptyState title="No COT data available" />;
 
@@ -193,7 +193,7 @@ export default function CotPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="lt-rise lt-stagger-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold truncate lt-serif" style={{ color: "var(--lucid-ink)" }}>
             COT Report
@@ -214,7 +214,10 @@ export default function CotPage() {
       </div>
 
       {/* SECTION 1: Positioning Bar Chart */}
-      <div className="lt-card lt-edge p-5 relative overflow-x-auto">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-2 p-5 relative overflow-x-auto"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <h2 className="lt-eyebrow lt-serif mb-4" style={{ color: "var(--lucid-ink-3)" }}>
           Positioning Overview
         </h2>
@@ -271,11 +274,12 @@ export default function CotPage() {
                   >
                     {/* Long portion */}
                     <div
-                      className="absolute inset-y-0 left-0 flex items-center justify-end pr-2 transition-opacity"
+                      className="lt-bar absolute inset-y-0 left-0 flex items-center justify-end pr-2 transition-opacity"
                       style={{
                         width: `${asset.longPct}%`,
                         background: "var(--lucid-pos)",
                         opacity: isHovered ? 1 : 0.85,
+                        animationDelay: `${0.15 + i * 0.05}s`,
                       }}
                     >
                       {asset.longPct >= 20 && (
@@ -286,11 +290,12 @@ export default function CotPage() {
                     </div>
                     {/* Short portion */}
                     <div
-                      className="absolute inset-y-0 right-0 flex items-center justify-start pl-2 transition-opacity"
+                      className="lt-bar absolute inset-y-0 right-0 flex items-center justify-start pl-2 transition-opacity"
                       style={{
                         width: `${asset.shortPct}%`,
                         background: "var(--lucid-neg)",
                         opacity: isHovered ? 1 : 0.85,
+                        animationDelay: `${0.15 + i * 0.05}s`,
                       }}
                     >
                       {asset.shortPct >= 20 && (
@@ -394,7 +399,10 @@ export default function CotPage() {
       </div>
 
       {/* SECTION 2 + 3: Data Table */}
-      <div className="lt-card lt-edge overflow-x-auto">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-3 overflow-x-auto"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: "1px solid var(--lucid-line)" }}>

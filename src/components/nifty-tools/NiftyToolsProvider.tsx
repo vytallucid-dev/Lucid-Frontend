@@ -30,15 +30,17 @@ export function NiftyToolsProvider({ children }: { children: ReactNode }) {
 
   return (
     <NiftyToolsContext.Provider value={value}>
-      {children}
+      <div className="relative">
+        {children}
 
-      <NiftyToolsDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onOpenFlowTracker={openFlowTracker}
-      />
+        <NiftyToolsDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onOpenFlowTracker={openFlowTracker}
+        />
 
-      {flowOpen && <FlowTrackerView onClose={() => setFlowOpen(false)} />}
+        {flowOpen && <FlowTrackerView onClose={() => setFlowOpen(false)} />}
+      </div>
     </NiftyToolsContext.Provider>
   );
 }

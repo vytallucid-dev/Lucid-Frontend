@@ -89,11 +89,19 @@ export function FlowTrackerView({ onClose }: FlowTrackerViewProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
-    return () => { document.removeEventListener("keydown", handler); };
+    // Lock body scroll while the tool is open (matches the Oracle tools shell).
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
   }, [onClose]);
 
   return (
-    <div className="absolute inset-x-0 top-11 bottom-0 z-20 flex flex-col" style={{ background: "var(--lucid-bg)" }}>
+    // Fixed to the VIEWPORT — anchoring `absolute bottom-0` to the provider's
+    // page-height wrapper stretched this panel (and its charts) to the full
+    // page height. Same fix as Oracle's FullScreenAnalysis.
+    <div className="lt-fade-in fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 sm:px-6 h-14 shrink-0"

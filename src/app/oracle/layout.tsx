@@ -23,7 +23,7 @@ export default function OracleLayout({
 
   return (
     <OracleToolsProvider>
-      <div className="flex flex-col min-h-[calc(100vh-56px)]">
+      <div className="lt-backdrop flex flex-col min-h-[calc(100vh-56px)]">
         {/* Tab bar */}
         <div
           className="flex items-center gap-5 sm:gap-6 px-4 sm:px-6 h-11 shrink-0 overflow-x-auto no-scrollbar scroll-touch"
@@ -42,12 +42,21 @@ export default function OracleLayout({
                 style={{
                   color: active ? "var(--lucid-ink)" : "var(--lucid-ink-3)",
                 }}
+                onMouseEnter={(e) => {
+                  if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "var(--lucid-ink-2)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) (e.currentTarget as HTMLAnchorElement).style.color = "var(--lucid-ink-3)";
+                }}
               >
                 {tab.label}
                 {active && (
                   <div
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ background: "var(--lucid-accent)" }}
+                    style={{
+                      background: "linear-gradient(90deg, transparent, var(--lucid-accent), transparent)",
+                      boxShadow: "0 0 12px rgba(205, 167, 79, 0.45)",
+                    }}
                   />
                 )}
               </Link>

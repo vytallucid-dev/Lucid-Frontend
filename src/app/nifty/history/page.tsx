@@ -54,7 +54,7 @@ export default function HistoryPage() {
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6">
-        <LoadingState message="Loading scorecards..." />
+        <LoadingState stages={["Loading scorecards…", "Tracing phases…", "Drawing the timeline…"]} />
       </div>
     );
   }
@@ -176,7 +176,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>History</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Every scorecard, every phase.</p>
@@ -188,7 +188,10 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
       </div>
 
       {/* ── Net-score timeline (centerpiece) ────────────────────────── */}
-      <div className="lt-card lt-edge p-4 sm:p-5">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-2 p-4 sm:p-5"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div className="lt-eyebrow">
             Net score over time
@@ -245,7 +248,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
       </div>
 
       {/* ── Top Bar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+      <div className="lt-rise lt-stagger-3 flex items-center gap-3 sm:gap-4 flex-wrap">
         {/* View toggle */}
         <div
           className="flex rounded-lg p-0.5 gap-0.5"
@@ -345,7 +348,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
 
       {/* ── View 1: By Phase ────────────────────────────────────────── */}
       {view === "phase" && (
-        <div className="space-y-4">
+        <div className="lt-rise lt-stagger-4 space-y-4">
           {phases.length === 0 ? (
             <FilterEmpty onClear={clearFilters} />
           ) : (
@@ -359,7 +362,11 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
               const subTools = phaseSubTools(phaseScs);
 
               return (
-                <div key={phase} className="lt-card p-5">
+                <div
+                  key={phase}
+                  className="lt-card lt-edge p-5"
+                  style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+                >
                   {/* Phase header */}
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
@@ -454,11 +461,14 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
 
       {/* ── View 2: By Date (chronological table) ───────────────────── */}
       {view === "date" && (
-        <div>
+        <div className="lt-rise lt-stagger-4">
           {sorted.length === 0 ? (
             <FilterEmpty onClear={clearFilters} />
           ) : (
-            <div className="lt-card overflow-x-auto">
+            <div
+              className="lt-card lt-edge overflow-x-auto"
+              style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+            >
               <table className="w-full text-xs" style={{ minWidth: 760 }}>
                 <thead>
                   <tr style={{ background: "var(--lucid-surface-3)", borderBottom: "1px solid var(--lucid-line-2)" }}>

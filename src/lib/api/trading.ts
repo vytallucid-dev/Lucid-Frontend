@@ -73,6 +73,9 @@ export interface CreateTradePayload {
   main_exit_price?: number | null;
   date_closed?: string | null;
   exit_type?: ExitType;
+  // User-entered realized net P&L for a closed trade. Stored verbatim (no
+  // recompute); the sign decides the trade's outcome everywhere.
+  net_pnl?: number | null;
 }
 export type UpdateTradePayload = Partial<CreateTradePayload>;
 

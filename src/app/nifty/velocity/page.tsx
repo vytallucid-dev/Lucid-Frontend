@@ -18,6 +18,7 @@ import type { PublicVelocityResponse, VelocityLabel } from "@/lib/api/nifty";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { AnimatedNumber } from "@/components/motion";
 import { bandColor, formatDateShort, netDisplay, VELOCITY_TIERS } from "../nifty-utils";
 
 function velocityLabelToColor(label: VelocityLabel | null | undefined): string {
@@ -71,13 +72,16 @@ export default function VelocityPage() {
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div>
+      <div className="lt-rise lt-stagger-1">
         <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Velocity</h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Net score change per day, anchor-to-anchor.</p>
       </div>
 
       {/* ── Date Range Inputs (always mounted) ──────────────────────── */}
-      <div className="lt-card p-4 sm:p-5">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-2 p-4 sm:p-5"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <label
@@ -288,7 +292,7 @@ function ResultArea({
   refetch: () => void;
 }) {
   if (isLoading) {
-    return <LoadingState message="Loading velocity..." />;
+    return <LoadingState stages={["Loading velocity…", "Measuring momentum…"]} />;
   }
   if (error) {
     if (is404(error)) {
@@ -342,17 +346,18 @@ function SuccessView({ data }: { data: PublicVelocityResponse }) {
     <div className="space-y-5">
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div
-        className="lt-card p-5 sm:p-8 text-center"
+        className="lt-card lt-edge lt-rise p-5 sm:p-8 text-center"
         style={{
-          background: `color-mix(in srgb, ${velColor} 6%, transparent)`,
+          background: `radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, ${velColor} 10%, transparent), transparent 60%), var(--lucid-grad-surface)`,
           borderColor: `color-mix(in srgb, ${velColor} 30%, transparent)`,
+          boxShadow: "var(--lucid-elev-1)",
         }}
       >
         <div
           className="text-5xl font-bold tabular-nums leading-none mb-3"
           style={{ color: velColor }}
         >
-          {formatVelocity(velocity!)} /day
+          <AnimatedNumber value={velocity!} format={formatVelocity} /> /day
         </div>
         <div
           className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-md mb-3"

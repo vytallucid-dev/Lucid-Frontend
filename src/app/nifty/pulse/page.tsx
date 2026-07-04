@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useLatestScorecard } from "@/hooks/useLatestScorecard";
 import { usePulseHistory } from "@/hooks/usePulseHistory";
+import { AnimatedNumber } from "@/components/motion";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -42,7 +43,7 @@ export default function PulsePage() {
   if (latestQuery.isLoading || historyQuery.isLoading) {
     return (
       <div className="p-4 sm:p-6">
-        <LoadingState message="Loading pulse..." />
+        <LoadingState stages={["Reading the pulse…", "Compositing 13 indicators…", "Setting the band…"]} />
       </div>
     );
   }
@@ -127,7 +128,7 @@ export default function PulsePage() {
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Pulse</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>Where macro sits right now.</p>
@@ -153,20 +154,24 @@ export default function PulsePage() {
 
       {/* ── Section 1: Hero Band Card ────────────────────────────────── */}
       <div
-        className="lt-card p-5 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8"
-        style={{ background: bandBg(current.band), borderColor: `color-mix(in srgb, ${bandColor(current.band)} 30%, transparent)` }}
+        className="lt-card lt-edge lt-rise lt-stagger-2 p-5 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8"
+        style={{
+          background: `radial-gradient(120% 140% at 0% 0%, ${bandBg(current.band)}, transparent 55%), var(--lucid-grad-surface)`,
+          borderColor: `color-mix(in srgb, ${bandColor(current.band)} 30%, transparent)`,
+          boxShadow: "var(--lucid-elev-1)",
+        }}
       >
         {/* Left — Band reading */}
         <div className="flex flex-col justify-center gap-3">
           <div>
             <div
-              className="text-5xl font-bold leading-none mb-2"
+              className="lt-serif text-5xl font-bold leading-none mb-2"
               style={{ color: bandColor(current.band) }}
             >
               {current.band}
             </div>
             <div className="text-2xl font-semibold tabular-nums" style={{ color: "var(--lucid-ink-2)" }}>
-              Net {netDisplay(current.net_score)}
+              Net <AnimatedNumber value={current.net_score} format={(n) => netDisplay(Math.round(n))} />
             </div>
             <div className="text-sm mt-1" style={{ color: "var(--lucid-ink-3)" }}>
               of 13 indicators · theoretical range −17 to +17
@@ -346,7 +351,10 @@ export default function PulsePage() {
       )}
 
       {/* ── Section 3: Section 9F Split ─────────────────────────────── */}
-      <div className="lt-card p-4 sm:p-6">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-3 p-4 sm:p-6"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--lucid-ink-3)" }}>
           Section 9F — Composite Breakdown
         </div>
@@ -374,11 +382,11 @@ export default function PulsePage() {
                   className="text-5xl font-bold tabular-nums transition-colors"
                   style={{ color: isNet ? bandColor(current.band) : "var(--lucid-ink)" }}
                 >
-                  {netDisplay(value)}
+                  <AnimatedNumber value={value} format={(n) => netDisplay(Math.round(n))} />
                 </div>
-                <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="lt-bar h-full rounded-full transition-all"
                     style={{
                       width: `${fillPct}%`,
                       background: isNet ? bandColor(current.band) : "color-mix(in srgb, var(--lucid-ctx) 20%, transparent)",
@@ -401,7 +409,7 @@ export default function PulsePage() {
       </div>
 
       {/* ── Section 4: Two-Column Strip ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="lt-rise lt-stagger-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Left — What Changed */}
         <div className="lt-card p-5 space-y-4">
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--lucid-ink-3)" }}>
@@ -526,8 +534,8 @@ export default function PulsePage() {
       {/* ── Section 5: Narrative ─────────────────────────────────────── */}
       {current.notes && (
         <div
-          className="lt-card p-5"
-          style={{ background: "var(--lucid-surface-2)", borderColor: "var(--lucid-line)" }}
+          className="lt-card lt-rise lt-stagger-5 p-5"
+          style={{ background: "var(--lucid-grad-surface-2)", borderColor: "var(--lucid-line)", boxShadow: "var(--lucid-elev-1)" }}
         >
           <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)" }}>
             Phase Narrative

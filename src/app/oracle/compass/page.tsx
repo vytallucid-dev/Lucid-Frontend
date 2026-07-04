@@ -350,7 +350,7 @@ function VoteBar({ label, value, max, color }: { label: string; value: number; m
         </span>
       </div>
       <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--lucid-surface-3)" }}>
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+        <div className="lt-bar h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );
@@ -402,7 +402,13 @@ function RegimeHero({ current }: { current: Current }) {
   const regime = current.activeRegime;
   const meta = REGIME_META[regime];
   return (
-    <div className="lt-card lt-edge p-6 sm:p-10">
+    <div
+      className={`lt-card lt-edge lt-rise lt-stagger-2 p-6 sm:p-10${regime === "Risk-Off" ? " compass-pulse-glow" : ""}`}
+      style={{
+        background: `radial-gradient(120% 140% at 0% 0%, ${meta.bg}, transparent 55%), var(--lucid-grad-surface)`,
+        boxShadow: "var(--lucid-elev-1)",
+      }}
+    >
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <span className="lt-eyebrow block mb-3">
@@ -568,7 +574,10 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
         : `Neither threshold met — GREEN ${fmt1(w.green)} < 5.0 and RED ${fmt1(w.red)} < 4.0 → CAUTION`;
 
   return (
-    <div className="lt-card lt-edge p-4 sm:p-5">
+    <div
+      className="lt-card lt-edge lt-rise lt-stagger-4 p-4 sm:p-5"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       <h2 className="lt-eyebrow mb-4">
         Classification Result
       </h2>
@@ -725,7 +734,10 @@ function OverridesSection({
   onToggle: (id: number) => void;
 }) {
   return (
-    <div className="lt-card lt-edge p-4 sm:p-6">
+    <div
+      className="lt-card lt-edge lt-rise lt-stagger-5 p-4 sm:p-6"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="lt-eyebrow">
           Scoring Overrides
@@ -799,7 +811,10 @@ function ScoreImpactTable({
   );
 
   return (
-    <div className="lt-card lt-edge p-4 sm:p-6">
+    <div
+      className="lt-card lt-edge lt-rise lt-stagger-6 p-4 sm:p-6"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       <h2 className="lt-eyebrow mb-4">
         Score Impact — Base vs Compass-Adjusted
       </h2>
@@ -888,7 +903,10 @@ const AUDIT_INPUT_ORDER = ["VIX_5D_AVG", "HY_OAS", "YIELD_2S10S", "DXY_TREND", "
 
 function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
   return (
-    <div className="lt-card lt-edge p-4 sm:p-6">
+    <div
+      className="lt-card lt-edge lt-rise lt-stagger-7 p-4 sm:p-6"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       <h2 className="lt-eyebrow mb-4">
         Classification History — Last {history.length} Days
       </h2>
@@ -955,7 +973,7 @@ export default function CompassPage() {
     setEnabledOverrides((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  if (isLoading) return <LoadingState message="Loading Compass..." />;
+  if (isLoading) return <LoadingState stages={["Loading Compass…", "Weighing regime votes…", "Classifying the market…"]} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data)
     return (
@@ -971,7 +989,7 @@ export default function CompassPage() {
   return (
     <div className="space-y-5 sm:space-y-6 p-4 sm:p-6" style={{ color: "var(--lucid-ink)" }}>
       {/* Page header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="lt-rise lt-stagger-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="lt-serif text-xl font-semibold" style={{ color: "var(--lucid-ink)" }}>
             Compass
@@ -989,7 +1007,10 @@ export default function CompassPage() {
       <RegimeHero current={current} />
 
       {/* Section 2 — 6 input votes */}
-      <div className="lt-card lt-edge p-4 sm:p-6">
+      <div
+        className="lt-card lt-edge lt-rise lt-stagger-3 p-4 sm:p-6"
+        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+      >
         <div className="mb-4">
           <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
             Compass Inputs — Vote Breakdown

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { useAnimatedValue } from "@/components/motion";
 
 interface ScoreGaugeProps {
   score: number;
@@ -9,10 +10,21 @@ interface ScoreGaugeProps {
   size?: number;
 }
 
+/** Score → theme color (warm scale: red → light red → gold → light green → green). */
+function gaugeColor(score: number): string {
+  if (score >= 5) return "#48ba7c";
+  if (score >= 3) return "#71c795";
+  if (score >= -2) return "#cda74f";
+  if (score >= -4) return "#e87c72";
+  return "#e2584d";
+}
+
 export function ScoreGauge({
   score,
-  min = -8,
-  max = 8,
+  // Full scale of a total score: 14 fundamental indicators at ±1 each plus a
+  // COT score of ±2 → ±16. (The old ±8 default silently pinned larger scores.)
+  min = -16,
+  max = 16,
   size = 220,
 }: ScoreGaugeProps) {
   const id = useId().replace(/:/g, "_");
@@ -21,34 +33,34 @@ export function ScoreGauge({
   const radius = size / 2 - 28;
   const strokeWidth = 14;
 
+  // Symmetric scale bound — extends automatically if a score ever exceeds the
+  // configured range, so the needle can never pin against a stale ceiling.
+  const bound = Math.max(Math.abs(min), Math.abs(max), Math.ceil(Math.abs(score)));
+  const lo = -bound;
+  const hi = bound;
+
+  // Animated score — sweeps from 0 on mount, and from the previous score when
+  // the asset changes, so the gauge visibly "measures" instead of jumping.
+  const animated = useAnimatedValue(score, 1200);
+  const shown = Math.max(lo, Math.min(hi, animated));
+
   // Arc geometry: 240° sweep, opening at the bottom
-  // -8 at bottom-left, 0 at top center, +8 at bottom-right
+  // lo at bottom-left, 0 at top center, hi at bottom-right
   const sweepDeg = 240;
-  const gapDeg = 360 - sweepDeg; // 120° gap at bottom
-  // Arc starts at 150° in standard SVG angle (bottom-left) going clockwise to 30° (bottom-right)
-  // In our coordinate system: start = 150°, end = 390° (150 + 240)
 
   const totalArcLength = 2 * Math.PI * radius * (sweepDeg / 360);
   const halfArcLength = totalArcLength / 2;
 
-  // Normalized score position: 0 = min (-8), 0.5 = center (0), 1 = max (+8)
-  const normalized = Math.max(0, Math.min(1, (score - min) / (max - min)));
+  // Normalized score position: 0 = lo, 0.5 = center (0), 1 = hi
+  const normalized = Math.max(0, Math.min(1, (shown - lo) / (hi - lo)));
 
   // The fill arc length from center (0.5) to score position
   const fillFraction = Math.abs(normalized - 0.5);
   const fillLength = fillFraction * 2 * halfArcLength;
 
-  // Score color
-  const scoreColor =
-    score >= 5
-      ? "#10B981"
-      : score >= 3
-        ? "#34D399"
-        : score >= -2
-          ? "#64748B"
-          : score >= -4
-            ? "#F87171"
-            : "#EF4444";
+  // Color follows the animated value, so a big retarget sweeps through tiers.
+  const scoreColor = gaugeColor(shown);
+  const displayScore = Math.round(shown);
 
   // Build the full arc path (single arc from start to end, always the same)
   function toRad(deg: number) {
@@ -56,9 +68,9 @@ export function ScoreGauge({
   }
 
   // SVG angles: 0° = right, 90° = down, 180° = left, 270° = up
-  // We want the arc to start at bottom-left (150°) and go clockwise 240° to bottom-right (30° = 390°)
-  const arcStartDeg = 150; // bottom-left in SVG coords
-  const arcEndDeg = arcStartDeg + sweepDeg; // 390° = 30°
+  // Arc starts at bottom-left (150°) and goes clockwise 240° to bottom-right (30° = 390°)
+  const arcStartDeg = 150;
+  const arcEndDeg = arcStartDeg + sweepDeg;
 
   const sx = cx + radius * Math.cos(toRad(arcStartDeg));
   const sy = cy + radius * Math.sin(toRad(arcStartDeg));
@@ -68,27 +80,41 @@ export function ScoreGauge({
   const arcPath = `M ${sx} ${sy} A ${radius} ${radius} 0 1 1 ${ex} ${ey}`;
 
   // For filling from center outward:
-  // The path starts at -8 (left). Center (0) is at halfArcLength along the path.
-  // For positive scores: fill from halfArcLength going forward (rightward)
-  // For negative scores: fill from (halfArcLength - fillLength) going forward to halfArcLength
-
+  // The path starts at min (left). Center (0) is at halfArcLength along the path.
+  // Positive: fill from center going forward (rightward).
+  // Negative: fill from (center - fillLength) forward to center.
   let dashArray: string;
   let dashOffset: number;
 
-  if (score === 0) {
-    // No fill — just show background + number
+  if (fillLength < 0.5) {
     dashArray = `0 ${totalArcLength}`;
     dashOffset = 0;
-  } else if (score > 0) {
-    // Fill starts at center, extends right
+  } else if (shown > 0) {
     dashArray = `${fillLength} ${totalArcLength}`;
-    dashOffset = -halfArcLength; // negative offset = shift pattern forward (start at center)
+    dashOffset = -halfArcLength;
   } else {
-    // Fill from left of center to center
-    // Start the dash at (halfArcLength - fillLength), length = fillLength
     dashArray = `${fillLength} ${totalArcLength}`;
     dashOffset = -(halfArcLength - fillLength);
   }
+
+  // Tip indicator — rides the end of the fill (at center when score is 0).
+  const tipDeg = arcStartDeg + normalized * sweepDeg;
+  const tipX = cx + radius * Math.cos(toRad(tipDeg));
+  const tipY = cy + radius * Math.sin(toRad(tipDeg));
+
+  // Zero tick at top center of the track.
+  const zeroDeg = arcStartDeg + sweepDeg / 2;
+  const zx1 = cx + (radius - strokeWidth / 2 - 5) * Math.cos(toRad(zeroDeg));
+  const zy1 = cy + (radius - strokeWidth / 2 - 5) * Math.sin(toRad(zeroDeg));
+  const zx2 = cx + (radius + strokeWidth / 2 + 5) * Math.cos(toRad(zeroDeg));
+  const zy2 = cy + (radius + strokeWidth / 2 + 5) * Math.sin(toRad(zeroDeg));
+
+  // Min / max labels just past the arc ends.
+  const lblR = radius + 16;
+  const minX = cx + lblR * Math.cos(toRad(arcStartDeg));
+  const minY = cy + lblR * Math.sin(toRad(arcStartDeg));
+  const maxX = cx + lblR * Math.cos(toRad(arcEndDeg));
+  const maxY = cy + lblR * Math.sin(toRad(arcEndDeg));
 
   const svgH = size * 0.78;
 
@@ -119,8 +145,19 @@ export function ScoreGauge({
         strokeLinecap="round"
       />
 
+      {/* Zero tick */}
+      <line
+        x1={zx1}
+        y1={zy1}
+        x2={zx2}
+        y2={zy2}
+        stroke="rgba(255,255,255,0.16)"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+
       {/* Active fill arc */}
-      {score !== 0 && (
+      {fillLength >= 0.5 && (
         <path
           d={arcPath}
           fill="none"
@@ -134,6 +171,42 @@ export function ScoreGauge({
         />
       )}
 
+      {/* Tip indicator — glow halo + core */}
+      <circle cx={tipX} cy={tipY} r={7} fill={scoreColor} opacity={0.3} />
+      <circle
+        cx={tipX}
+        cy={tipY}
+        r={3.5}
+        fill={scoreColor}
+        filter={`url(#glow_${id})`}
+      />
+
+      {/* Min / max labels — reflect the effective (auto-extended) scale */}
+      <text
+        x={minX}
+        y={minY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="rgba(255,255,255,0.28)"
+        fontSize={9}
+        fontFamily="inherit"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {lo}
+      </text>
+      <text
+        x={maxX}
+        y={maxY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="rgba(255,255,255,0.28)"
+        fontSize={9}
+        fontFamily="inherit"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {hi > 0 ? `+${hi}` : hi}
+      </text>
+
       {/* Score number centered */}
       <text
         x={cx}
@@ -146,7 +219,7 @@ export function ScoreGauge({
         fontFamily="inherit"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {score > 0 ? `+${score}` : `${score}`}
+        {displayScore > 0 ? `+${displayScore}` : `${displayScore}`}
       </text>
     </svg>
   );

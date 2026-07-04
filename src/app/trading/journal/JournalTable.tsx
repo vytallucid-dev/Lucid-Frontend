@@ -94,7 +94,7 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: "1px solid var(--lucid-line)", background: "var(--lucid-surface)" }}
+      style={{ border: "1px solid var(--lucid-line)", background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 1020 }}>

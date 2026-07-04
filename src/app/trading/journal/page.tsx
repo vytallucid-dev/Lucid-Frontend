@@ -7,6 +7,7 @@ import {
   type Trade,
 } from "@/lib/demo-data";
 import { useTrades, useAccounts, useTradingModels, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
+import { AnimatedNumber } from "@/components/motion";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
@@ -27,8 +28,10 @@ interface ActiveFilter {
 
 function getOutcome(trade: Trade): "Win" | "Loss" | "BE" | "Live" {
   if (!trade.date_closed) return "Live";
-  if (trade.blended_rr > 0) return "Win";
-  if (trade.blended_rr < 0) return "Loss";
+  // Outcome is decided by the manual net P&L (blended_pnl), the single source of
+  // truth, matching analytics/accounts/dashboard — NOT the display R (blended_rr).
+  if (trade.blended_pnl > 0) return "Win";
+  if (trade.blended_pnl < 0) return "Loss";
   return "BE";
 }
 
@@ -54,11 +57,11 @@ function FilterPopover({
 
   return (
     <div
-      className="absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden flex"
+      className="lt-modal-enter absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden flex"
       style={{
-        background: "var(--lucid-surface-2)",
+        background: "var(--lucid-grad-surface-2)",
         border: "1px solid var(--lucid-line-2)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        boxShadow: "var(--lucid-elev-2)",
         minWidth: 280,
       }}
     >
@@ -188,7 +191,7 @@ export default function JournalPage() {
       onClick={() => filterOpen && setFilterOpen(false)}
     >
       {/* Page header */}
-      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="lt-rise lt-stagger-1 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold lt-serif" style={{ color: "var(--lucid-ink)" }}>Journal</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--lucid-ink-3)" }}>
@@ -197,21 +200,23 @@ export default function JournalPage() {
         </div>
         <div
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm self-start"
-          style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)" }}
+          style={{ background: "var(--lucid-grad-surface-2)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)", boxShadow: "var(--lucid-elev-1)" }}
         >
-          <span className="font-medium lt-num">{count} trades</span>
+          <span className="font-medium lt-num">
+            <AnimatedNumber value={count} format={(n) => `${Math.round(n)}`} /> trades
+          </span>
           <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
           <span className="font-semibold lt-num" style={{ color: net >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-            {formatCurrency(net)} net
+            <AnimatedNumber value={net} format={formatCurrency} /> net
           </span>
         </div>
       </div>
 
       {/* Controls bar */}
       <div
-        className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30"
+        className="lt-fade-in lt-stagger-2 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30"
         style={{
-          background: "var(--lucid-surface)",
+          background: "var(--lucid-grad-surface)",
           borderBottom: "1px solid var(--lucid-line)",
         }}
       >
@@ -219,18 +224,16 @@ export default function JournalPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={e => { e.stopPropagation(); setAddOpen(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
-            style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-accent-bd)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-accent)"; }}
+            className="lt-btn-gold flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
+            style={{ color: "var(--lucid-bg)" }}
           >
             <Plus size={14} /> Add Trade
           </button>
           <select
             value={selectedAccount}
             onChange={e => setSelectedAccount(e.target.value)}
-            className="text-sm rounded-lg px-2.5 py-1.5"
-            style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)", outline: "none" }}
+            className="text-sm rounded-lg px-2.5 py-1.5 transition-colors"
+            style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink-2)", outline: "none", cursor: "pointer" }}
           >
             <option value="all">All Accounts</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
@@ -270,17 +273,12 @@ export default function JournalPage() {
         </div>
 
         {/* Right: view toggle */}
-        <div className="flex rounded-lg p-0.5 ml-auto" style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}>
+        <div className="lt-segment ml-auto">
           {(["table", "gallery"] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-              style={{
-                background: view === v ? "var(--lucid-accent-bg)" : "transparent",
-                color: view === v ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
-                border: view === v ? "1px solid var(--lucid-accent-bd)" : "1px solid transparent",
-              }}
+              className={`lt-segment-btn flex items-center gap-1.5 ${view === v ? "is-active" : ""}`}
             >
               {v === "table" ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
               {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -290,9 +288,9 @@ export default function JournalPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-4 sm:px-6 py-4">
+      <div className="lt-rise lt-stagger-3 flex-1 px-4 sm:px-6 py-4">
         {tradesQuery.isLoading ? (
-          <LoadingState message="Loading trades…" />
+          <LoadingState stages={["Loading trades…", "Assembling your journal…", "Totalling P&L…"]} />
         ) : tradesQuery.isError ? (
           <ErrorState error={tradesQuery.error} onRetry={() => tradesQuery.refetch()} title="Couldn't load trades" />
         ) : filteredTrades.length === 0 ? (
@@ -351,8 +349,8 @@ function EmptyState({ hasFilters, onClear, onAdd }: { hasFilters: boolean; onCle
   return (
     <div className="flex items-center justify-center py-24">
       <div
-        className="flex flex-col items-center gap-4 p-10 rounded-2xl text-center"
-        style={{ maxWidth: 520, background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}
+        className="lt-rise flex flex-col items-center gap-4 p-10 rounded-2xl text-center"
+        style={{ maxWidth: 520, background: "var(--lucid-grad-surface)", border: "1px solid var(--lucid-line)", boxShadow: "var(--lucid-elev-1)" }}
       >
         <BookText size={40} style={{ color: "var(--lucid-ink-3)" }} />
         {hasFilters ? (

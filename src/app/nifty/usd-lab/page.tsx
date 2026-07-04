@@ -164,7 +164,7 @@ export default function USDLabPage() {
   const [filter, setFilter] = useState<FilterKey>("All");
   const [selected, setSelected] = useState<UsdLabSubIndicator | null>(null);
 
-  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState message="Loading USD Lab..." /></div>;
+  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState stages={["Loading USD Lab…", "Decomposing Indicator 9…", "Mapping clusters…"]} /></div>;
   if (error) return <div className="p-4 sm:p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
   if (!data) return <div className="p-4 sm:p-6"><EmptyState title="No Ind 9 data available" /></div>;
 
@@ -195,7 +195,7 @@ export default function USDLabPage() {
 
 function Header({ data }: { data: UsdLabResponse }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>USD Lab</h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
@@ -236,7 +236,10 @@ function HeroStrip({ data }: { data: UsdLabResponse }) {
   const side = data.composition.side;
 
   return (
-    <div className="lt-card p-4 sm:p-5">
+    <div
+      className="lt-card lt-edge lt-rise lt-stagger-2 p-4 sm:p-5"
+      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
+    >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
         {/* Col 1 — NIFTY-facing score */}
         <div className="md:pr-6 pb-4 md:pb-0">

@@ -31,7 +31,7 @@ function DirectionPill({ direction }: { direction: string }) {
 export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCardClick: (t: Trade) => void }) {
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-      {trades.map(trade => {
+      {trades.map((trade, idx) => {
         const isLive = !trade.date_closed;
         const config = pairs.find(p => p.symbol === trade.pair);
         const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
@@ -41,14 +41,14 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
           <div
             key={trade.id}
             onClick={() => onCardClick(trade)}
-            className="relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-transform"
+            className="lt-lift lt-rise relative flex flex-col rounded-xl overflow-hidden cursor-pointer"
             style={{
-              background: "var(--lucid-surface)",
+              background: "var(--lucid-grad-surface)",
               border: "1px solid var(--lucid-line)",
+              boxShadow: "var(--lucid-elev-1)",
               height: 280,
+              animationDelay: `${Math.min(idx * 0.04, 0.4)}s`,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--lucid-line-3)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--lucid-line)"; }}
           >
             {/* Conviction accent strip */}
             <div

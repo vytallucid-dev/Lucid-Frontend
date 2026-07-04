@@ -47,7 +47,7 @@ export default function PatternsPage() {
   if (scorecardsQuery.isLoading || patternsQuery.isLoading) {
     return (
       <div className="p-4 sm:p-6">
-        <LoadingState message="Loading patterns..." />
+        <LoadingState stages={["Loading patterns…", "Matching against the current scorecard…", "Ranking relevance…"]} />
       </div>
     );
   }
@@ -218,7 +218,7 @@ function PatternsPageInner({
     <div className="p-4 sm:p-6 space-y-5 max-w-350">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="lt-serif text-2xl font-bold" style={{ color: "var(--lucid-ink)" }}>Patterns</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>What we&apos;ve learned. What&apos;s relevant now.</p>
@@ -242,7 +242,13 @@ function PatternsPageInner({
 
       {/* ── Section 1: Relevant Now ──────────────────────────────────── */}
       {topRelevant.length > 0 && (
-        <div className="lt-card p-4 sm:p-5">
+        <div
+          className="lt-card lt-edge lt-rise lt-stagger-2 p-4 sm:p-5"
+          style={{
+            background: "radial-gradient(120% 120% at 0% 0%, var(--lucid-accent-bg), transparent 55%), var(--lucid-grad-surface)",
+            boxShadow: "var(--lucid-elev-1)",
+          }}
+        >
           <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--lucid-ink-3)" }}>
             Relevant Now
           </div>
@@ -256,8 +262,7 @@ function PatternsPageInner({
               return (
                 <button
                   key={pattern.id}
-                  className="w-full text-left p-4 rounded-xl hover:bg-white/5 transition-colors"
-                  style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
+                  className="lt-row w-full text-left p-4 rounded-xl"
                   onClick={() => openPattern(pattern, true)}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -300,7 +305,7 @@ function PatternsPageInner({
       )}
 
       {/* ── Section 2: Full Library ──────────────────────────────────── */}
-      <div>
+      <div className="lt-rise lt-stagger-3">
         <div className="flex items-center gap-3 flex-wrap mb-4">
           <div className="flex gap-1.5">
             {TIERS.map((t) => {
@@ -375,17 +380,16 @@ function PatternsPageInner({
         </p>
 
         <div className="grid grid-cols-1 gap-3">
-          {filtered.map((pattern) => {
+          {filtered.map((pattern, idx) => {
             const ts = patternTierStyle(pattern.tier);
             const relevance = relevanceMap.get(pattern.id);
             return (
               <button
                 key={pattern.id}
-                className="text-left p-5 rounded-xl hover:bg-white/5 transition-colors"
+                className="lt-row lt-rise text-left p-5 rounded-xl"
                 style={{
-                  background: "var(--lucid-surface-2)",
-                  border: "1px solid var(--lucid-line)",
                   borderLeft: `3px solid ${ts.color}30`,
+                  animationDelay: `${Math.min(idx * 0.03, 0.3)}s`,
                 }}
                 onClick={() => openPattern(pattern, false)}
               >
