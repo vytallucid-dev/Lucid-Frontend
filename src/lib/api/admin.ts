@@ -72,6 +72,7 @@ export interface IndicatorLatestResponse {
     compositeGroup: string | null;
     country: string | null;
     uiGroup: string | null;
+    description: string | null;
   };
   count: number;
   data: DataPoint[];

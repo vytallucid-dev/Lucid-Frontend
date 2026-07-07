@@ -55,6 +55,11 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
           <p className="text-[10px] font-mono truncate" style={{ color: "var(--lucid-ink-3)" }}>
             {indicator.code}
           </p>
+          {indicator.description && (
+            <p className="text-[10px] truncate" style={{ color: "var(--lucid-ink-3)" }} title={indicator.description}>
+              {indicator.description}
+            </p>
+          )}
         </div>
         <ChevronRight
           size={14}

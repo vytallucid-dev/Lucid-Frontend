@@ -789,6 +789,11 @@ export default function EdgefinderIndicatorDetailPage() {
             <h1 className="lt-serif text-xl font-bold wrap-break-word" style={{ color: "var(--lucid-ink)" }}>
               {indicator?.name ?? code}
             </h1>
+            {indicator?.description && (
+              <p className="text-xs mt-0.5 wrap-break-word" style={{ color: "var(--lucid-ink-3)" }}>
+                {indicator.description}
+              </p>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="lt-num rounded-lg px-2 py-0.5 text-xs font-mono" style={{ background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)" }}>
                 {code}
