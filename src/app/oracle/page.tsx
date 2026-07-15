@@ -10,7 +10,7 @@ import {
 import { useAssets } from "@/hooks/useAssets";
 import { useCompass } from "@/hooks/useCompass";
 import { useQueries } from "@tanstack/react-query";
-import { getScoreHistory, type PublicAssetData } from "@/lib/api/oracle";
+import { getScoreHistory, toScoreHistorySubject, type PublicAssetData } from "@/lib/api/oracle";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 import { AnimatedNumber } from "@/components/motion";
 import { LoadingState } from "@/components/state/LoadingState";
@@ -222,7 +222,7 @@ export default function TopSetupsPage() {
   // the assets payload, so this is the honest source — assets without history
   // (SPY/NAS100) simply render without a sparkline/delta.
   const historySubjects = useMemo(
-    () => (assets ?? []).map((a) => a.asset).filter((s) => HISTORY_SUBJECTS.has(s)),
+    () => (assets ?? []).map((a) => a.asset).filter((s) => HISTORY_SUBJECTS.has(toScoreHistorySubject(s))),
     [assets],
   );
 

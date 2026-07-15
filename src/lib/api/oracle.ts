@@ -431,13 +431,23 @@ export interface CycleStancesResponse {
   stances: CycleStanceEntry[];
 }
 
+// /api/oracle/assets (and other endpoints keyed off the DB asset code) return
+// Gold's identifier as "XAUUSD", but /api/oracle/score-history's `subject` enum
+// uses "Gold" (matching /api/oracle/scorecard's convention). Normalize here so
+// every caller — sparklines, oracle-tools adapters, Top Setups click handlers —
+// can pass either spelling without needing to know about the mismatch.
+// Idempotent: "Gold" is untouched, so callers that already pass "Gold" are safe.
+export function toScoreHistorySubject(subject: string): string {
+  return subject === "XAUUSD" ? "Gold" : subject;
+}
+
 /** Dated total-score series for an asset (USD/EUR/GBP/JPY/Gold) or FX pair. */
 export async function getScoreHistory(
   subject: string,
   range: HistoryRange,
 ): Promise<ScoreHistoryResponse> {
   const res = await apiFetch<{ success: boolean; data: ScoreHistoryResponse }>(
-    `/api/oracle/score-history?subject=${encodeURIComponent(subject)}&range=${range}`,
+    `/api/oracle/score-history?subject=${encodeURIComponent(toScoreHistorySubject(subject))}&range=${range}`,
   );
   return res.data;
 }
