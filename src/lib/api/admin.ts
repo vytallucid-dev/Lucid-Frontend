@@ -364,6 +364,8 @@ export const TRIGGER_TO_LOG_JOB_NAME: Record<CronJobName, string> = {
 // ─── Cycle Stances ────────────────────────────────────────────────────────────
 
 export type CycleStance = "CUTTING" | "NEUTRAL" | "HIKING";
+/** Phase 6 (Addendum 8B): the Fed constraint for the gold override gate — USD only. */
+export type FedConstraint = "FREE" | "CONSTRAINED";
 
 export interface CycleStanceRow {
   id: string;
@@ -372,6 +374,8 @@ export interface CycleStanceRow {
   effectiveFrom: string;
   effectiveTo: string | null;
   notes: string | null;
+  /** Only present/meaningful on the USD row; null for other currencies. */
+  fedConstraint: FedConstraint | null;
 }
 
 export interface CycleStancesResponse {
@@ -379,6 +383,7 @@ export interface CycleStancesResponse {
   stances: CycleStanceRow[];
   validCurrencies: string[];
   validStances: CycleStance[];
+  validFedConstraints: FedConstraint[];
 }
 
 export interface UpdateCycleStanceResponse {
@@ -398,6 +403,8 @@ export async function updateCycleStance(
     stance: CycleStance;
     effectiveFrom?: string;
     notes?: string;
+    /** USD only — sets the Fed constraint for the gold override gate (8B). */
+    fedConstraint?: FedConstraint;
   },
 ): Promise<UpdateCycleStanceResponse> {
   return apiFetch<UpdateCycleStanceResponse>(

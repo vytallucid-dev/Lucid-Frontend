@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  Zap,
+  ShieldAlert,
+  Gauge,
+  Landmark,
+} from "lucide-react";
 import { useCompass } from "@/hooks/useCompass";
 import type {
   CompassBand,
@@ -11,20 +20,22 @@ import type {
   PublicCompassHistoryRow,
   PublicCompassSnapshot,
   PublicCompassSubCheck,
+  PublicCompassGateState,
+  PublicCompassOverrideState,
 } from "@/lib/api/oracle";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lucid Compass — wired to GET /api/oracle/compass (one batched, daily-cached
-// snapshot). The live data drives every section: regime, the 6 input votes,
-// classification math, score impact (real base vs compass-adjusted scores from
-// the EdgeFinder scorecards), and the 30-day audit log. The only client-side
-// state is the US Data Stack expand and the override what-if toggles, which
-// recompute the score-impact column locally using the per-override deltas the
-// backend returns. Static text below (input descriptions/thresholds, override
-// copy, asset flags) is presentation metadata that has no home in the DB.
+// Lucid Compass (v2) — wired to GET /api/oracle/compass (one batched, daily-
+// cached snapshot). The live data drives every section: the FINAL regime (which
+// differs from the standard machine's active regime under a Trigger A shock),
+// the 6 v2 input votes with staleness flags, classification math, the two Phase
+// 6 override gates (8A rate gate on JPY Overrides 3 & 5; 8B fed-constraint gate
+// on gold Override 2), the post-gate override set, the base-vs-final score
+// impact, and the 30-day history. Static copy below (input descriptions,
+// override summaries, asset flags) is presentation metadata with no DB home.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Static presentation metadata (keyed by backend codes) ──────────────────
@@ -35,25 +46,25 @@ const INPUT_META: Record<string, { name: string; description: string; threshold:
     description: "Market fear gauge — 5-day closing average",
     threshold: "< 18 = Green · 18–25 = Yellow · > 25 = Red",
   },
+  VIX_TERM_STRUCTURE: {
+    name: "VIX Term Structure",
+    description: "VIX ÷ VIX3M — backwardation signals acute stress",
+    threshold: "< 0.90 contango = Green · 0.90–1.00 = Yellow · > 1.00 backwardation = Red",
+  },
   HY_OAS: {
     name: "HY OAS (High Yield Credit Spreads)",
-    description: "Corporate bond stress — level + 30-day trend",
-    threshold: "< 450bp & tightening = Green · 450–700bp or widening = Yellow · > 700bp = Red",
+    description: "Corporate bond stress — level + 10-obs velocity",
+    threshold: "< 450bp & calm = Green · 450–550bp or widening = Yellow · > 550bp or fast widening = Red",
   },
   YIELD_2S10S: {
     name: "2s10s Yield Curve",
-    description: "Treasury yield curve slope — level + 30-day change",
-    threshold: "Positive & steepening = Green · Inverted stable = Yellow · Re-steepening from inversion = Red",
+    description: "Treasury curve slope — inversion-episode state machine",
+    threshold: "Positive & steepening = Green · Inverted stable = Yellow · Inside post-inversion red window = Red",
   },
   DXY_TREND: {
     name: "DXY Trend",
-    description: "Dollar index distance from 50-day moving average",
-    threshold: "> 2% from 50d MA = Green · Range-bound = Yellow · Sharp break > 3% in 5 days = Red",
-  },
-  GOLD_DXY_CORR: {
-    name: "Gold/DXY Correlation (60-Day Rolling)",
-    description: "Gold–Dollar relationship — breaks signal stress",
-    threshold: "< −0.5 normal inverse = Green · −0.5 to 0 = Yellow · > 0 broken = Red",
+    description: "Dollar index distance from 50-day MA + 5-obs move",
+    threshold: "Calm & near MA = Green · Drifted from MA = Yellow · Sharp break > 3% in 5 obs = Red",
   },
   US_DATA_STACK: {
     name: "US Data Trend Stack",
@@ -70,6 +81,8 @@ interface OverrideDef {
   summary: string;
   changes: string[];
   note?: string;
+  /** Which gate can suppress this override, for the display. */
+  gate: "rate" | "fed" | null;
 }
 
 const OVERRIDES: OverrideDef[] = [
@@ -79,14 +92,9 @@ const OVERRIDES: OverrideDef[] = [
     name: "Bad News Good News (Stocks)",
     affected: ["SPY", "NAS100"],
     summary: "Weak US jobs data inverts for equity scoring — Fed pivot trade.",
-    changes: [
-      "NFP miss: −1 → +1",
-      "Higher unemployment: −1 → +1",
-      "ADP miss: −1 → +1",
-      "JOLTS miss: −1 → +1",
-      "Higher claims: −1 → +1",
-    ],
-    note: "CPI/PPI/PCE direction unchanged — inflation still hurts stocks via discount rate.",
+    changes: ["NFP miss: −1 → +1", "Higher unemployment: −1 → +1", "ADP/JOLTS/claims miss: −1 → +1"],
+    note: "Ungated. CPI/PPI/PCE direction unchanged — inflation still hurts stocks via discount rate.",
+    gate: null,
   },
   {
     id: 2,
@@ -95,7 +103,8 @@ const OVERRIDES: OverrideDef[] = [
     affected: ["XAUUSD"],
     summary: "Gold's inflation rules flip — real-yields channel breaks in stress.",
     changes: ["CPI beat: −1 → +1", "PPI beat: −1 → +1", "PCE beat: −1 → +1"],
-    note: "Growth and jobs indicators unchanged.",
+    note: "Gated by Fed constraint (8B): applies only when the Fed is CONSTRAINED.",
+    gate: "fed",
   },
   {
     id: 3,
@@ -104,6 +113,8 @@ const OVERRIDES: OverrideDef[] = [
     affected: ["JPY", "USDJPY", "EURJPY", "GBPJPY"],
     summary: "+1 added to JPY standalone score — carry trades unwinding.",
     changes: ["Propagates to pairs: USDJPY −1, EURJPY −1, GBPJPY −1"],
+    note: "Gated by the rate gate (8A): suppressed when US2Y is above its 21d SMA, unless a Carry Shock bypasses.",
+    gate: "rate",
   },
   {
     id: 4,
@@ -111,13 +122,9 @@ const OVERRIDES: OverrideDef[] = [
     name: "USD Weak-Jobs Neutralization",
     affected: ["USD"],
     summary: "USD jobs weakness softened — safe-haven flows competing with dovish expectations.",
-    changes: [
-      "NFP miss: −1 → 0",
-      "Higher unemployment: −1 → 0",
-      "Higher claims: −1 → 0",
-      "ADP miss: −1 → 0",
-      "JOLTS miss: −1 → 0",
-    ],
+    changes: ["NFP/unemployment/claims/ADP/JOLTS miss: −1 → 0"],
+    note: "Ungated.",
+    gate: null,
   },
   {
     id: 5,
@@ -126,12 +133,10 @@ const OVERRIDES: OverrideDef[] = [
     affected: ["EURJPY", "GBPJPY"],
     summary: "Automatic −1 adjustment on top of Override 3.",
     changes: ["Total Risk-Off effect on EURJPY/GBPJPY: −2 combined."],
+    note: "Gated by the same rate gate (8A) as Override 3.",
+    gate: "rate",
   },
 ];
-
-const OVERRIDE_CODE_TO_ID: Record<string, number> = Object.fromEntries(
-  OVERRIDES.map((o) => [o.code, o.id]),
-);
 
 const ASSET_META: Record<string, { flag: string; order: number }> = {
   EURUSD: { flag: "🇪🇺", order: 1 },
@@ -175,7 +180,7 @@ const REGIME_META: Record<CompassRegime, { color: string; bg: string; border: st
     color: "var(--lucid-neg)",
     bg: "var(--lucid-neg-bg)",
     border: "var(--lucid-neg-bd)",
-    desc: "Stress regime active. Scoring overrides applied. See details below.",
+    desc: "Stress regime active. Scoring overrides applied, subject to the rate & fed gates below.",
   },
 };
 
@@ -184,19 +189,18 @@ const REGIME_META: Record<CompassRegime, { color: string; bg: string; border: st
 function fmt1(n: number): string {
   return n.toFixed(1);
 }
-
+function fmt2(n: number): string {
+  return n.toFixed(2);
+}
 function signed(n: number): string {
   return n > 0 ? `+${n}` : `${n}`;
 }
-
 function formatAuditDate(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
   if (!m || !d) return iso;
   return `${MONTHS[m - 1]} ${d}`;
 }
 
-// Bias band → warm 5-step scale color + label (self-contained so this page has
-// no hardcoded hex and no dependency on the legacy score-color helpers).
 function scoreVisual(score: number): { color: string; bg: string; border: string; label: string } {
   if (score >= 5) return { color: "var(--lucid-scale-4)", bg: "rgba(78,161,230,0.14)", border: "rgba(78,161,230,0.3)", label: "Strong Bullish" };
   if (score >= 3) return { color: "var(--lucid-scale-3)", bg: "rgba(72,186,124,0.12)", border: "rgba(72,186,124,0.25)", label: "Bullish" };
@@ -207,42 +211,17 @@ function scoreVisual(score: number): { color: string; bg: string; border: string
 
 type Current = PublicCompassSnapshot["current"];
 
-/** Re-derive a row's adjustment + contributing override ids from the toggle set. */
-function rowAdjustment(
-  row: PublicCompassScoreImpactRow,
-  enabled: Record<number, boolean>,
-): { adj: number; ids: number[] } {
-  let adj = 0;
-  const ids: number[] = [];
-  for (const o of row.overrides) {
-    const id = OVERRIDE_CODE_TO_ID[o.code];
-    if (id === undefined || enabled[id]) {
-      adj += o.adjustment;
-      if (id !== undefined) ids.push(id);
-    }
-  }
-  return { adj, ids };
-}
-
 // ─── Small presentational primitives ─────────────────────────────────────────
 
 function StatusDot({ c }: { c: CompassBand }) {
-  const m = CLS[c];
-  return (
-    <span
-      className="inline-block rounded-full shrink-0"
-      style={{ width: 16, height: 16, background: m.color }}
-    />
-  );
+  return <span className="inline-block rounded-full shrink-0" style={{ width: 16, height: 16, background: CLS[c].color }} />;
 }
 
 function ClassPill({ c, size = "md" }: { c: CompassBand; size?: "sm" | "md" }) {
   const m = CLS[c];
   return (
     <span
-      className={`inline-flex items-center rounded-full font-semibold ${
-        size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]"
-      }`}
+      className={`inline-flex items-center rounded-full font-semibold ${size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]"}`}
       style={{ background: m.bg, color: m.color, border: `1px solid ${m.border}` }}
     >
       {c}
@@ -254,9 +233,7 @@ function RegimePill({ r, size = "md" }: { r: CompassRegime; size?: "sm" | "md" }
   const m = REGIME_META[r];
   return (
     <span
-      className={`inline-flex items-center rounded-full font-semibold whitespace-nowrap ${
-        size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs"
-      }`}
+      className={`inline-flex items-center rounded-full font-semibold whitespace-nowrap ${size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs"}`}
       style={{ background: m.bg, color: m.color, border: `1px solid ${m.border}` }}
     >
       {r}
@@ -275,15 +252,30 @@ function WeightBadge({ w }: { w: number }) {
   );
 }
 
+/** Small stale / insufficient-history chip on an input row. */
+function StaleChip({ stale, insufficient }: { stale: boolean; insufficient: boolean }) {
+  if (!stale && !insufficient) return null;
+  const text = insufficient ? "Insufficient history" : "Stale — forward-filled beyond limit";
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap"
+      style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}
+      title={text}
+    >
+      <AlertCircle size={11} />
+      {insufficient ? "No history" : "Stale"}
+    </span>
+  );
+}
+
 function StabilityPill({ current }: { current: Current }) {
-  const cfg = current.crisisOverrideFired
-    ? { color: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)", border: "var(--lucid-neg-bd)", text: "Crisis Override — Activated same-day", pulse: true }
-    : current.persistenceDaysCount > 0
+  const cfg =
+    current.pendingLabel !== null && current.pendingCount > 0
       ? {
           color: "var(--lucid-warn)",
           bg: "var(--lucid-warn-bg)",
           border: "var(--lucid-warn-bd)",
-          text: `Pending — ${current.persistenceDaysCount} of 5 days confirmed`,
+          text: `Pending — ${current.pendingCount} of ${current.required} days toward ${current.pendingLabel}`,
           pulse: false,
         }
       : {
@@ -304,35 +296,59 @@ function StabilityPill({ current }: { current: Current }) {
   );
 }
 
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+/** Shock banner — Trigger A (Vol Shock → Risk-Off) or Trigger B (Carry Shock). */
+function ShockBanner({ gate }: { gate: PublicCompassGateState }) {
+  if (!gate.shockAActive && !gate.shockBActive) return null;
+  const items: { icon: ReactNode; label: string; detail: string; color: string; bg: string; bd: string }[] = [];
+  if (gate.shockAActive) {
+    items.push({
+      icon: <ShieldAlert size={16} />,
+      label: "VOL SHOCK — Risk-Off forced",
+      detail: gate.shockAExpiry ? `Trigger A active through ${gate.shockAExpiry}` : "Trigger A active",
+      color: "var(--lucid-neg)",
+      bg: "var(--lucid-neg-bg)",
+      bd: "var(--lucid-neg-bd)",
+    });
+  }
+  if (gate.shockBActive) {
+    items.push({
+      icon: <Zap size={16} />,
+      label: "CARRY SHOCK",
+      detail: gate.shockBExpiry
+        ? `Trigger B active through ${gate.shockBExpiry} — JPY overrides bypass the rate gate`
+        : "Trigger B active — JPY overrides bypass the rate gate",
+      color: "var(--lucid-accent)",
+      bg: "var(--lucid-accent-bg)",
+      bd: "var(--lucid-accent-bd)",
+    });
+  }
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={onClick}
-      className="relative shrink-0 rounded-full transition-colors"
-      style={{
-        width: 38,
-        height: 22,
-        background: on ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
-        border: `1px solid ${on ? "var(--lucid-accent-bd)" : "var(--lucid-line-2)"}`,
-      }}
-    >
-      <span
-        className="absolute rounded-full transition-transform"
-        style={{ top: 2, left: 2, width: 16, height: 16, background: on ? "var(--lucid-accent)" : "var(--lucid-ink-3)", transform: on ? "translateX(16px)" : "translateX(0)" }}
-      />
-    </button>
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      {items.map((it) => (
+        <div
+          key={it.label}
+          className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 flex-1 min-w-0"
+          style={{ background: it.bg, border: `1px solid ${it.bd}` }}
+        >
+          <span className="pulse-live shrink-0" style={{ color: it.color }}>
+            {it.icon}
+          </span>
+          <div className="min-w-0">
+            <div className="text-xs font-bold" style={{ color: it.color }}>
+              {it.label}
+            </div>
+            <div className="text-[11px]" style={{ color: "var(--lucid-ink-2)" }}>
+              {it.detail}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
 function MiniLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="lt-eyebrow lg:hidden block mb-1">
-      {children}
-    </span>
-  );
+  return <span className="lt-eyebrow lg:hidden block mb-1">{children}</span>;
 }
 
 // ─── Section 1 — Hero ────────────────────────────────────────────────────────
@@ -356,12 +372,14 @@ function VoteBar({ label, value, max, color }: { label: string; value: number; m
   );
 }
 
+/** The standard vote rule (no shock/gate) — describes how the votes classify. */
 function voteRuleText(current: Current): { regime: CompassRegime; rule: string } {
   const { green, red } = current.weights;
-  if (current.crisisOverrideFired) return { regime: "Risk-Off", rule: "Crisis Override active" };
-  if (red >= 4) return { regime: "Risk-Off", rule: `Red ${fmt1(red)} ≥ 4.0` };
-  if (green >= 5 && red <= 1) return { regime: "Risk-On", rule: `Green ${fmt1(green)} ≥ 5.0 · Red ${fmt1(red)} ≤ 1.0` };
-  return { regime: "Caution", rule: `Green ${fmt1(green)} < 5.0 · Red ${fmt1(red)} < 4.0` };
+  const t = current.thresholds;
+  if (red >= t.redRiskOffAt) return { regime: "Risk-Off", rule: `Red ${fmt1(red)} ≥ ${fmt1(t.redRiskOffAt)}` };
+  if (green >= t.greenRiskOnAt && red <= t.redRiskOnCeiling)
+    return { regime: "Risk-On", rule: `Green ${fmt1(green)} ≥ ${fmt1(t.greenRiskOnAt)} · Red ${fmt1(red)} ≤ ${fmt1(t.redRiskOnCeiling)}` };
+  return { regime: "Caution", rule: `Green ${fmt1(green)} < ${fmt1(t.greenRiskOnAt)} · Red ${fmt1(red)} < ${fmt1(t.redRiskOffAt)}` };
 }
 
 function VoteSummary({ current }: { current: Current }) {
@@ -369,14 +387,9 @@ function VoteSummary({ current }: { current: Current }) {
   const { regime, rule } = voteRuleText(current);
   const meta = REGIME_META[regime];
   return (
-    <div
-      className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl p-4 sm:p-5"
-      style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
-    >
+    <div className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl p-4 sm:p-5" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
       <div className="flex items-center justify-between mb-4">
-        <span className="lt-eyebrow">
-          Vote Breakdown
-        </span>
+        <span className="lt-eyebrow">Vote Breakdown</span>
         <span className="text-[11px] lt-num" style={{ color: "var(--lucid-ink-3)" }}>
           Total {fmt1(w.total)}
         </span>
@@ -398,49 +411,47 @@ function VoteSummary({ current }: { current: Current }) {
   );
 }
 
-function RegimeHero({ current }: { current: Current }) {
-  const regime = current.activeRegime;
+function RegimeHero({ current, gate }: { current: Current; gate: PublicCompassGateState }) {
+  // The hero shows the FINAL regime — Risk-Off under a Trigger A shock.
+  const regime = current.finalRegime;
   const meta = REGIME_META[regime];
+  const shockLabel = gate.shockAActive ? "Risk-Off (SHOCK)" : regime;
+  const standardDiffers = current.activeRegime !== regime;
   return (
     <div
       className={`lt-card lt-edge lt-rise lt-stagger-2 p-6 sm:p-10${regime === "Risk-Off" ? " compass-pulse-glow" : ""}`}
-      style={{
-        background: `radial-gradient(120% 140% at 0% 0%, ${meta.bg}, transparent 55%), var(--lucid-grad-surface)`,
-        boxShadow: "var(--lucid-elev-1)",
-      }}
+      style={{ background: `radial-gradient(120% 140% at 0% 0%, ${meta.bg}, transparent 55%), var(--lucid-grad-surface)`, boxShadow: "var(--lucid-elev-1)" }}
     >
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <span className="lt-eyebrow block mb-3">
-            Current Regime
-          </span>
+          <span className="lt-eyebrow block mb-3">Current Regime</span>
           <h2 className="lt-serif text-4xl sm:text-5xl font-bold leading-none" style={{ color: meta.color }}>
-            {regime}
+            {shockLabel}
           </h2>
           <p className="mt-5 text-sm sm:text-base max-w-xl" style={{ color: "var(--lucid-ink-2)" }}>
             {meta.desc}
           </p>
+          {standardDiffers && (
+            <p className="mt-3 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+              Standard machine regime is{" "}
+              <span style={{ color: REGIME_META[current.activeRegime].color }}>{current.activeRegime}</span> — the shock forces the final regime to Risk-Off.
+            </p>
+          )}
           <p className="mt-3 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
-            Stable{" "}
-            <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>
-              {current.daysStable}
-            </span>{" "}
-            day{current.daysStable === 1 ? "" : "s"}
-            {current.persistenceDaysCount > 0 && (
+            Stable <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>{current.daysStable}</span> day{current.daysStable === 1 ? "" : "s"}
+            {current.pendingLabel !== null && current.pendingCount > 0 && (
               <>
                 {" · "}
-                <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>
-                  {current.persistenceDaysCount}
-                </span>
-                /5 days toward pending change
+                <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>{current.pendingCount}</span>/{current.required} days toward{" "}
+                <span style={{ color: REGIME_META[current.pendingLabel].color }}>{current.pendingLabel}</span>
               </>
             )}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <StabilityPill current={current} />
-            {current.candidateRegime !== regime && (
+            {current.candidateRegime !== current.activeRegime && (
               <span className="text-[11px]" style={{ color: "var(--lucid-ink-3)" }}>
-                candidate trending to{" "}
+                today&apos;s vote →{" "}
                 <span style={{ color: REGIME_META[current.candidateRegime].color }}>{current.candidateRegime}</span>
               </span>
             )}
@@ -457,13 +468,9 @@ function RegimeHero({ current }: { current: Current }) {
 function SubCheckRow({ sc }: { sc: PublicCompassSubCheck }) {
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 text-xs">
-      <span className="sm:w-44 shrink-0 font-medium" style={{ color: "var(--lucid-ink-3)" }}>
-        {sc.name}
-      </span>
+      <span className="sm:w-44 shrink-0 font-medium" style={{ color: "var(--lucid-ink-3)" }}>{sc.name}</span>
       <span className="sm:w-48 shrink-0 lt-num" style={{ color: "var(--lucid-ink)" }}>{sc.value}</span>
-      <span className="sm:flex-1" style={{ color: "var(--lucid-ink-3)" }}>
-        {sc.detail}
-      </span>
+      <span className="sm:flex-1" style={{ color: "var(--lucid-ink-3)" }}>{sc.detail}</span>
       <ClassPill c={sc.colorBand} size="sm" />
     </div>
   );
@@ -492,12 +499,12 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
         <div className="pt-1">
           <StatusDot c={input.colorBand} />
         </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
             <div className="lg:flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold" style={{ color: "var(--lucid-ink)" }}>{meta.name}</span>
+                <StaleChip stale={input.stale} insufficient={input.insufficientHistory} />
                 {expandable && (
                   <button
                     type="button"
@@ -510,29 +517,21 @@ function InputRow({ input, expanded, onToggle }: { input: PublicCompassInput; ex
                   </button>
                 )}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
-                {meta.description}
-              </div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>{meta.description}</div>
             </div>
-
             <div className="lg:w-44 shrink-0">
               <MiniLabel>Current</MiniLabel>
               <div className="font-semibold lt-num text-sm" style={{ color: "var(--lucid-ink)" }}>{value}</div>
             </div>
-
             <div className="lg:w-80 shrink-0">
               <MiniLabel>Threshold</MiniLabel>
-              <div className="text-[11px] leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>
-                {meta.threshold}
-              </div>
+              <div className="text-[11px] leading-relaxed" style={{ color: "var(--lucid-ink-3)" }}>{meta.threshold}</div>
             </div>
-
             <div className="flex items-center justify-between gap-3 lg:w-44 lg:justify-end shrink-0">
               <ClassPill c={input.colorBand} />
               <WeightBadge w={input.weight} />
             </div>
           </div>
-
           {expandable && expanded && (
             <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: "1px solid var(--lucid-line)" }}>
               {subChecks.map((sc) => (
@@ -562,25 +561,20 @@ function LogicCell({ active, value, color }: { active: boolean; value: number; c
 
 function ClassificationLogic({ current, inputs }: { current: Current; inputs: PublicCompassInput[] }) {
   const w = current.weights;
+  const t = current.thresholds;
   const { regime } = voteRuleText(current);
   const meta = REGIME_META[regime];
 
-  const result = current.crisisOverrideFired
-    ? "✓ Crisis Override active (VIX > 30 AND HY OAS > 700bp) → RISK-OFF"
-    : w.red >= 4
-      ? `✓ RED ${fmt1(w.red)} ≥ 4.0 → RISK-OFF`
-      : w.green >= 5 && w.red <= 1
-        ? `✓ GREEN ${fmt1(w.green)} ≥ 5.0 AND RED ${fmt1(w.red)} ≤ 1.0 → RISK-ON`
-        : `Neither threshold met — GREEN ${fmt1(w.green)} < 5.0 and RED ${fmt1(w.red)} < 4.0 → CAUTION`;
+  const result =
+    w.red >= t.redRiskOffAt
+      ? `✓ RED ${fmt1(w.red)} ≥ ${fmt1(t.redRiskOffAt)} → RISK-OFF`
+      : w.green >= t.greenRiskOnAt && w.red <= t.redRiskOnCeiling
+        ? `✓ GREEN ${fmt1(w.green)} ≥ ${fmt1(t.greenRiskOnAt)} AND RED ${fmt1(w.red)} ≤ ${fmt1(t.redRiskOnCeiling)} → RISK-ON`
+        : `Neither threshold met — GREEN ${fmt1(w.green)} < ${fmt1(t.greenRiskOnAt)} and RED ${fmt1(w.red)} < ${fmt1(t.redRiskOffAt)} → CAUTION`;
 
   return (
-    <div
-      className="lt-card lt-edge lt-rise lt-stagger-4 p-4 sm:p-5"
-      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
-    >
-      <h2 className="lt-eyebrow mb-4">
-        Classification Result
-      </h2>
+    <div className="lt-card lt-edge lt-rise lt-stagger-4 p-4 sm:p-5" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
+      <h2 className="lt-eyebrow mb-4">Classification Result</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-xs" style={{ minWidth: 560 }}>
           <thead>
@@ -602,9 +596,7 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
                   <td className="px-3 py-2.5">
                     <ClassPill c={i.colorBand} size="sm" />
                   </td>
-                  <td className="px-3 py-2.5 text-right lt-num" style={{ color: "var(--lucid-ink-2)" }}>
-                    {fmt1(i.weight)}
-                  </td>
+                  <td className="px-3 py-2.5 text-right lt-num" style={{ color: "var(--lucid-ink-2)" }}>{fmt1(i.weight)}</td>
                   <LogicCell active={i.colorBand === "GREEN"} value={i.weight} color="var(--lucid-pos)" />
                   <LogicCell active={i.colorBand === "YELLOW"} value={i.weight} color="var(--lucid-warn)" />
                   <LogicCell active={i.colorBand === "RED"} value={i.weight} color="var(--lucid-neg)" />
@@ -625,13 +617,13 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
 
       <div className="mt-4 space-y-1.5 text-xs" style={{ color: "var(--lucid-ink-3)" }}>
         <p>
-          <span style={{ color: "var(--lucid-pos)" }}>RISK-ON</span> requires: Green ≥ 5.0 AND Red ≤ 1.0
+          <span style={{ color: "var(--lucid-pos)" }}>RISK-ON</span> requires: Green ≥ {fmt1(t.greenRiskOnAt)} AND Red ≤ {fmt1(t.redRiskOnCeiling)}
         </p>
         <p>
-          <span style={{ color: "var(--lucid-neg)" }}>RISK-OFF</span> requires: Red ≥ 4.0 OR Crisis Override (VIX &gt; 30 AND HY OAS &gt; 700bp)
+          <span style={{ color: "var(--lucid-neg)" }}>RISK-OFF</span> requires: Red ≥ {fmt1(t.redRiskOffAt)} OR a Vol Shock (Trigger A)
         </p>
         <p>
-          <span style={{ color: "var(--lucid-warn)" }}>CAUTION</span> otherwise. Regime changes need a 5-day persistence streak before they take effect.
+          <span style={{ color: "var(--lucid-warn)" }}>CAUTION</span> otherwise. Regime changes need a {t.daysToHigherSeverity}-day streak toward higher severity ({t.daysToLowerSeverity} toward lower) before they take effect.
         </p>
       </div>
 
@@ -639,8 +631,7 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
         RESULT: {result}
         {current.candidateRegime !== current.activeRegime && (
           <span style={{ color: "var(--lucid-ink-2)", fontWeight: 400 }}>
-            {" "}
-            · active regime still {current.activeRegime} ({current.persistenceDaysCount}/5 days toward change)
+            {" "}· active regime still {current.activeRegime} ({current.pendingCount}/{current.required} days toward change)
           </span>
         )}
       </div>
@@ -648,52 +639,168 @@ function ClassificationLogic({ current, inputs }: { current: Current; inputs: Pu
   );
 }
 
-// ─── Section 4 — Active overrides ────────────────────────────────────────────
+// ─── Section 4 — Override gates (Addenda 8A / 8B) ─────────────────────────────
 
-function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onToggle: () => void }) {
+function GateCard({
+  icon,
+  title,
+  status,
+  statusColor,
+  statusBg,
+  statusBd,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  status: string;
+  statusColor: string;
+  statusBg: string;
+  statusBd: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl p-4 flex-1 min-w-0" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span style={{ color: "var(--lucid-accent)" }}>{icon}</span>
+          <span className="font-semibold text-sm" style={{ color: "var(--lucid-ink)" }}>{title}</span>
+        </div>
+        <span
+          className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap"
+          style={{ background: statusBg, color: statusColor, border: `1px solid ${statusBd}` }}
+        >
+          {status}
+        </span>
+      </div>
+      <div className="text-xs space-y-1" style={{ color: "var(--lucid-ink-2)" }}>{children}</div>
+    </div>
+  );
+}
+
+function OverrideGates({ gate }: { gate: PublicCompassGateState }) {
+  // 8A rate gate status
+  const rateHawkish = gate.rateGateHawkish;
+  const rateBypassed = gate.shockBActive; // Carry Shock bypasses a hawkish gate
+  const rateStatus = rateHawkish
+    ? rateBypassed
+      ? "HAWKISH (bypassed)"
+      : "HAWKISH"
+    : "NOT HAWKISH";
+  const rateColor = rateHawkish && !rateBypassed ? "var(--lucid-neg)" : "var(--lucid-pos)";
+  const rateBg = rateHawkish && !rateBypassed ? "var(--lucid-neg-bg)" : "var(--lucid-pos-bg)";
+  const rateBd = rateHawkish && !rateBypassed ? "var(--lucid-neg-bd)" : "var(--lucid-pos-bd)";
+
+  // 8B fed constraint status
+  const constrained = gate.fedConstraint === "CONSTRAINED";
+  const fedColor = constrained ? "var(--lucid-neg)" : "var(--lucid-pos)";
+  const fedBg = constrained ? "var(--lucid-neg-bg)" : "var(--lucid-pos-bg)";
+  const fedBd = constrained ? "var(--lucid-neg-bd)" : "var(--lucid-pos-bd)";
+
+  return (
+    <div className="lt-card lt-edge lt-rise lt-stagger-4 p-4 sm:p-6" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
+      <h2 className="lt-eyebrow mb-4">Override Gates</h2>
+      <div className="flex flex-col gap-3 lg:flex-row">
+        <GateCard icon={<Gauge size={16} />} title="Rate Gate (8A) — JPY Overrides 3 & 5" status={rateStatus} statusColor={rateColor} statusBg={rateBg} statusBd={rateBd}>
+          <div className="flex items-center gap-2 lt-num">
+            <span style={{ color: "var(--lucid-ink-3)" }}>US2Y close</span>
+            <span style={{ color: "var(--lucid-ink)" }}>{gate.us02yClose !== null ? fmt2(gate.us02yClose) : "n/a"}</span>
+            <span style={{ color: "var(--lucid-ink-3)" }}>vs 21d SMA</span>
+            <span style={{ color: "var(--lucid-ink)" }}>{gate.us02ySma21 !== null ? fmt2(gate.us02ySma21) : "n/a"}</span>
+          </div>
+          <p style={{ color: "var(--lucid-ink-3)" }}>
+            {rateHawkish
+              ? rateBypassed
+                ? "US2Y above its 21d SMA — but a Carry Shock (price-confirmed unwind) bypasses the gate, so JPY safe-haven overrides still apply."
+                : "US2Y above its 21d SMA — rate differential widening. JPY safe-haven Overrides 3 & 5 suppressed."
+              : "US2Y at or below its 21d SMA — JPY safe-haven Overrides 3 & 5 apply as written under Risk-Off."}
+          </p>
+          {gate.us02yClose === null && (
+            <p style={{ color: "var(--lucid-warn)" }}>US2Y unavailable — gate fails OPEN (overrides apply).</p>
+          )}
+        </GateCard>
+
+        <GateCard
+          icon={<Landmark size={16} />}
+          title="Fed Constraint (8B) — Gold Override 2"
+          status={gate.fedConstraint}
+          statusColor={fedColor}
+          statusBg={fedBg}
+          statusBd={fedBd}
+        >
+          <p style={{ color: "var(--lucid-ink-3)" }}>
+            Effective from{" "}
+            <span className="lt-num" style={{ color: "var(--lucid-ink-2)" }}>{gate.fedConstraintEffectiveFrom ?? "default"}</span>
+          </p>
+          <p style={{ color: "var(--lucid-ink-3)" }}>
+            {constrained
+              ? "Fed CONSTRAINED — cannot hike into hot inflation. Inflation is a gold tailwind; Override 2 applies under Risk-Off."
+              : "Fed FREE — can hike into inflation. Classical inflation rules apply; gold Override 2 suppressed. (No shock bypass exists for Override 2.)"}
+          </p>
+        </GateCard>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 5 — Active overrides (real state from backend) ───────────────────
+
+function OverrideCard({ o, state }: { o: OverrideDef; state: PublicCompassOverrideState | undefined }) {
+  const active = state?.active ?? false;
+  const suppressed = state?.suppressed ?? false;
+  const reason = state?.reason ?? null;
+  const badge = active ? "ACTIVE" : suppressed ? "SUPPRESSED" : "INACTIVE";
+  const badgeStyle = active
+    ? { background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }
+    : suppressed
+      ? { background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }
+      : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" };
+
   return (
     <div
       className="rounded-xl p-4"
       style={{
-        background: on ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
-        border: `1px solid ${on ? "var(--lucid-neg-bd)" : "var(--lucid-line)"}`,
-        opacity: on ? 1 : 0.6,
+        background: active ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
+        border: `1px solid ${active ? "var(--lucid-neg-bd)" : suppressed ? "var(--lucid-warn-bd)" : "var(--lucid-line)"}`,
+        opacity: active ? 1 : 0.75,
       }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 mt-0.5"
-            style={
-              on
-                ? { background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }
-                : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }
-            }
-          >
-            {on ? "ACTIVE" : "DISABLED"}
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 mt-0.5" style={badgeStyle}>
+            {badge}
           </span>
           <div className="min-w-0">
-            <div className="font-semibold" style={on ? { color: "var(--lucid-ink)" } : { textDecoration: "line-through", color: "var(--lucid-ink-3)" }}>
+            <div className="font-semibold" style={active ? { color: "var(--lucid-ink)" } : { color: "var(--lucid-ink-2)" }}>
               Override {o.id}: {o.name}
             </div>
-            <p className="text-xs mt-1" style={{ color: "var(--lucid-ink-2)" }}>
-              {o.summary}
-            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--lucid-ink-2)" }}>{o.summary}</p>
           </div>
         </div>
-        <Toggle on={on} onClick={onToggle} />
+        {o.gate && (
+          <span
+            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium shrink-0"
+            style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }}
+          >
+            {o.gate === "rate" ? <Gauge size={11} /> : <Landmark size={11} />}
+            {o.gate === "rate" ? "8A" : "8B"}
+          </span>
+        )}
       </div>
 
+      {suppressed && reason && (
+        <div className="mt-3 rounded-lg px-3 py-2 text-[11px]" style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}>
+          Adjustment 0 — suppressed: {reason}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-1.5 mt-3">
-        <span className="lt-eyebrow mr-1">
-          Affected
-        </span>
+        <span className="lt-eyebrow mr-1">Affected</span>
         {o.affected.map((a) => (
           <span
             key={a}
             className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium"
             style={
-              on
+              active
                 ? { background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }
                 : { background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }
             }
@@ -708,44 +815,30 @@ function OverrideCard({ o, on, onToggle }: { o: OverrideDef; on: boolean; onTogg
           <span
             key={c}
             className="inline-flex items-center rounded-md px-2 py-1 text-[11px] lt-num"
-            style={{ background: "var(--lucid-surface-3)", color: on ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}
+            style={{ background: "var(--lucid-surface-3)", color: active ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)" }}
           >
             {c}
           </span>
         ))}
       </div>
 
-      {o.note && (
-        <p className="text-[11px] mt-3" style={{ color: "var(--lucid-ink-3)" }}>
-          Note: {o.note}
-        </p>
-      )}
+      {o.note && <p className="text-[11px] mt-3" style={{ color: "var(--lucid-ink-3)" }}>Note: {o.note}</p>}
     </div>
   );
 }
 
-function OverridesSection({
-  regime,
-  enabled,
-  onToggle,
-}: {
-  regime: CompassRegime;
-  enabled: Record<number, boolean>;
-  onToggle: (id: number) => void;
-}) {
+function OverridesSection({ regime, gate }: { regime: CompassRegime; gate: PublicCompassGateState }) {
+  const byCode = new Map(gate.overrides.map((o) => [o.code, o]));
+  const anyActive = gate.overridesActive.length > 0;
+
   return (
-    <div
-      className="lt-card lt-edge lt-rise lt-stagger-5 p-4 sm:p-6"
-      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
-    >
+    <div className="lt-card lt-edge lt-rise lt-stagger-5 p-4 sm:p-6" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="lt-eyebrow">
-          Scoring Overrides
-        </h2>
+        <h2 className="lt-eyebrow">Scoring Overrides</h2>
         <RegimePill r={regime} />
       </div>
 
-      {regime === "Risk-On" && (
+      {!anyActive && regime === "Risk-On" && (
         <div className="flex flex-col items-center text-center gap-3 py-8">
           <CheckCircle2 size={32} style={{ color: "var(--lucid-pos)" }} />
           <p className="text-sm max-w-md" style={{ color: "var(--lucid-ink-2)" }}>
@@ -754,23 +847,22 @@ function OverridesSection({
         </div>
       )}
 
-      {regime === "Caution" && (
+      {!anyActive && regime === "Caution" && (
         <div className="flex flex-col items-center text-center gap-3 py-8">
           <AlertCircle size={32} style={{ color: "var(--lucid-warn)" }} />
           <p className="text-sm max-w-md" style={{ color: "var(--lucid-ink-2)" }}>
-            No overrides active. Warning: fundamental signals have reduced reliability in mixed regimes. Consider reducing
-            position conviction sizing.
+            No overrides active. Fundamental signals have reduced reliability in mixed regimes — consider reducing conviction sizing.
           </p>
         </div>
       )}
 
-      {regime === "Risk-Off" && (
+      {(anyActive || regime === "Risk-Off") && (
         <div className="space-y-3">
           <p className="text-xs mb-1" style={{ color: "var(--lucid-ink-3)" }}>
-            Toggle any override off to preview its effect on the score impact table below. Toggle state is session-only.
+            Overrides fire only under a Risk-Off activation path, and each is subject to its gate (8A rate gate on 3 & 5, 8B fed constraint on 2). State below is the live post-gate result.
           </p>
           {OVERRIDES.map((o) => (
-            <OverrideCard key={o.id} o={o} on={enabled[o.id]} onToggle={() => onToggle(o.id)} />
+            <OverrideCard key={o.id} o={o} state={byCode.get(o.code)} />
           ))}
         </div>
       )}
@@ -778,53 +870,33 @@ function OverridesSection({
   );
 }
 
-// ─── Section 5 — Score impact table ──────────────────────────────────────────
+// ─── Section 6 — Score impact table (layered base → adjustment → final) ───────
 
 function ScorePill({ score }: { score: number }) {
   const v = scoreVisual(score);
   return (
     <div className="flex items-center gap-2 whitespace-nowrap">
-      <span className="lt-num font-bold text-sm" style={{ color: v.color }}>
-        {signed(score)}
-      </span>
-      <span
-        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold"
-        style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}
-      >
+      <span className="lt-num font-bold text-sm" style={{ color: v.color }}>{signed(score)}</span>
+      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold" style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}>
         {v.label}
       </span>
     </div>
   );
 }
 
-function ScoreImpactTable({
-  regime,
-  rows,
-  enabled,
-}: {
-  regime: CompassRegime;
-  rows: PublicCompassScoreImpactRow[];
-  enabled: Record<number, boolean>;
-}) {
-  const ordered = [...rows].sort(
-    (a, b) => (ASSET_META[a.asset]?.order ?? 99) - (ASSET_META[b.asset]?.order ?? 99),
-  );
+function ScoreImpactTable({ regime, rows }: { regime: CompassRegime; rows: PublicCompassScoreImpactRow[] }) {
+  const ordered = [...rows].sort((a, b) => (ASSET_META[a.asset]?.order ?? 99) - (ASSET_META[b.asset]?.order ?? 99));
 
   return (
-    <div
-      className="lt-card lt-edge lt-rise lt-stagger-6 p-4 sm:p-6"
-      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
-    >
-      <h2 className="lt-eyebrow mb-4">
-        Score Impact — Base vs Compass-Adjusted
-      </h2>
+    <div className="lt-card lt-edge lt-rise lt-stagger-6 p-4 sm:p-6" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
+      <h2 className="lt-eyebrow mb-4">Score Impact — Base → Adjustment → Final</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-xs" style={{ minWidth: 640 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--lucid-line-2)" }}>
               <th className="px-3 py-2.5 text-left lt-eyebrow">Asset</th>
               <th className="px-3 py-2.5 text-left lt-eyebrow">Base Score</th>
-              <th className="px-3 py-2.5 text-left lt-eyebrow">Compass Adj</th>
+              <th className="px-3 py-2.5 text-left lt-eyebrow">Compass Adjustment</th>
               <th className="px-3 py-2.5 text-left lt-eyebrow">Final Score</th>
               <th className="px-3 py-2.5 text-center lt-eyebrow">Change</th>
             </tr>
@@ -832,22 +904,20 @@ function ScoreImpactTable({
           <tbody>
             {ordered.map((row) => {
               const flag = ASSET_META[row.asset]?.flag ?? "🌐";
-              const { adj, ids } = rowAdjustment(row, enabled);
-              const final = row.baseScore + adj;
+              // Use the backend-computed, post-gate adjustment/final directly.
+              const adj = row.adjustment;
               const changed = adj !== 0;
+              const codes = row.overrides.map((o) => o.code.replace(/^OVERRIDE_(\d)_.*/, "$1"));
               const adjLabel =
                 row.overrides.length === 0
-                  ? "0 (no change)"
-                  : ids.length === 0
-                    ? "0 (overrides off)"
-                    : `${signed(adj)} · Ov ${ids.join("+")}`;
+                  ? "0 (no override)"
+                  : adj === 0
+                    ? "0 (suppressed by gate)"
+                    : `${signed(adj)} · Ov ${codes.join("+")}`;
               const arrow = adj > 0 ? "↑" : adj < 0 ? "↓" : "—";
               const arrowColor = adj > 0 ? "var(--lucid-pos)" : adj < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)";
               return (
-                <tr
-                  key={row.asset}
-                  style={{ borderBottom: "1px solid var(--lucid-line)", background: changed ? "var(--lucid-surface-2)" : undefined }}
-                >
+                <tr key={row.asset} style={{ borderBottom: "1px solid var(--lucid-line)", background: changed ? "var(--lucid-surface-2)" : undefined }}>
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span className="mr-2">{flag}</span>
                     <span className="font-semibold" style={{ color: "var(--lucid-ink)" }}>{row.asset}</span>
@@ -855,18 +925,13 @@ function ScoreImpactTable({
                   <td className="px-3 py-3">
                     <ScorePill score={row.baseScore} />
                   </td>
-                  <td
-                    className="px-3 py-3 lt-num font-medium whitespace-nowrap"
-                    style={{ color: changed ? (adj > 0 ? "var(--lucid-pos)" : "var(--lucid-neg)") : "var(--lucid-ink-3)" }}
-                  >
+                  <td className="px-3 py-3 lt-num font-medium whitespace-nowrap" style={{ color: changed ? (adj > 0 ? "var(--lucid-pos)" : "var(--lucid-neg)") : "var(--lucid-ink-3)" }}>
                     {adjLabel}
                   </td>
                   <td className="px-3 py-3">
-                    <ScorePill score={final} />
+                    <ScorePill score={row.finalScore} />
                   </td>
-                  <td className="px-3 py-3 text-center font-bold lt-num" style={{ color: arrowColor }}>
-                    {arrow}
-                  </td>
+                  <td className="px-3 py-3 text-center font-bold lt-num" style={{ color: arrowColor }}>{arrow}</td>
                 </tr>
               );
             })}
@@ -875,51 +940,38 @@ function ScoreImpactTable({
       </div>
       <p className="text-[11px] mt-4" style={{ color: "var(--lucid-ink-3)" }}>
         {regime === "Risk-Off"
-          ? "Compass overrides are active. Final = base + the currently-enabled override deltas — toggle overrides above to see the impact reactively."
-          : "In Risk-On and Caution regimes, all base scores equal final scores. Compass overrides only activate in Risk-Off."}
+          ? "Final = base + the post-gate override adjustment the backend actually applied. Overrides suppressed by the rate/fed gates contribute 0."
+          : "In Risk-On and Caution regimes, all base scores equal final scores. Compass overrides only activate under a Risk-Off path."}
       </p>
     </div>
   );
 }
 
-// ─── Section 6 — Audit log ───────────────────────────────────────────────────
+// ─── Section 7 — Audit log ───────────────────────────────────────────────────
 
 function AuditLetterCell({ band }: { band: CompassBand | undefined }) {
   if (!band) {
-    return (
-      <td className="px-2 py-2 text-center" style={{ color: "var(--lucid-ink-3)" }}>
-        —
-      </td>
-    );
+    return <td className="px-2 py-2 text-center" style={{ color: "var(--lucid-ink-3)" }}>—</td>;
   }
   return (
-    <td className="px-2 py-2 text-center font-bold lt-num" style={{ color: CLS[band].color }}>
-      {band[0]}
-    </td>
+    <td className="px-2 py-2 text-center font-bold lt-num" style={{ color: CLS[band].color }}>{band[0]}</td>
   );
 }
 
-const AUDIT_INPUT_ORDER = ["VIX_5D_AVG", "HY_OAS", "YIELD_2S10S", "DXY_TREND", "GOLD_DXY_CORR", "US_DATA_STACK"];
+const AUDIT_INPUT_ORDER = ["VIX_5D_AVG", "VIX_TERM_STRUCTURE", "HY_OAS", "YIELD_2S10S", "DXY_TREND", "US_DATA_STACK"];
+const AUDIT_INPUT_HEADERS = ["VIX", "VIX-TS", "HY OAS", "2s10s", "DXY", "Data Stack"];
 
 function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
   return (
-    <div
-      className="lt-card lt-edge lt-rise lt-stagger-7 p-4 sm:p-6"
-      style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
-    >
-      <h2 className="lt-eyebrow mb-4">
-        Classification History — Last {history.length} Days
-      </h2>
+    <div className="lt-card lt-edge lt-rise lt-stagger-7 p-4 sm:p-6" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
+      <h2 className="lt-eyebrow mb-4">Classification History — Last {history.length} Days</h2>
       <div className="overflow-x-auto">
         <div className="overflow-y-auto" style={{ maxHeight: 420 }}>
-          <table className="w-full text-xs" style={{ minWidth: 720 }}>
+          <table className="w-full text-xs" style={{ minWidth: 760 }}>
             <thead className="sticky top-0 z-10" style={{ background: "var(--lucid-surface)" }}>
               <tr style={{ borderBottom: "1px solid var(--lucid-line-2)" }}>
-                {["Date", "Regime", "VIX", "HY OAS", "2s10s", "DXY", "Gold/DXY", "Data Stack", "Green Wt", "Red Wt"].map((h, idx) => (
-                  <th
-                    key={h}
-                    className={`px-2 py-2.5 lt-eyebrow whitespace-nowrap ${idx <= 1 ? "text-left" : idx >= 8 ? "text-right" : "text-center"}`}
-                  >
+                {["Date", "Regime", ...AUDIT_INPUT_HEADERS, "Green Wt", "Red Wt"].map((h, idx) => (
+                  <th key={h} className={`px-2 py-2.5 lt-eyebrow whitespace-nowrap ${idx <= 1 ? "text-left" : idx >= 8 ? "text-right" : "text-center"}`}>
                     {h}
                   </th>
                 ))}
@@ -928,21 +980,19 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
             <tbody>
               {history.map((row) => (
                 <tr key={row.date} className="transition-colors hover:bg-(--lucid-line)" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-                  <td className="px-2 py-2 whitespace-nowrap font-medium" style={{ color: "var(--lucid-ink-2)" }}>
-                    {formatAuditDate(row.date)}
-                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap font-medium" style={{ color: "var(--lucid-ink-2)" }}>{formatAuditDate(row.date)}</td>
                   <td className="px-2 py-2">
-                    <RegimePill r={row.activeRegime} size="sm" />
+                    <div className="flex items-center gap-1">
+                      <RegimePill r={row.finalRegime} size="sm" />
+                      {row.shockAActive && <ShieldAlert size={12} style={{ color: "var(--lucid-neg)" }} aria-label="Vol shock" />}
+                      {row.shockBActive && <Zap size={12} style={{ color: "var(--lucid-accent)" }} aria-label="Carry shock" />}
+                    </div>
                   </td>
                   {AUDIT_INPUT_ORDER.map((code) => (
                     <AuditLetterCell key={code} band={row.bands[code]} />
                   ))}
-                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: "var(--lucid-pos)" }}>
-                    {fmt1(row.greenWeight)}
-                  </td>
-                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: row.redWeight > 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
-                    {fmt1(row.redWeight)}
-                  </td>
+                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: "var(--lucid-pos)" }}>{fmt1(row.greenWeight)}</td>
+                  <td className="px-2 py-2 text-right lt-num font-medium" style={{ color: row.redWeight > 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>{fmt1(row.redWeight)}</td>
                 </tr>
               ))}
             </tbody>
@@ -950,7 +1000,7 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
         </div>
       </div>
       <p className="text-[11px] mt-4" style={{ color: "var(--lucid-ink-3)" }}>
-        Audit log used for regime validation and backtesting. Inputs snapshot daily at market close.
+        Regime shown is the FINAL regime (shock icons flag Vol / Carry shocks). Audit log used for validation and backtesting. Inputs snapshot daily at market close.
       </p>
     </div>
   );
@@ -961,17 +1011,6 @@ function AuditLog({ history }: { history: PublicCompassHistoryRow[] }) {
 export default function CompassPage() {
   const { data, isLoading, error, refetch } = useCompass();
   const [expandedStack, setExpandedStack] = useState(false);
-  const [enabledOverrides, setEnabledOverrides] = useState<Record<number, boolean>>({
-    1: true,
-    2: true,
-    3: true,
-    4: true,
-    5: true,
-  });
-
-  function toggleOverride(id: number) {
-    setEnabledOverrides((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   if (isLoading) return <LoadingState stages={["Loading Compass…", "Weighing regime votes…", "Classifying the market…"]} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
@@ -983,17 +1022,15 @@ export default function CompassPage() {
       />
     );
 
-  const { current, inputs, scoreImpact, history } = data;
-  const regime = current.activeRegime;
+  const { current, gate, inputs, scoreImpact, history } = data;
+  const regime = current.finalRegime;
 
   return (
     <div className="space-y-5 sm:space-y-6 p-4 sm:p-6" style={{ color: "var(--lucid-ink)" }}>
       {/* Page header */}
       <div className="lt-rise lt-stagger-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="lt-serif text-xl font-semibold" style={{ color: "var(--lucid-ink)" }}>
-            Compass
-          </h1>
+          <h1 className="lt-serif text-xl font-semibold" style={{ color: "var(--lucid-ink)" }}>Compass</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
             Regime classification — is the fundamental scoring reliable right now?
           </p>
@@ -1003,18 +1040,16 @@ export default function CompassPage() {
         </p>
       </div>
 
-      {/* Section 1 — Regime verdict hero */}
-      <RegimeHero current={current} />
+      {/* Shock banner (only when a shock is active) */}
+      <ShockBanner gate={gate} />
+
+      {/* Section 1 — Regime verdict hero (shows FINAL regime) */}
+      <RegimeHero current={current} gate={gate} />
 
       {/* Section 2 — 6 input votes */}
-      <div
-        className="lt-card lt-edge lt-rise lt-stagger-3 p-4 sm:p-6"
-        style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}
-      >
+      <div className="lt-card lt-edge lt-rise lt-stagger-3 p-4 sm:p-6" style={{ background: "var(--lucid-grad-surface)", boxShadow: "var(--lucid-elev-1)" }}>
         <div className="mb-4">
-          <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
-            Compass Inputs — Vote Breakdown
-          </h2>
+          <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>Compass Inputs — Vote Breakdown</h2>
           <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
             Each input classified independently, then weighted to determine overall regime.
           </p>
@@ -1034,13 +1069,16 @@ export default function CompassPage() {
       {/* Section 3 — Classification logic */}
       <ClassificationLogic current={current} inputs={inputs} />
 
-      {/* Section 4 — Active overrides */}
-      <OverridesSection regime={regime} enabled={enabledOverrides} onToggle={toggleOverride} />
+      {/* Section 4 — Override gates (8A / 8B) */}
+      <OverrideGates gate={gate} />
 
-      {/* Section 5 — Score impact */}
-      <ScoreImpactTable regime={regime} rows={scoreImpact} enabled={enabledOverrides} />
+      {/* Section 5 — Active overrides (live post-gate state) */}
+      <OverridesSection regime={regime} gate={gate} />
 
-      {/* Section 6 — Audit log */}
+      {/* Section 6 — Score impact */}
+      <ScoreImpactTable regime={regime} rows={scoreImpact} />
+
+      {/* Section 7 — Audit log */}
       {history.length > 0 && <AuditLog history={history} />}
     </div>
   );

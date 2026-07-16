@@ -286,6 +286,10 @@ export interface PublicCompassInput {
   displayValue: string;
   displayDetail: string | null;
   subChecks: PublicCompassSubCheck[] | null;
+  /** Phase 5: the input's own row was flagged stale beyond its limit at ingest. */
+  stale: boolean;
+  /** Phase 5: not enough clean history for the input's lookback. */
+  insufficientHistory: boolean;
 }
 
 export interface PublicCompassOverrideRef {
@@ -305,24 +309,72 @@ export interface PublicCompassScoreImpactRow {
 
 export interface PublicCompassHistoryRow {
   date: string;
+  /** The FINAL regime for the day (Risk-Off under a Trigger A shock). */
+  finalRegime: CompassRegime;
   activeRegime: CompassRegime;
   candidateRegime: CompassRegime;
-  crisisOverrideFired: boolean;
+  shockAActive: boolean;
+  shockBActive: boolean;
   greenWeight: number;
   redWeight: number;
   bands: Record<string, CompassBand>;
+}
+
+/** Phase 6 per-override active/suppressed state + human reason. */
+export interface PublicCompassOverrideState {
+  code: string;
+  id: number;
+  active: boolean;
+  suppressed: boolean;
+  reason: string | null;
+}
+
+/** Phase 6 gate + shock state for the current day. */
+export interface PublicCompassGateState {
+  finalRegime: CompassRegime;
+  shockAActive: boolean;
+  shockAExpiry: string | null;
+  shockBActive: boolean;
+  shockBExpiry: string | null;
+  rateGateHawkish: boolean;
+  us02yClose: number | null;
+  us02ySma21: number | null;
+  override3SuppressedByGate: boolean;
+  override5SuppressedByGate: boolean;
+  fedConstraint: string;
+  fedConstraintEffectiveFrom: string | null;
+  override2SuppressedByConstraint: boolean;
+  overridesActive: string[];
+  overrides: PublicCompassOverrideState[];
+}
+
+export interface PublicCompassThresholds {
+  redRiskOffAt: number;
+  greenRiskOnAt: number;
+  redRiskOnCeiling: number;
+  daysToHigherSeverity: number;
+  daysToLowerSeverity: number;
 }
 
 export interface PublicCompassSnapshot {
   current: {
     classificationDate: string;
     candidateRegime: CompassRegime;
+    /** Standard machine active regime. */
     activeRegime: CompassRegime;
+    /** The ACTUAL regime — Risk-Off under a Trigger A shock. The UI shows THIS. */
+    finalRegime: CompassRegime;
     persistenceDaysCount: number;
-    crisisOverrideFired: boolean;
+    /** The pending candidate label building toward a flip, or null. */
+    pendingLabel: CompassRegime | null;
+    pendingCount: number;
+    /** Days required for the pending flip (3 toward higher severity, 5 toward lower). */
+    required: number;
     daysStable: number;
     weights: { green: number; yellow: number; red: number; total: number };
+    thresholds: PublicCompassThresholds;
   };
+  gate: PublicCompassGateState;
   inputs: PublicCompassInput[];
   scoreImpact: PublicCompassScoreImpactRow[];
   history: PublicCompassHistoryRow[];

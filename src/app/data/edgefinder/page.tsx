@@ -16,6 +16,7 @@ import {
   type FetchLog,
   type CycleStance,
   type CycleStanceRow,
+  type FedConstraint,
   TRIGGER_TO_LOG_JOB_NAME,
 } from "@/lib/api/admin";
 import {
@@ -185,11 +186,31 @@ function StanceBadge({ stance }: { stance: CycleStance }) {
   );
 }
 
+/** Phase 6: Fed constraint (8B) applies to USD only. */
+const FED_CONSTRAINT_CONFIG: Record<FedConstraint, { label: string; color: string; bg: string; border: string; hint: string }> = {
+  FREE: {
+    label: "Fed FREE",
+    color: "var(--lucid-pos)",
+    bg: "var(--lucid-pos-bg)",
+    border: "var(--lucid-pos-bd)",
+    hint: "Fed can hike into inflation — classical rules; gold Override 2 suppressed.",
+  },
+  CONSTRAINED: {
+    label: "Fed CONSTRAINED",
+    color: "var(--lucid-neg)",
+    bg: "var(--lucid-neg-bg)",
+    border: "var(--lucid-neg-bd)",
+    hint: "Fed trapped — inflation is a gold tailwind; gold Override 2 applies under Risk-Off.",
+  },
+};
+
 function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg: string) => void }) {
+  const isUsd = row.currencyCode === "USD";
   const [editing, setEditing] = useState(false);
   const [stance, setStance] = useState<CycleStance>(row.stance);
   const [effectiveFrom, setEffectiveFrom] = useState(row.effectiveFrom);
   const [notes, setNotes] = useState(row.notes ?? "");
+  const [fedConstraint, setFedConstraint] = useState<FedConstraint>(row.fedConstraint ?? "FREE");
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -198,6 +219,7 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
         stance,
         effectiveFrom: effectiveFrom || undefined,
         notes: notes || undefined,
+        fedConstraint: isUsd ? fedConstraint : undefined,
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "cycle-stances"] });
@@ -215,7 +237,8 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
     setStance(row.stance);
     setEffectiveFrom(row.effectiveFrom);
     setNotes(row.notes ?? "");
-  }, [row.stance, row.effectiveFrom, row.notes]);
+    setFedConstraint(row.fedConstraint ?? "FREE");
+  }, [row.stance, row.effectiveFrom, row.notes, row.fedConstraint]);
 
   const inputStyle = {
     background: "var(--lucid-surface-2)",
@@ -268,7 +291,22 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
       {/* Current stance display */}
       {!editing && (
         <>
-          <StanceBadge stance={row.stance} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StanceBadge stance={row.stance} />
+            {isUsd && (
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                style={{
+                  background: FED_CONSTRAINT_CONFIG[row.fedConstraint ?? "FREE"].bg,
+                  color: FED_CONSTRAINT_CONFIG[row.fedConstraint ?? "FREE"].color,
+                  border: `1px solid ${FED_CONSTRAINT_CONFIG[row.fedConstraint ?? "FREE"].border}`,
+                }}
+                title={FED_CONSTRAINT_CONFIG[row.fedConstraint ?? "FREE"].hint}
+              >
+                {FED_CONSTRAINT_CONFIG[row.fedConstraint ?? "FREE"].label}
+              </span>
+            )}
+          </div>
           <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
             Since {row.effectiveFrom}
           </p>
@@ -300,6 +338,28 @@ function CycleStanceCard({ row, onSaved }: { row: CycleStanceRow; onSaved: (msg:
               <option value="HIKING" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>Hiking</option>
             </select>
           </div>
+
+          {isUsd && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--lucid-ink-2)" }}>
+                Fed Constraint (8B — Gold Override 2)
+              </label>
+              <select
+                value={fedConstraint}
+                onChange={(e) => setFedConstraint(e.target.value as FedConstraint)}
+                className="rounded-lg px-3 py-2 text-sm outline-none"
+                style={selectStyle}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--lucid-accent-bd)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--lucid-line-2)")}
+              >
+                <option value="FREE" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>FREE — can hike into inflation</option>
+                <option value="CONSTRAINED" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink)" }}>CONSTRAINED — trapped Fed</option>
+              </select>
+              <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
+                {FED_CONSTRAINT_CONFIG[fedConstraint].hint}
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--lucid-ink-2)" }}>
