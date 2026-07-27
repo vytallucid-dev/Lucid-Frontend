@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Camera, Loader2, Sparkles } from "lucide-react";
 import { accountTypeLabel, type Direction, type Conviction, type ExitType, type Trade } from "@/lib/demo-data";
@@ -9,6 +9,8 @@ import type { CreateTradePayload } from "@/lib/api/trading";
 import { getFxPair, getScorecardAsset } from "@/lib/api/oracle";
 import { toast } from "@/components/toast";
 import { ScreenshotUploader } from "@/components/ScreenshotUploader";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 // Pairs the Oracle can produce a Lucid score for (5 FX majors via the FX
 // scorecard, Gold via the asset scorecard). Others have no score → field stays blank.
@@ -50,35 +52,10 @@ interface AddTradeModalProps {
   onSubmitted?: () => void;
 }
 
-const INPUT_STYLE: React.CSSProperties = {
-  width: "100%",
-  background: "var(--lucid-surface-3)",
-  border: "1px solid var(--lucid-line)",
-  borderRadius: 8,
-  padding: "8px 12px",
-  fontSize: 13,
-  color: "var(--lucid-ink)",
-  outline: "none",
-};
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-  color: "var(--lucid-ink-2)",
-  marginBottom: 6,
-  display: "block",
-};
-
-// Explicit dark background so the native dropdown list stays readable on
-// mobile (some browsers default the option panel to the page background).
-const OPTION_STYLE: React.CSSProperties = { background: "var(--lucid-surface)", color: "var(--lucid-ink)" };
-
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
-    <div>
-      <label style={LABEL_STYLE}>{label}</label>
+    <div className={full ? "lx-field-full" : undefined}>
+      <label className="lx-field-label">{label}</label>
       {children}
     </div>
   );
@@ -187,6 +164,10 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
   // Stored verbatim as the trade result — never auto-calculated from prices.
   const [netPnl, setNetPnl] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
+  useScrollLock(panelRef, open);
 
   // Lucid (Oracle) score for the selected pair — auto-prefills the field.
   const lucidQuery = useQuery({
@@ -346,46 +327,25 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="lt-fade-in fixed inset-0 z-50"
-        style={{ background: "rgba(0,0,0,0.6)" }}
-        onClick={onClose}
-      />
+      <div className="lx-overlay-scrim fixed inset-0 z-50" onClick={onClose} />
 
       {/* Modal */}
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
-          className="lt-modal-enter relative flex flex-col rounded-2xl"
-          style={{
-            width: "100%",
-            maxWidth: 720,
-            maxHeight: "90vh",
-            background: "var(--lucid-grad-surface-2)",
-            border: "1px solid var(--lucid-line-2)",
-            boxShadow: "var(--lucid-elev-2)",
-          }}
+          ref={panelRef}
+          className="lx-modal-panel lx-modal-form relative"
           onClick={e => e.stopPropagation()}
         >
           {/* Modal header */}
-          <div
-            className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderBottom: "1px solid var(--lucid-line)" }}
-          >
-            <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>{isEdit ? "Edit Trade" : "Add Trade"}</h2>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-3)" }}
-            >
+          <div className="lx-overlay-header">
+            <h2 className="lx-overlay-title">{isEdit ? "Edit Trade" : "Add Trade"}</h2>
+            <button onClick={onClose} className="lx-overlay-close">
               <X size={15} />
             </button>
           </div>
 
           {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
+          <div className="lx-overlay-body">
 
             {/* Screenshot auto-fill zone */}
             <div
@@ -393,7 +353,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               style={{
                 height: 112,
                 border: "1.5px dashed var(--lucid-line-2)",
-                background: "var(--lucid-surface)",
+                background: "var(--lucid-surface-2)",
               }}
             >
               <Camera size={22} style={{ color: "var(--lucid-ink-3)" }} />
@@ -422,27 +382,19 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               {/* Group 1: Setup */}
               <div>
                 <GroupHeader>Setup</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Pair">
-                    <select
-                      value={pair}
-                      onChange={e => setPair(e.target.value)}
-                      style={INPUT_STYLE}
-                    >
+                    <select className="lx-input lx-select" value={pair} onChange={e => setPair(e.target.value)}>
                       {pairList.map(p => (
-                        <option key={p.symbol} value={p.symbol} style={OPTION_STYLE}>{p.display_name}</option>
+                        <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
                       ))}
                     </select>
                   </FieldGroup>
 
                   <FieldGroup label="Model">
-                    <select
-                      value={model}
-                      onChange={e => setModel(e.target.value)}
-                      style={INPUT_STYLE}
-                    >
+                    <select className="lx-input lx-select" value={model} onChange={e => setModel(e.target.value)}>
                       {modelList.map(m => (
-                        <option key={m.id} value={m.name} style={OPTION_STYLE}>{m.name}</option>
+                        <option key={m.id} value={m.name}>{m.name}</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -453,21 +405,17 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       value={direction}
                       onChange={setDirection}
                       colorMap={{
-                        Buy: { active: "#48ba7c", bg: "var(--lucid-pos-bg)" },
-                        Sell: { active: "#e2584d", bg: "var(--lucid-neg-bg)" },
+                        Buy: { active: "var(--lucid-pos)", bg: "var(--lucid-pos-bg)" },
+                        Sell: { active: "var(--lucid-neg)", bg: "var(--lucid-neg-bg)" },
                       }}
                     />
                   </FieldGroup>
 
                   <FieldGroup label="Account">
-                    <select
-                      value={account}
-                      onChange={e => setAccount(e.target.value)}
-                      style={INPUT_STYLE}
-                    >
-                      {accountList.length === 0 && <option value="" style={OPTION_STYLE}>No accounts</option>}
+                    <select className="lx-input lx-select" value={account} onChange={e => setAccount(e.target.value)}>
+                      {accountList.length === 0 && <option value="">No accounts</option>}
                       {accountList.map(a => (
-                        <option key={a.id} value={a.id} style={OPTION_STYLE}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
+                        <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -477,7 +425,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       type="datetime-local"
                       value={dateOpened}
                       onChange={e => setDateOpened(e.target.value)}
-                      style={INPUT_STYLE}
+                      className="lx-input lx-input-num"
                     />
                   </FieldGroup>
                 </div>
@@ -486,24 +434,24 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               {/* Group 2: Prices */}
               <div>
                 <GroupHeader>Prices</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Entry Price">
-                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Lot Size">
-                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Risk %">
-                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lx-input lx-input-num" />
                   </FieldGroup>
                 </div>
               </div>
@@ -511,22 +459,22 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               {/* Group 3: Conviction & Context */}
               <div>
                 <GroupHeader>Conviction &amp; Context</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Conviction">
                     <SegmentedControl
                       options={["Low", "Medium", "High"] as const}
                       value={conviction}
                       onChange={setConviction}
                       colorMap={{
-                        Low: { active: "#62646c", bg: "var(--lucid-surface-3)" },
-                        Medium: { active: "#9b9c9c", bg: "var(--lucid-surface-3)" },
-                        High: { active: "#cda74f", bg: "var(--lucid-accent-bg)" },
+                        Low: { active: "var(--lucid-ink-3)", bg: "var(--lucid-surface-3)" },
+                        Medium: { active: "var(--lucid-ink-2)", bg: "var(--lucid-surface-3)" },
+                        High: { active: "var(--lucid-accent)", bg: "var(--lucid-accent-bg)" },
                       }}
                     />
                   </FieldGroup>
 
                   <div>
-                    <label style={{ ...LABEL_STYLE, display: "flex", alignItems: "center", gap: 6 }}>
+                    <label className="lx-field-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Sparkles size={11} style={{ color: "var(--lucid-accent)" }} />
                       Lucid Score
                       {lucidQuery.isFetching && !lucidQuery.isPlaceholderData && (
@@ -541,8 +489,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                       value={fundScore}
                       onChange={e => { setFundScore(e.target.value); setLucidAuto(false); }}
                       placeholder={lucidQuery.isFetching ? "Fetching…" : "Auto from Oracle"}
-                      className="lt-num"
-                      style={INPUT_STYLE}
+                      className="lx-input lx-input-num"
                     />
                     <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
                       {lucidAuto && lucidQuery.data != null
@@ -555,11 +502,9 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                     </p>
                   </div>
 
-                  <div className="col-span-2">
-                    <FieldGroup label="Psychology">
-                      <input type="text" value={psychology} onChange={e => setPsychology(e.target.value)} placeholder="One word: confident, patient, eager, frustrated..." style={INPUT_STYLE} />
-                    </FieldGroup>
-                  </div>
+                  <FieldGroup label="Psychology" full>
+                    <input type="text" value={psychology} onChange={e => setPsychology(e.target.value)} placeholder="One word: confident, patient, eager, frustrated..." className="lx-input" />
+                  </FieldGroup>
                 </div>
               </div>
 
@@ -567,7 +512,7 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
               <div>
                 <GroupHeader>Notes &amp; Screenshots</GroupHeader>
                 <FieldGroup label="Notes">
-                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Setup notes, observations, things you noticed..." style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.6 }} />
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Setup notes, observations, things you noticed..." className="lx-input lx-textarea" />
                 </FieldGroup>
                 <div className="mt-4">
                   <ScreenshotUploader value={screenshots} onChange={setScreenshots} />
@@ -596,9 +541,9 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                         height: 16,
                         top: 3,
                         left: 3,
-                        background: "#fff",
+                        background: "var(--lucid-ink)",
                         transform: isClosed ? "translateX(16px)" : "translateX(0)",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                        boxShadow: "var(--lucid-elev-thumb)",
                       }}
                     />
                   </button>
@@ -606,36 +551,32 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                 </div>
 
                 {isClosed && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="lx-form-grid">
                     <FieldGroup label="Partial Exit Price">
-                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" className="lt-num" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" className="lx-input lx-input-num" />
                     </FieldGroup>
                     <FieldGroup label="Partial Lot %">
-                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" className="lt-num" style={INPUT_STYLE} />
+                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" className="lx-input lx-input-num" />
                     </FieldGroup>
                     <FieldGroup label="Main Exit Price">
-                      <input type="number" step="any" value={mainExit} onChange={e => { setMainExit(e.target.value); setMainExitAuto(false); }} placeholder="1.0820" className="lt-num" style={INPUT_STYLE} />
+                      <input type="number" step="any" value={mainExit} onChange={e => { setMainExit(e.target.value); setMainExitAuto(false); }} placeholder="1.0820" className="lx-input lx-input-num" />
                     </FieldGroup>
                     <FieldGroup label="Date Closed">
-                      <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} style={INPUT_STYLE} />
+                      <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} className="lx-input lx-input-num" />
                     </FieldGroup>
-                    <div className="col-span-2">
-                      <FieldGroup label="Exit Type">
-                        <select value={exitType} onChange={e => setExitType(e.target.value as ExitType)} style={INPUT_STYLE}>
-                          {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
-                            <option key={t} value={t} style={OPTION_STYLE}>{t}</option>
-                          ))}
-                        </select>
-                      </FieldGroup>
-                    </div>
-                    <div className="col-span-2">
-                      <FieldGroup label="Net P&amp;L">
-                        <input type="number" step="any" value={netPnl} onChange={e => setNetPnl(e.target.value)} placeholder="e.g. 284 or -100" className="lt-num" style={INPUT_STYLE} />
-                        <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
-                          Your actual closed P&amp;L. Positive = profit, negative = loss, 0 = break-even. Decides the trade&apos;s outcome.
-                        </p>
-                      </FieldGroup>
-                    </div>
+                    <FieldGroup label="Exit Type" full>
+                      <select className="lx-input lx-select" value={exitType} onChange={e => setExitType(e.target.value as ExitType)}>
+                        {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </FieldGroup>
+                    <FieldGroup label="Net P&amp;L" full>
+                      <input type="number" step="any" value={netPnl} onChange={e => setNetPnl(e.target.value)} placeholder="e.g. 284 or -100" className="lx-input lx-input-num" />
+                      <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
+                        Your actual closed P&amp;L. Positive = profit, negative = loss, 0 = break-even. Decides the trade&apos;s outcome.
+                      </p>
+                    </FieldGroup>
                   </div>
                 )}
               </div>
@@ -643,26 +584,15 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
           </div>
 
           {/* Footer */}
-          <div
-            className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderTop: "1px solid var(--lucid-line)" }}
-          >
-            {error && (
-              <span className="mr-auto text-sm" style={{ color: "var(--lucid-neg)" }}>{error}</span>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm transition-colors"
-              style={{ color: "var(--lucid-ink-3)" }}
-            >
+          <div className="lx-overlay-footer">
+            {error && <span className="lx-field-error mr-auto">{error}</span>}
+            <button type="button" onClick={onClose} className="lx-btn lx-btn-secondary">
               Cancel
             </button>
             <button
               type="button"
               disabled={saving || noAccounts}
-              className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)", opacity: saving || noAccounts ? 0.6 : 1 }}
+              className="lx-btn lx-btn-primary"
               onClick={handleSubmit}
             >
               {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Trade"}

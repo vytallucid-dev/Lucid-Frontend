@@ -33,8 +33,8 @@ export function ErrorState({
       <div
         className="glass-card p-6 max-w-md w-full"
         style={{
-          background: "rgba(239, 68, 68, 0.06)",
-          border: "1px solid rgba(239, 68, 68, 0.2)",
+          background: "var(--lucid-neg-bg)",
+          border: "1px solid var(--lucid-neg-bd)",
         }}
       >
         <div className="flex items-center gap-2 mb-2">
@@ -43,17 +43,17 @@ export function ErrorState({
             style={{ background: "var(--band-strong-bearish)" }}
             aria-hidden="true"
           />
-          <h3 className="text-sm font-semibold" style={{ color: "#E2E8F0" }}>
+          <h3 className="text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
             {headline}
           </h3>
         </div>
-        <div className="text-xs leading-relaxed mb-3" style={{ color: "#94A3B8" }}>
+        <div className="text-xs leading-relaxed mb-3" style={{ color: "var(--lucid-ink-2)" }}>
           {message}
         </div>
         {code && (
           <div
             className="text-xs font-mono mb-3"
-            style={{ color: "#64748B" }}
+            style={{ color: "var(--lucid-ink-3)" }}
           >
             code: {code}
           </div>
@@ -64,9 +64,9 @@ export function ErrorState({
             onClick={onRetry}
             className="text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-white/5"
             style={{
-              background: "rgba(239, 68, 68, 0.12)",
-              color: "#FCA5A5",
-              border: "1px solid rgba(239, 68, 68, 0.25)",
+              background: "var(--lucid-neg-bg)",
+              color: "var(--lucid-neg)",
+              border: "1px solid var(--lucid-neg-bd)",
             }}
           >
             Retry

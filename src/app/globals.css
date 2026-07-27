@@ -21,9 +21,17 @@
   scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
+/* The page background for the ENTIRE app. Previously --lucid-bg (#090a0d),
+   which left a visible seam against the Dashboard's own --lucid-page-bg — the
+   Dashboard read deep, everything around it read lighter grey. One value now,
+   set on html as well so overscroll and short pages show the same ground. */
+html {
+  background: var(--lucid-page-bg);
+}
+
 body {
-  background: var(--lucid-bg);
-  color: #F1F5F9;
+  background: var(--lucid-page-bg);
+  color: var(--lucid-ink);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
@@ -136,8 +144,8 @@ body {
   --warning-bg: var(--lucid-warn-bg);
   --neutral: var(--lucid-ctx);
   --neutral-bg: var(--lucid-ctx-bg);
-  --purple: #A855F7;
-  --purple-bg: rgba(168, 85, 247, 0.15);
+  --purple: var(--lucid-purple);
+  --purple-bg: var(--lucid-purple-bg);
 }
 
 /* Pill base */

@@ -169,7 +169,7 @@ export default function USDLabPage() {
   if (!data) return <div className="p-4 sm:p-6"><EmptyState title="No Ind 9 data available" /></div>;
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5">
       <Header data={data} />
       {data.dataQuality.suppressed && <SuppressedBanner />}
       <HeroStrip data={data} />

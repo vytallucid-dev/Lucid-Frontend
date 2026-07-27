@@ -1,13 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Sidebar } from "./Sidebar";
+import { Dock } from "./Dock";
 import { TopBar } from "./TopBar";
-import { SidebarProvider } from "./SidebarContext";
 import { MainContent } from "./MainContent";
 
 /**
- * Renders the app chrome (sidebar + top bar) for normal routes, or just the
+ * Renders the app chrome (dock + top bar) for normal routes, or just the
  * raw children for /auth/* routes (which have their own centered layout).
  *
  * Client-only because we read pathname; the root layout stays a Server
@@ -23,12 +22,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar />
+    <>
       <MainContent>
         <TopBar />
         <main className="flex-1">{children}</main>
       </MainContent>
-    </SidebarProvider>
+      <Dock />
+    </>
   );
 }

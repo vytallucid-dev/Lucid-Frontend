@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -36,6 +38,10 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
+  useScrollLock(panelRef, open);
+
   // Close on Esc (unless busy).
   useEffect(() => {
     if (!open) return;
@@ -48,54 +54,41 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const accent = danger ? "var(--lucid-neg)" : "var(--lucid-accent)";
-  const accentBg = danger ? "var(--lucid-neg-bg)" : "var(--lucid-accent-bg)";
-  const accentBd = danger ? "var(--lucid-neg-bd)" : "var(--lucid-accent-bd)";
-  const confirmText = danger ? "var(--lucid-ink)" : "var(--lucid-bg)";
-
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div
-        className="fixed inset-0"
-        style={{ background: "rgba(0,0,0,0.6)" }}
+        className="lx-overlay-scrim"
         onClick={() => { if (!loading) onCancel(); }}
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="lt-edge relative w-full max-w-sm rounded-2xl"
-        style={{
-          background: "var(--lucid-surface-2)",
-          border: "1px solid var(--lucid-line)",
-        }}
+        className="lx-modal-panel lx-modal-confirm relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 pt-6 pb-5">
+        <div style={{ padding: "24px 24px 20px" }}>
           <div className="flex items-start gap-3">
-            <div
-              className="flex items-center justify-center rounded-full shrink-0"
-              style={{ width: 38, height: 38, background: accentBg, border: `1px solid ${accentBd}` }}
-            >
-              <AlertTriangle size={18} style={{ color: accent }} />
-            </div>
+            {danger && (
+              <div className="lx-confirm-icon">
+                <AlertTriangle size={18} />
+              </div>
+            )}
             <div className="min-w-0">
-              <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>{title}</h2>
-              {message && (
-                <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.55, marginTop: 6 }}>{message}</p>
-              )}
+              <h2 className="lx-overlay-title" style={{ fontSize: 16 }}>{title}</h2>
+              {message && <p className="lx-body" style={{ marginTop: 6 }}>{message}</p>}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--lucid-line)" }}>
+        <div className="lx-overlay-footer">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line)", opacity: loading ? 0.5 : 1 }}
+            className="lx-btn lx-btn-secondary"
           >
             {cancelLabel}
           </button>
@@ -103,8 +96,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-            style={{ background: accent, color: confirmText, opacity: loading ? 0.6 : 1 }}
+            className={danger ? "lx-btn lx-btn-danger" : "lx-btn lx-btn-primary"}
           >
             {loading ? "Working…" : confirmLabel}
           </button>

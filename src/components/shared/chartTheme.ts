@@ -1,4 +1,4 @@
-// ─── Oracle Tools — shared ApexCharts theme ─────────────────────────────────
+// ─── Shared ApexCharts theme (used by Oracle and NIFTY chart components) ────
 //
 // ApexCharts is styled through a JS options object, not CSS. This helper reads
 // the real --lucid-* token values off :root (getComputedStyle) so every chart
@@ -33,6 +33,10 @@ export interface ChartTokens {
 
 // Fallbacks mirror lucid-theme.css so charts still render if getComputedStyle
 // runs before styles resolve (SSR guard already prevents server use).
+// These values are intentionally hardcoded, not token references: this is the
+// fallback path for when reading the real --lucid-* custom properties fails,
+// so referencing those same properties here would defeat the purpose. They
+// must be kept in sync with src/styles/lucid-theme.css by hand.
 const FALLBACK: ChartTokens = {
   ink: "#f1efe9",
   ink2: "#9b9c9c",

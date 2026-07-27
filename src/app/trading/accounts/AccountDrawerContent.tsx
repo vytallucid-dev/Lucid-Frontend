@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   type Account,
+  type AccountStatus,
   type Trade,
   type Payout,
   type AccountType,
@@ -15,6 +17,9 @@ import {
   accountTradingPnl,
   ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
+import { useUpdateAccount } from "@/hooks/useTrading";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { toast } from "@/components/toast";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -97,6 +102,72 @@ export function StatusPill({ status }: { status: string }) {
   );
 }
 
+// ── Lifecycle status control ──────────────────────────────────────────────
+// The only place an account's status can be changed. Shared by the drawer
+// and the detail page so the behaviour (confirmation copy, mutation, toasts)
+// exists in exactly one place.
+
+const STATUS_OPTS: AccountStatus[] = ["Active", "Passed", "Blown", "Closed"];
+
+export function LifecycleStatusControl({ account }: { account: Account }) {
+  const updateAccount = useUpdateAccount();
+  const [pendingStatus, setPendingStatus] = useState<AccountStatus | null>(null);
+
+  function commit(status: AccountStatus) {
+    updateAccount.mutate(
+      { id: account.id, body: { status } },
+      {
+        onSuccess: () => toast.success(`${account.account_name} marked ${status}.`, { title: "Status updated" }),
+        onError: () => toast.error(`Couldn't update ${account.account_name}'s status.`, { title: "Update failed" }),
+      },
+    );
+  }
+
+  function handleChange(next: AccountStatus) {
+    if (next === account.status) return;
+    if (next === "Active") {
+      commit(next);
+    } else {
+      setPendingStatus(next);
+    }
+  }
+
+  return (
+    <>
+      <div style={{ minWidth: 140 }}>
+        <label className="lx-field-label" htmlFor={`status-${account.id}`}>Status</label>
+        <select
+          id={`status-${account.id}`}
+          className="lx-input lx-select"
+          style={{ height: 32, fontSize: 12.5 }}
+          value={account.status}
+          disabled={updateAccount.isPending}
+          onChange={(e) => handleChange(e.target.value as AccountStatus)}
+        >
+          {STATUS_OPTS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      <ConfirmDialog
+        open={pendingStatus !== null}
+        title={`Mark ${account.account_name} as ${pendingStatus}?`}
+        message={`This account's balance will no longer count toward capital totals, but all of its trades will continue to count toward performance statistics.`}
+        confirmLabel={`Mark ${pendingStatus}`}
+        danger={false}
+        loading={updateAccount.isPending}
+        onConfirm={() => {
+          if (!pendingStatus) return;
+          commit(pendingStatus);
+          setPendingStatus(null);
+        }}
+        onCancel={() => setPendingStatus(null)}
+      />
+    </>
+  );
+}
+
 /** Account-type pill: Personal (blue), Demo (gray), Prop Firm (indigo/purple). */
 export function AccountTypePill({ type }: { type: AccountType }) {
   const color = ACCOUNT_TYPE_COLORS[type];
@@ -129,48 +200,16 @@ function ExitTypePill({ type }: { type: string }) {
 function DrawdownBar({ pctUsed }: { pctUsed: number }) {
   const color = pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-pos)";
   return (
-    <div
-      style={{
-        width: "100%",
-        height: 8,
-        background: "var(--lucid-surface-3)",
-        borderRadius: 4,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          width: `${pctUsed}%`,
-          height: "100%",
-          background: color,
-          borderRadius: 4,
-          transition: "width 0.3s ease",
-        }}
-      />
+    <div className="lx-progress-track">
+      <div className="lx-progress-fill" style={{ width: `${pctUsed}%`, background: color }} />
     </div>
   );
 }
 
 function GoalBar({ pct }: { pct: number }) {
   return (
-    <div
-      style={{
-        width: "100%",
-        height: 8,
-        background: "var(--lucid-surface-3)",
-        borderRadius: 4,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          width: `${pct}%`,
-          height: "100%",
-          background: "var(--lucid-accent)",
-          borderRadius: 4,
-          transition: "width 0.3s ease",
-        }}
-      />
+    <div className="lx-progress-track">
+      <div className="lx-progress-fill" style={{ width: `${pct}%`, background: "var(--lucid-accent)" }} />
     </div>
   );
 }
@@ -178,21 +217,12 @@ function GoalBar({ pct }: { pct: number }) {
 // ── Section components ────────────────────────────────────────────────────────
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="lt-serif text-xs font-semibold uppercase tracking-widest mb-3"
-      style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}
-    >
-      {children}
-    </p>
-  );
+  return <p className="lx-eyebrow" style={{ marginBottom: 12 }}>{children}</p>;
 }
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Section({ children, first }: { children: React.ReactNode; first?: boolean }) {
   return (
-    <div
-      className={`lt-card p-4 ${className ?? ""}`}
-    >
+    <div className="lx-content-section" style={first ? { borderTop: "none", paddingTop: 0 } : undefined}>
       {children}
     </div>
   );
@@ -200,12 +230,10 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 
 function StatMiniCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div
-      className="lt-card-2 rounded-xl p-3 flex flex-col gap-0.5"
-    >
-      <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", fontWeight: 500 }}>{label}</span>
-      <span className="lt-num" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>{value}</span>
-      {sub && <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{sub}</span>}
+    <div className="lx-card lx-card-compact flex flex-col gap-0.5">
+      <span className="lx-eyebrow">{label}</span>
+      <span className="lx-metric-sm" style={{ fontSize: 16, color: "var(--lucid-ink)" }}>{value}</span>
+      {sub && <span className="lx-micro">{sub}</span>}
     </div>
   );
 }
@@ -247,105 +275,100 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
   }
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
+    <div className="flex flex-col pb-6">
 
       {/* Edit / Delete actions */}
       {(onEdit || onDelete) && (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2" style={{ marginBottom: 16 }}>
           {onEdit && (
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
-            >
-              <Pencil size={14} /> Edit
+            <button onClick={onEdit} className="lx-btn lx-btn-secondary" style={{ height: 32, paddingInline: 12, fontSize: 12.5 }}>
+              <Pencil size={13} /> Edit
             </button>
           )}
           {onDelete && (
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
-            >
-              <Trash2 size={14} /> Delete
+            <button onClick={onDelete} className="lx-btn lx-btn-danger" style={{ height: 32, paddingInline: 12, fontSize: 12.5 }}>
+              <Trash2 size={13} /> Delete
             </button>
           )}
         </div>
       )}
 
       {/* ── Section 1: Header ──────────────────────────────────── */}
-      <Card>
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <AccountTypePill type={account.account_type} />
-          {prop && account.stage && <StagePill stage={account.stage} />}
-          <StatusPill status={account.status} />
+      <Section first>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <AccountTypePill type={account.account_type} />
+            {prop && account.stage && <StagePill stage={account.stage} />}
+            <StatusPill status={account.status} />
+          </div>
+          <LifecycleStatusControl account={account} />
         </div>
-        <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginBottom: 2 }}>{accountSource(account)}</p>
-        <p className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)", marginBottom: 8 }}>
+        <p className="lx-micro" style={{ marginBottom: 4 }}>{accountSource(account)}</p>
+        <p className="lx-heading" style={{ fontSize: 18, marginBottom: 10 }}>
           {account.account_name}
         </p>
-        <p className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: pnlColor, lineHeight: 1 }}>
+        <p className="lx-metric" style={{ color: pnlColor }}>
           {formatCurrency(account.current_balance)}
         </p>
-        <p className="lt-num" style={{ fontSize: 13, color: pnlColor, marginTop: 4 }}>
+        <p className="lx-value" style={{ color: pnlColor, marginTop: 6 }}>
           {pnl >= 0 ? "+" : ""}{formatCurrency(pnl)} ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
         </p>
-      </Card>
+      </Section>
 
       {/* ── Section 2: Targets (prop) / Goal (personal) ──────────────── */}
       {!prop && hasGoal && (
-        <Card>
+        <Section>
           <SectionTitle>Goal</SectionTitle>
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Profit Goal</span>
-              <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="lx-body" style={{ fontSize: 12 }}>Profit Goal</span>
+              <span className="lx-micro">
                 {goalPct >= 100 ? "Reached" : `${formatCurrency(remaining)} to go`}
               </span>
             </div>
             <GoalBar pct={goalPct} />
-            <div className="flex items-center justify-between mt-1">
-              <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
+            <div className="flex items-center justify-between mt-2">
+              <span className="lx-micro">
                 {goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} goal
               </span>
             </div>
           </div>
-        </Card>
+        </Section>
       )}
 
       {prop && (
-      <Card>
+      <Section>
         <SectionTitle>Targets</SectionTitle>
 
         {/* Profit Target */}
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Profit Target</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="lx-body" style={{ fontSize: 12 }}>Profit Target</span>
             {isPassed ? (
               <span style={{ fontSize: 12, color: "var(--lucid-pos)", fontWeight: 600 }}>✓ Passed</span>
             ) : (
-              <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+              <span className="lx-micro">
                 {formatCurrency(remaining)} to go
               </span>
             )}
           </div>
           <GoalBar pct={goalPct} />
-          <div className="flex items-center justify-between mt-1">
-            <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} target</span>
+          <div className="flex items-center justify-between mt-2">
+            <span className="lx-micro">{goalPct.toFixed(0)}% of {formatCurrency(profitTarget)} target</span>
           </div>
         </div>
 
         {/* Max Drawdown */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>Max Drawdown</span>
-            <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="lx-body" style={{ fontSize: 12 }}>Max Drawdown</span>
+            <span className="lx-micro">
               {formatCurrency(drawdownUsed)} used / {formatCurrency(drawdownLimit)}
             </span>
           </div>
           <DrawdownBar pctUsed={pctUsed} />
-          <div className="flex items-center justify-between mt-1">
-            <span className="lt-num" style={{ fontSize: 11, color: pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-ink-3)" }}>
+          <div className="flex items-center justify-between mt-2">
+            <span className="lx-micro" style={{ color: pctUsed >= 80 ? "var(--lucid-neg)" : pctUsed >= 60 ? "var(--lucid-warn)" : "var(--lucid-ink-3)" }}>
               {pctUsed.toFixed(0)}% used
             </span>
           </div>
@@ -364,11 +387,11 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
             </div>
           )}
         </div>
-      </Card>
+      </Section>
       )}
 
       {/* ── Section 3: Quick Stats ────────────────────────────────── */}
-      <div>
+      <Section>
         <SectionTitle>Quick Stats</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
           <StatMiniCard
@@ -408,123 +431,101 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
             }
           />
         </div>
-      </div>
+      </Section>
 
       {/* ── Section 4: Recent Trades ──────────────────────────────── */}
-      <div>
+      <Section>
         <SectionTitle>Recent Trades</SectionTitle>
         {recentTrades.length === 0 ? (
-          <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades on this account.</p>
+          <p className="lx-body">No closed trades on this account.</p>
         ) : (
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{ border: "1px solid var(--lucid-line)" }}
-          >
-            {recentTrades.map((trade, i) => {
-              const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-              return (
-                <button
-                  key={trade.id}
-                  className="w-full text-left flex items-center gap-3 px-3 py-2.5 transition-colors"
-                  style={{
-                    background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
-                    borderBottom: i < recentTrades.length - 1 ? "1px solid var(--lucid-line)" : "none",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--lucid-surface-3)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)")}
-                  onClick={() => onTradeClick?.(trade.id)}
-                >
-                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 52 }}>
-                    {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--lucid-ink)", flex: 1 }}>
-                    {getPairDisplay(trade.pair)}
-                  </span>
-                  <span className="lt-num" style={{ fontSize: 12, fontWeight: 700, color: pnlCol, minWidth: 64, textAlign: "right" }}>
-                    {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
-                  </span>
-                  <ExitTypePill type={trade.exit_type} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Section 5: Payouts (prop) / Deposits & Withdrawals (personal) ── */}
-      {prop ? (
-        <div>
-          <SectionTitle>Payouts</SectionTitle>
-          {account.payouts.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No payouts logged yet.</p>
-          ) : (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid var(--lucid-line)" }}
-            >
-              {account.payouts.map((payout: Payout, i: number) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2.5"
-                  style={{
-                    background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
-                    borderBottom: i < account.payouts.length - 1 ? "1px solid var(--lucid-line)" : "none",
-                  }}
-                >
-                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 80 }}>
-                    {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
-                  <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lucid-pos)", flex: 1 }}>
-                    +{formatCurrency(payout.amount)}
-                  </span>
-                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
-                    Running: {formatCurrency(payout.running_total)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          <SectionTitle>Deposits &amp; Withdrawals</SectionTitle>
-          {account.cash_flows.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No deposits or withdrawals logged yet.</p>
-          ) : (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid var(--lucid-line)" }}
-            >
-              {account.cash_flows.map((cf, i) => {
-                const isOut = cf.type === "withdrawal";
-                const color = isOut ? "var(--lucid-neg)" : "var(--lucid-pos)";
-                const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
+          <div className="lx-card lx-card-compact" style={{ padding: 0 }}>
+            <div className="lx-rows">
+              {recentTrades.map((trade) => {
+                const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
                 return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 px-3 py-2.5"
-                    style={{
-                      background: i % 2 === 0 ? "var(--lucid-surface-2)" : "var(--lucid-surface)",
-                      borderBottom: i < account.cash_flows.length - 1 ? "1px solid var(--lucid-line)" : "none",
-                    }}
+                  <button
+                    key={trade.id}
+                    className="lx-row"
+                    style={{ paddingInline: 12 }}
+                    onClick={() => onTradeClick?.(trade.id)}
                   >
-                    <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", minWidth: 80 }}>
-                      {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    <span className="lx-micro" style={{ minWidth: 52 }}>
+                      {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--lucid-ink-2)", flex: 1 }}>
-                      {cfLabel}
-                      {cf.note ? <span style={{ color: "var(--lucid-ink-3)" }}> · {cf.note}</span> : null}
+                    <span style={{ fontSize: 12, color: "var(--lucid-ink)", flex: 1 }}>
+                      {getPairDisplay(trade.pair)}
                     </span>
-                    <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color }}>
-                      {isOut ? "−" : "+"}
-                      {formatCurrency(cf.amount)}
+                    <span className="lx-value" style={{ fontWeight: 700, color: pnlCol, minWidth: 64, textAlign: "right" }}>
+                      {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
                     </span>
-                  </div>
+                    <ExitTypePill type={trade.exit_type} />
+                  </button>
                 );
               })}
             </div>
+          </div>
+        )}
+      </Section>
+
+      {/* ── Section 5: Payouts (prop) / Deposits & Withdrawals (personal) ── */}
+      {prop ? (
+        <Section>
+          <SectionTitle>Payouts</SectionTitle>
+          {account.payouts.length === 0 ? (
+            <p className="lx-body">No payouts logged yet.</p>
+          ) : (
+            <div className="lx-card lx-card-compact" style={{ padding: 0 }}>
+              <div className="lx-rows">
+                {account.payouts.map((payout: Payout, i: number) => (
+                  <div key={i} className="lx-row" style={{ paddingInline: 12 }}>
+                    <span className="lx-micro" style={{ minWidth: 80 }}>
+                      {new Date(payout.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                    <span className="lx-value" style={{ fontWeight: 700, color: "var(--lucid-pos)", flex: 1 }}>
+                      +{formatCurrency(payout.amount)}
+                    </span>
+                    <span className="lx-micro">
+                      Running: {formatCurrency(payout.running_total)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
+        </Section>
+      ) : (
+        <Section>
+          <SectionTitle>Deposits &amp; Withdrawals</SectionTitle>
+          {account.cash_flows.length === 0 ? (
+            <p className="lx-body">No deposits or withdrawals logged yet.</p>
+          ) : (
+            <div className="lx-card lx-card-compact" style={{ padding: 0 }}>
+              <div className="lx-rows">
+                {account.cash_flows.map((cf, i) => {
+                  const isOut = cf.type === "withdrawal";
+                  const color = isOut ? "var(--lucid-neg)" : "var(--lucid-pos)";
+                  const cfLabel = cf.type === "deposit" ? "Deposit" : cf.type === "withdrawal" ? "Withdrawal" : "Payout";
+                  return (
+                    <div key={i} className="lx-row" style={{ paddingInline: 12 }}>
+                      <span className="lx-micro" style={{ minWidth: 80 }}>
+                        {new Date(cf.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--lucid-ink-2)", flex: 1 }}>
+                        {cfLabel}
+                        {cf.note ? <span style={{ color: "var(--lucid-ink-3)" }}> · {cf.note}</span> : null}
+                      </span>
+                      <span className="lx-value" style={{ fontWeight: 700, color }}>
+                        {isOut ? "−" : "+"}
+                        {formatCurrency(cf.amount)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Section>
       )}
 
     </div>

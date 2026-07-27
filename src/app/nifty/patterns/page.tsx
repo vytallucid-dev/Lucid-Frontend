@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -215,7 +216,7 @@ function PatternsPageInner({
   }, [relevanceList]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">
@@ -546,9 +547,13 @@ function PatternDrawerContent({
                     </span>
                   )}
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}>
+                <Link
+                  href={`/nifty/scorecard?date=${date}`}
+                  className="text-xs px-2 py-0.5 rounded"
+                  style={{ background: "color-mix(in srgb, var(--lucid-accent) 14%, transparent)", color: "var(--lucid-accent)" }}
+                >
                   Open scorecard →
-                </span>
+                </Link>
               </div>
             ))}
           </div>

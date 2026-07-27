@@ -216,8 +216,7 @@ export default function JournalPage() {
       <div
         className="lt-fade-in lt-stagger-2 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sticky top-0 z-30"
         style={{
-          background: "var(--lucid-grad-surface)",
-          borderBottom: "1px solid var(--lucid-line)",
+          background: "var(--lucid-page-bg)",
         }}
       >
         {/* Left */}

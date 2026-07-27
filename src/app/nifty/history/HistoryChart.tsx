@@ -8,7 +8,7 @@ import {
   baseChartOptions,
   APEX_THEME_CSS,
   type ChartTokens,
-} from "@/components/oracle-tools/chartTheme";
+} from "@/components/shared/chartTheme";
 import type { PublicScorecard } from "@/lib/api/nifty";
 import type { OverlayMarker } from "./patternOverlays";
 

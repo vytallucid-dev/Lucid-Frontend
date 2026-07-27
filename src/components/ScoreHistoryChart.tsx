@@ -1,7 +1,5 @@
 "use client";
 
-import { weekLabels } from "@/data/scorecard";
-
 interface ScoreHistoryChartProps {
   data: number[];
   width?: number;
@@ -122,19 +120,6 @@ export function ScoreHistoryChart({
               rx={2}
               fill={fill}
             />
-            {/* X-axis labels — show every other */}
-            {i % 2 === 0 && (
-              <text
-                x={x + barWidth / 2}
-                y={height - 4}
-                textAnchor="middle"
-                fill="#334155"
-                fontSize={7}
-                fontFamily="inherit"
-              >
-                {weekLabels[i]?.slice(0, 5) ?? ""}
-              </text>
-            )}
           </g>
         );
       })}

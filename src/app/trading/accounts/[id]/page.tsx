@@ -24,6 +24,7 @@ import {
   StagePill,
   StatusPill,
   AccountTypePill,
+  LifecycleStatusControl,
   calcDrawdown,
   calcGoalProgress,
   calcAccountStats,
@@ -270,6 +271,7 @@ export default function AccountDetailPage() {
               <AccountTypePill type={account.account_type} />
               {prop && account.stage && <StagePill stage={account.stage} />}
               <StatusPill status={account.status} />
+              <LifecycleStatusControl account={account} />
             </div>
             <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginBottom: 4 }}>{accountSource(account)}</p>
             <h2 className="lt-serif" style={{ fontSize: 22, fontWeight: 700, color: "var(--lucid-ink)", marginBottom: 8 }}>

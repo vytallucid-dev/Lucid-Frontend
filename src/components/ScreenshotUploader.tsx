@@ -207,14 +207,7 @@ export function ScreenshotGallery({ urls, tileHeight = 200 }: { urls: string[]; 
   return (
     <div className="flex flex-col gap-3">
       {urls.map((url) => (
-        <a
-          key={url}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block rounded-xl overflow-hidden"
-          style={{ border: "1px solid var(--border-subtle)" }}
-        >
+        <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="lx-gallery-tile block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt="Trade screenshot" style={{ width: "100%", height: tileHeight, objectFit: "cover", display: "block" }} />
         </a>

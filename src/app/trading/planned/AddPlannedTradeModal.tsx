@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { PlannedTrade, Direction, Conviction } from "@/lib/demo-data";
 import { useTradingModels, useTradingPairs, useCreatePlanned, useUpdatePlanned } from "@/hooks/useTrading";
 import type { CreatePlannedPayload } from "@/lib/api/trading";
 import { toast } from "@/components/toast";
 import { ScreenshotUploader } from "@/components/ScreenshotUploader";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface AddPlannedTradeModalProps {
   open: boolean;
@@ -16,40 +18,16 @@ interface AddPlannedTradeModalProps {
   prefill?: Partial<PlannedTrade>;
 }
 
-const INPUT_STYLE: React.CSSProperties = {
-  width: "100%",
-  background: "var(--lucid-surface-3)",
-  border: "1px solid var(--lucid-line)",
-  borderRadius: 8,
-  padding: "8px 12px",
-  fontSize: 13,
-  color: "var(--lucid-ink)",
-  outline: "none",
-};
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-  color: "var(--lucid-ink-3)",
-  marginBottom: 6,
-  display: "block",
-};
-
-// Explicit dark background so the native dropdown list stays readable on mobile.
-const OPTION_STYLE: React.CSSProperties = { background: "var(--lucid-surface)", color: "var(--lucid-ink)" };
-
 /** Local `YYYY-MM-DD` string for a `date` input, defaulting to today. */
 function toDateInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
-    <div>
-      <label style={LABEL_STYLE}>{label}</label>
+    <div className={full ? "lx-field-full" : undefined}>
+      <label className="lx-field-label">{label}</label>
       {children}
     </div>
   );
@@ -89,7 +67,7 @@ function SegmentedControl<T extends string>({
   return (
     <div
       className="flex rounded-lg p-0.5"
-      style={{ background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line)" }}
+      style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
     >
       {options.map(opt => {
         const active = value === opt;
@@ -139,6 +117,10 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
   const [notes, setNotes] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const panelRef = useRef<HTMLFormElement>(null);
+  useFocusTrap(panelRef, open);
+  useScrollLock(panelRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -211,64 +193,43 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50"
-        style={{ background: "rgba(0,0,0,0.6)" }}
-        onClick={onClose}
-      />
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        onClick={onClose}
-      >
+      <div className="lx-overlay-scrim fixed inset-0 z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <form
-          className="relative flex flex-col rounded-2xl"
-          style={{
-            width: "100%",
-            maxWidth: 640,
-            maxHeight: "88vh",
-            background: "var(--lucid-surface-2)",
-            border: "1px solid var(--lucid-line)",
-          }}
+          ref={panelRef}
+          className="lx-modal-panel lx-modal-form relative"
           onClick={e => e.stopPropagation()}
           onSubmit={handleSubmit}
         >
           {/* Header */}
-          <div
-            className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderBottom: "1px solid var(--lucid-line)" }}
-          >
-            <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
+          <div className="lx-overlay-header">
+            <h2 className="lx-overlay-title">
               {editId ? "Edit Planned Trade" : "Add Planned Trade"}
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-3)" }}
-            >
+            <button type="button" onClick={onClose} className="lx-overlay-close">
               <X size={15} />
             </button>
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
+          <div className="lx-overlay-body">
             <div className="flex flex-col gap-6">
               {/* Setup */}
               <div>
                 <GroupHeader>Setup</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Pair">
-                    <select value={pair} onChange={e => setPair(e.target.value)} style={INPUT_STYLE}>
+                    <select className="lx-input lx-select" value={pair} onChange={e => setPair(e.target.value)}>
                       {pairList.map(p => (
-                        <option key={p.symbol} value={p.symbol} style={OPTION_STYLE}>{p.display_name}</option>
+                        <option key={p.symbol} value={p.symbol}>{p.display_name}</option>
                       ))}
                     </select>
                   </FieldGroup>
 
                   <FieldGroup label="Model">
-                    <select value={model} onChange={e => setModel(e.target.value)} style={INPUT_STYLE}>
+                    <select className="lx-input lx-select" value={model} onChange={e => setModel(e.target.value)}>
                       {modelList.map(m => (
-                        <option key={m.id} value={m.name} style={OPTION_STYLE}>{m.name}</option>
+                        <option key={m.id} value={m.name}>{m.name}</option>
                       ))}
                     </select>
                   </FieldGroup>
@@ -290,8 +251,7 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
                       type="date"
                       value={datePlanned}
                       onChange={e => setDatePlanned(e.target.value)}
-                      className="lt-num"
-                      style={INPUT_STYLE}
+                      className="lx-input lx-input-num"
                     />
                   </FieldGroup>
                 </div>
@@ -300,33 +260,31 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
               {/* Levels */}
               <div>
                 <GroupHeader>Price Levels</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Planned Entry">
-                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.2580" className="lt-num" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.2580" className="lx-input lx-input-num" required />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.2540" className="lt-num" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.2540" className="lx-input lx-input-num" required />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.2620" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.2620" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.2680" className="lt-num" style={INPUT_STYLE} required />
+                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.2680" className="lx-input lx-input-num" required />
                   </FieldGroup>
-                  <div className="col-span-2 sm:col-span-1">
-                    <FieldGroup label="Current Market Price">
-                      <input type="number" step="any" value={currentMarketPrice} onChange={e => setCurrentMarketPrice(e.target.value)} placeholder="Defaults to entry — update to track distance" className="lt-num" style={INPUT_STYLE} />
-                    </FieldGroup>
-                  </div>
+                  <FieldGroup label="Current Market Price">
+                    <input type="number" step="any" value={currentMarketPrice} onChange={e => setCurrentMarketPrice(e.target.value)} placeholder="Defaults to entry — update to track distance" className="lx-input lx-input-num" />
+                  </FieldGroup>
                 </div>
               </div>
 
               {/* Risk & Conviction */}
               <div>
                 <GroupHeader>Risk &amp; Conviction</GroupHeader>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="lx-form-grid">
                   <FieldGroup label="Planned Risk %">
-                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lt-num" style={INPUT_STYLE} />
+                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lx-input lx-input-num" />
                   </FieldGroup>
 
                   <FieldGroup label="Conviction">
@@ -347,8 +305,8 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
               {/* Notes & Screenshots */}
               <div>
                 <GroupHeader>Notes &amp; Screenshots</GroupHeader>
-                <FieldGroup label="Setup Notes">
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Describe the setup — key levels, conditions to watch..." rows={3} style={{ ...INPUT_STYLE, resize: "vertical" }} />
+                <FieldGroup label="Setup Notes" full>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Describe the setup — key levels, conditions to watch..." rows={3} className="lx-input lx-textarea" />
                 </FieldGroup>
                 <div className="mt-4">
                   <ScreenshotUploader value={screenshots} onChange={setScreenshots} />
@@ -358,25 +316,12 @@ export function AddPlannedTradeModal({ open, onClose, editId, prefill }: AddPlan
           </div>
 
           {/* Footer */}
-          <div
-            className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 shrink-0"
-            style={{ borderTop: "1px solid var(--lucid-line)" }}
-          >
-            {error && <span className="mr-auto text-sm" style={{ color: "var(--lucid-neg)" }}>{error}</span>}
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-3)" }}
-            >
+          <div className="lx-overlay-footer">
+            {error && <span className="lx-field-error mr-auto">{error}</span>}
+            <button type="button" onClick={onClose} className="lx-btn lx-btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-              style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)", opacity: saving ? 0.6 : 1 }}
-            >
+            <button type="submit" disabled={saving} className="lx-btn lx-btn-primary">
               {saving ? "Saving…" : editId ? "Save Changes" : "Add to Watchlist"}
             </button>
           </div>

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Plus, LayoutList, LayoutGrid, ArrowLeftRight, Check } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Plus, LayoutList, LayoutGrid, ArrowLeftRight, Check, X } from "lucide-react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import {
   type Account,
   type AccountType,
@@ -14,6 +16,7 @@ import {
   accountTradingPnl,
   ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
+import { managedCapital, evaluationCapital, isLifecycleClosed } from "@/lib/account-capital";
 import {
   useAccounts,
   useTrades,
@@ -71,10 +74,12 @@ function AccountGalleryCard({
   account,
   accountTrades,
   onClick,
+  recessed,
 }: {
   account: Account;
   accountTrades: Trade[];
   onClick: () => void;
+  recessed?: boolean;
 }) {
   const prop = isPropAccount(account);
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
@@ -106,11 +111,13 @@ function AccountGalleryCard({
       }}
       onClick={onClick}
     >
-      {/* Pill row */}
+      {/* Pill row — status pill stays at full strength even when the card is recessed */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <AccountTypePill type={account.account_type} />
         {prop && account.stage && <StagePill stage={account.stage} />}
-        <StatusPill status={account.status} />
+        <span style={recessed ? { opacity: 1 / 0.55 } : undefined}>
+          <StatusPill status={account.status} />
+        </span>
       </div>
 
       {/* Source + name */}
@@ -199,29 +206,6 @@ function AccountGalleryCard({
   );
 }
 
-// ── Shared modal styles ───────────────────────────────────────────────────────
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--lucid-surface-3)",
-  border: "1px solid var(--lucid-line-2)",
-  borderRadius: 8,
-  padding: "8px 12px",
-  color: "var(--lucid-ink)",
-  fontSize: 13,
-  outline: "none",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: "var(--lucid-ink-2)",
-  fontWeight: 500,
-  marginBottom: 6,
-  display: "block",
-};
-
-const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY"];
-
 // ── Add Account Modal (type-aware) ────────────────────────────────────────────
 
 interface AddAccountModalProps {
@@ -234,6 +218,8 @@ interface AddAccountModalProps {
 
 const STAGE_OPTS = ["Stage 1", "Stage 2", "Funded"] as const;
 type StageOpt = (typeof STAGE_OPTS)[number];
+const STATUS_OPTS = ["Active", "Passed", "Blown", "Closed"] as const;
+const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY"];
 
 export function AddAccountModal({ initial, existingSources, onSubmit, onClose, saving }: AddAccountModalProps) {
   const isEdit = !!initial;
@@ -246,6 +232,7 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
   const [source, setSource] = useState(initialSource);
   const [size, setSize] = useState(initial ? String(initial.account_size) : "");
   const [currency, setCurrency] = useState(initial?.currency ?? "USD");
+  const [status, setStatus] = useState<Account["status"]>(initial?.status ?? "Active");
   const [goalPct, setGoalPct] = useState(initial?.profit_goal_pct != null ? String(initial.profit_goal_pct) : "");
   const [stage, setStage] = useState<StageOpt>(
     initial?.stage && (STAGE_OPTS as readonly string[]).includes(initial.stage) ? (initial.stage as StageOpt) : "Stage 1",
@@ -254,6 +241,9 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
   const [maxDrawdownPct, setMaxDrawdownPct] = useState(initial?.max_drawdown_pct != null ? String(initial.max_drawdown_pct) : "");
   const [startingDate, setStartingDate] = useState(initial?.starting_date ?? new Date().toISOString().split("T")[0]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useScrollLock(panelRef, true);
 
   const prop = type === "prop_firm";
   const suggestions = existingSources.filter(f => source.length > 0 && f.toLowerCase().includes(source.toLowerCase()) && f !== source);
@@ -266,7 +256,7 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
       account_name: name,
       account_size: sizeNum,
       currency,
-      status: "Active",
+      status: isEdit ? status : "Active",
       starting_date: startingDate,
     };
     const payload: CreateAccountPayload = prop
@@ -290,20 +280,19 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
-      <div
-        className="relative w-full max-w-lg rounded-2xl overflow-y-auto"
-        style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", maxHeight: "90vh" }}
-      >
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-          <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>{isEdit ? "Edit Account" : "Add Account"}</h2>
-          <button className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--lucid-ink-3)" }} onClick={onClose}>✕</button>
+      <div className="lx-overlay-scrim" onClick={onClose} />
+      <div ref={panelRef} className="lx-modal-panel lx-modal-form relative">
+        <div className="lx-overlay-header">
+          <h2 className="lx-overlay-title" style={{ fontSize: 18 }}>{isEdit ? "Edit Account" : "Add Account"}</h2>
+          <button className="lx-overlay-close" onClick={onClose}>
+            <X size={15} />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="lx-overlay-body flex flex-col gap-0">
           {/* Account Type — drives the rest of the form */}
-          <div>
-            <label style={labelStyle}>Account Type</label>
+          <div className="lx-field">
+            <label className="lx-field-label">Account Type</label>
             <div className="grid grid-cols-3 gap-2">
               {(["personal", "demo", "prop_firm"] as AccountType[]).map(t => {
                 const active = type === t;
@@ -328,16 +317,16 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
           </div>
 
           {/* Account Name (universal) */}
-          <div>
-            <label style={labelStyle}>Account Name</label>
-            <input style={inputStyle} placeholder={prop ? "e.g. FP 10k Stage 2" : "e.g. My Live Account"} value={name} onChange={e => setName(e.target.value)} required />
+          <div className="lx-field">
+            <label className="lx-field-label">Account Name</label>
+            <input className="lx-input" placeholder={prop ? "e.g. FP 10k Stage 2" : "e.g. My Live Account"} value={name} onChange={e => setName(e.target.value)} required />
           </div>
 
           {/* Source — Prop Firm (required) or Broker (optional) */}
-          <div className="relative">
-            <label style={labelStyle}>{prop ? "Prop Firm" : "Broker (optional)"}</label>
+          <div className="lx-field relative">
+            <label className="lx-field-label">{prop ? "Prop Firm" : "Broker (optional)"}</label>
             <input
-              style={inputStyle}
+              className="lx-input"
               placeholder={prop ? "e.g. FundingPips" : "e.g. IC Markets"}
               value={source}
               onChange={e => { setSource(e.target.value); setShowSuggestions(true); }}
@@ -356,24 +345,34 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
           </div>
 
           {/* Balance + Currency (universal) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="lx-field grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label style={labelStyle}>{prop ? "Account Size ($)" : "Starting Balance"}</label>
-              <input style={inputStyle} type="number" placeholder="10000" value={size} onChange={e => setSize(e.target.value)} min="0" required />
+              <label className="lx-field-label">{prop ? "Account Size ($)" : "Starting Balance"}</label>
+              <input className="lx-input lx-input-num" type="number" placeholder="10000" value={size} onChange={e => setSize(e.target.value)} min="0" required />
             </div>
             <div>
-              <label style={labelStyle}>Currency</label>
-              <select style={{ ...inputStyle, appearance: "none" as const }} value={currency} onChange={e => setCurrency(e.target.value)}>
-                {CURRENCIES.map(c => <option key={c} value={c} style={{ background: "var(--lucid-surface-2)" }}>{c}</option>)}
+              <label className="lx-field-label">Currency</label>
+              <select className="lx-input lx-select" value={currency} onChange={e => setCurrency(e.target.value)}>
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
 
+          {/* Status — edit only; creation always defaults to Active */}
+          {isEdit && (
+            <div className="lx-field">
+              <label className="lx-field-label">Status</label>
+              <select className="lx-input lx-select" value={status} onChange={e => setStatus(e.target.value as Account["status"])}>
+                {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Prop-only fields */}
           {prop && (
             <>
-              <div>
-                <label style={labelStyle}>Stage</label>
+              <div className="lx-field">
+                <label className="lx-field-label">Stage</label>
                 <div className="flex gap-2">
                   {(["Stage 1", "Stage 2", "Funded"] as const).map(s => (
                     <button
@@ -393,14 +392,14 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="lx-field grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label style={labelStyle}>Profit Target %</label>
-                  <input style={inputStyle} type="number" placeholder="10" value={profitTargetPct} onChange={e => setProfitTargetPct(e.target.value)} min="0" max="100" step="0.5" required />
+                  <label className="lx-field-label">Profit Target %</label>
+                  <input className="lx-input lx-input-num" type="number" placeholder="10" value={profitTargetPct} onChange={e => setProfitTargetPct(e.target.value)} min="0" max="100" step="0.5" required />
                 </div>
                 <div>
-                  <label style={labelStyle}>Max Drawdown %</label>
-                  <input style={inputStyle} type="number" placeholder="5" value={maxDrawdownPct} onChange={e => setMaxDrawdownPct(e.target.value)} min="0" max="100" step="0.5" required />
+                  <label className="lx-field-label">Max Drawdown %</label>
+                  <input className="lx-input lx-input-num" type="number" placeholder="5" value={maxDrawdownPct} onChange={e => setMaxDrawdownPct(e.target.value)} min="0" max="100" step="0.5" required />
                 </div>
               </div>
             </>
@@ -408,28 +407,30 @@ export function AddAccountModal({ initial, existingSources, onSubmit, onClose, s
 
           {/* Personal/Demo optional goal */}
           {!prop && (
-            <div>
-              <label style={labelStyle}>Profit Goal % (optional)</label>
-              <input style={inputStyle} type="number" placeholder="e.g. 20" value={goalPct} onChange={e => setGoalPct(e.target.value)} min="0" step="0.5" />
+            <div className="lx-field">
+              <label className="lx-field-label">Profit Goal % (optional)</label>
+              <input className="lx-input lx-input-num" type="number" placeholder="e.g. 20" value={goalPct} onChange={e => setGoalPct(e.target.value)} min="0" step="0.5" />
             </div>
           )}
 
-          <div>
-            <label style={labelStyle}>Starting Date</label>
-            <input style={inputStyle} type="date" value={startingDate} onChange={e => setStartingDate(e.target.value)} required />
+          <div className="lx-field">
+            <label className="lx-field-label">Starting Date</label>
+            <input className="lx-input lx-input-num" type="date" value={startingDate} onChange={e => setStartingDate(e.target.value)} required />
           </div>
 
           <div className="rounded-lg px-3 py-2" style={{ background: "var(--lucid-accent-bg)", border: "1px solid var(--lucid-accent-bd)" }}>
             <p style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
-              {prop
+              {isEdit
+                ? "Changing status affects capital totals — trades on this account still count toward performance statistics."
+                : prop
                 ? "Initial balance auto-fills to account size. Status defaults to Active."
                 : "Initial balance auto-fills to your starting balance. Goals are optional and only for you."}
             </p>
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ color: "var(--lucid-ink-3)" }} onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Saving…" : isEdit ? "Save Changes" : "Add Account"}</button>
+            <button type="button" className="lx-btn lx-btn-secondary flex-1" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={saving} className="lx-btn lx-btn-primary flex-1">{saving ? "Saving…" : isEdit ? "Save Changes" : "Add Account"}</button>
           </div>
         </form>
       </div>
@@ -452,6 +453,10 @@ function CashFlowModal({ accounts, onLog, onClose }: CashFlowModalProps) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+  useScrollLock(panelRef, true);
+
   const selected = accounts.find(a => a.id === accountId);
   const selectedIsProp = selected ? isPropAccount(selected) : false;
   // Payout only makes sense for prop accounts.
@@ -468,32 +473,34 @@ function CashFlowModal({ accounts, onLog, onClose }: CashFlowModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl overflow-hidden" style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)" }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-          <h2 className="lt-serif" style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>Cash Flow</h2>
-          <button className="p-1.5 rounded-lg" style={{ color: "var(--lucid-ink-3)" }} onClick={onClose}>✕</button>
+      <div className="lx-overlay-scrim" onClick={onClose} />
+      <div ref={panelRef} className="lx-modal-panel lx-modal-confirm relative">
+        <div className="lx-overlay-header">
+          <h2 className="lx-overlay-title" style={{ fontSize: 18 }}>Cash Flow</h2>
+          <button className="lx-overlay-close" onClick={onClose}>
+            <X size={15} />
+          </button>
         </div>
 
         {accounts.length === 0 ? (
-          <div className="p-6">
-            <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", textAlign: "center" }}>No accounts yet. Add an account first.</p>
+          <div className="lx-overlay-body">
+            <p className="lx-body" style={{ textAlign: "center" }}>No accounts yet. Add an account first.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-            <div>
-              <label style={labelStyle}>Account</label>
-              <select style={{ ...inputStyle, appearance: "none" as const }} value={accountId} onChange={e => setAccountId(e.target.value)} required>
+          <form onSubmit={handleSubmit} className="lx-overlay-body flex flex-col gap-0">
+            <div className="lx-field">
+              <label className="lx-field-label">Account</label>
+              <select className="lx-input lx-select" value={accountId} onChange={e => setAccountId(e.target.value)} required>
                 {accounts.map(a => (
-                  <option key={a.id} value={a.id} style={{ background: "var(--lucid-surface-2)" }}>
+                  <option key={a.id} value={a.id}>
                     {a.account_name} ({accountTypeLabel(a.account_type)})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label style={labelStyle}>Type</label>
+            <div className="lx-field">
+              <label className="lx-field-label">Type</label>
               <div className="flex gap-2">
                 {flowOptions.map(f => {
                   const active = effectiveFlow === f;
@@ -516,24 +523,24 @@ function CashFlowModal({ accounts, onLog, onClose }: CashFlowModalProps) {
               </div>
             </div>
 
-            <div>
-              <label style={labelStyle}>Date</label>
-              <input style={inputStyle} type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            <div className="lx-field">
+              <label className="lx-field-label">Date</label>
+              <input className="lx-input lx-input-num" type="date" value={date} onChange={e => setDate(e.target.value)} required />
             </div>
 
-            <div>
-              <label style={labelStyle}>Amount</label>
-              <input style={inputStyle} type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} min="0" step="0.01" required />
+            <div className="lx-field">
+              <label className="lx-field-label">Amount</label>
+              <input className="lx-input lx-input-num" type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} min="0" step="0.01" required />
             </div>
 
-            <div>
-              <label style={labelStyle}>Note (optional)</label>
-              <textarea style={{ ...inputStyle, resize: "vertical" as const, minHeight: 72 }} placeholder="Any notes about this movement..." value={note} onChange={e => setNote(e.target.value)} />
+            <div className="lx-field">
+              <label className="lx-field-label">Note (optional)</label>
+              <textarea className="lx-input lx-textarea" placeholder="Any notes about this movement..." value={note} onChange={e => setNote(e.target.value)} />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button type="button" className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ color: "var(--lucid-ink-3)" }} onClick={onClose}>Cancel</button>
-              <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "#fff" }}>Log {flowLabel[effectiveFlow]}</button>
+              <button type="button" className="lx-btn lx-btn-secondary flex-1" onClick={onClose}>Cancel</button>
+              <button type="submit" className="lx-btn lx-btn-primary flex-1">Log {flowLabel[effectiveFlow]}</button>
             </div>
           </form>
         )}
@@ -560,15 +567,28 @@ export default function AccountsPage() {
   const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
 
   const [view, setView] = useState<"table" | "gallery">("table");
+  const [lifecycleFilter, setLifecycleFilter] = useState<"active" | "all" | "closed">("active");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCashFlowModal, setShowCashFlowModal] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [pendingDeleteAccount, setPendingDeleteAccount] = useState<Account | null>(null);
+  // In-session only — this codebase has no localStorage/UI-preference persistence
+  // mechanism today, so the hint returns on next page load by design of that gap,
+  // not this dismiss action; it will not reappear within the same session.
+  const [showMigrationHint, setShowMigrationHint] = useState(true);
+
+  const visibleAccounts = useMemo(() => {
+    if (lifecycleFilter === "all") return accounts;
+    if (lifecycleFilter === "closed") return accounts.filter(isLifecycleClosed);
+    return accounts.filter(a => !isLifecycleClosed(a));
+  }, [accounts, lifecycleFilter]);
+  const hiddenCount = accounts.length - visibleAccounts.length;
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? null;
 
-  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + a.current_balance, 0), [accounts]);
+  const managed = useMemo(() => managedCapital(accounts), [accounts]);
+  const evaluation = useMemo(() => evaluationCapital(accounts), [accounts]);
   const netPnl = useMemo(() => accounts.reduce((s, a) => s + accountTradingPnl(a), 0), [accounts]);
 
   function getAccountTrades(accountId: string): Trade[] {
@@ -616,6 +636,26 @@ export default function AccountsPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {showMigrationHint && (
+        <div
+          className="flex items-start justify-between gap-3 px-4 sm:px-6 py-3"
+          style={{ background: "var(--lucid-accent-bg)", borderBottom: "1px solid var(--lucid-accent-bd)" }}
+        >
+          <p style={{ fontSize: 12.5, color: "var(--lucid-ink-2)", lineHeight: 1.5 }}>
+            You can now set an account's status. Mark old, finished challenges <strong>Passed</strong> or <strong>Closed</strong> so
+            Managed Capital and In Evaluation totals read correctly — every account defaults to Active until you update it.
+          </p>
+          <button
+            className="lx-overlay-close shrink-0"
+            style={{ color: "var(--lucid-ink-3)" }}
+            onClick={() => setShowMigrationHint(false)}
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between px-4 sm:px-6 py-4 sm:py-6">
         <div>
@@ -623,7 +663,13 @@ export default function AccountsPage() {
           <p style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginTop: 4 }}>Your trading accounts — personal, demo, and prop firm.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 self-start" style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)", fontSize: 13, color: "var(--lucid-ink-2)" }}>
-          <span>Total Balance: <strong className="lt-num" style={{ color: "var(--lucid-ink)" }}>{formatCurrency(totalBalance)}</strong></span>
+          <span>Managed: <strong className="lt-num" style={{ color: "var(--lucid-ink)" }}>{formatCurrency(managed)}</strong></span>
+          {evaluation > 0 && (
+            <>
+              <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
+              <span>In Evaluation: <strong className="lt-num" style={{ color: "var(--lucid-ink-3)" }}>{formatCurrency(evaluation)}</strong></span>
+            </>
+          )}
           <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
           <span>Net P&amp;L: <strong className="lt-num" style={{ color: pnlColor }}>{netPnl >= 0 ? "+" : ""}{formatCurrency(netPnl)}</strong></span>
         </div>
@@ -631,7 +677,7 @@ export default function AccountsPage() {
 
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3 px-4 sm:px-6 pb-4" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-        <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all" style={{ background: "var(--lucid-accent)", color: "#fff" }} onClick={() => setShowAddModal(true)}>
+        <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all" style={{ background: "var(--lucid-accent)", color: "var(--lucid-page-bg)" }} onClick={() => setShowAddModal(true)}>
           <Plus size={14} />
           Add Account
         </button>
@@ -640,6 +686,32 @@ export default function AccountsPage() {
           <ArrowLeftRight size={14} />
           Cash Flow
         </button>
+
+        {/* Lifecycle filter */}
+        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--lucid-line-2)", background: "var(--lucid-surface)" }}>
+          {([
+            { key: "active", label: "Active" },
+            { key: "all", label: "All" },
+            { key: "closed", label: "Closed" },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              className="px-3 py-1.5 text-sm font-medium transition-colors"
+              style={{
+                background: lifecycleFilter === key ? "var(--lucid-accent-bg)" : "transparent",
+                color: lifecycleFilter === key ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
+                borderRight: key !== "closed" ? "1px solid var(--lucid-line)" : "none",
+              }}
+              onClick={() => setLifecycleFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {hiddenCount > 0 && (
+          <span className="lx-micro">{hiddenCount} account{hiddenCount !== 1 ? "s" : ""} hidden</span>
+        )}
 
         <div className="flex-1" />
 
@@ -677,15 +749,15 @@ export default function AccountsPage() {
               </div>
 
               {/* Rows */}
-              {accounts.length === 0 ? (
+              {visibleAccounts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <span style={{ fontSize: 32 }}>📊</span>
                   <p style={{ fontSize: 15, fontWeight: 600, color: "var(--lucid-ink-2)" }}>No accounts yet</p>
                   <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>Add your first account to start tracking your trading.</p>
-                  <button className="mt-2 px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "#fff" }} onClick={() => setShowAddModal(true)}>+ Add Account</button>
+                  <button className="mt-2 px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "var(--lucid-page-bg)" }} onClick={() => setShowAddModal(true)}>+ Add Account</button>
                 </div>
               ) : (
-                accounts.map((account, idx) => {
+                visibleAccounts.map((account, idx) => {
                   const prop = isPropAccount(account);
                   const { pctUsed: ddPct } = calcDrawdown(account);
                   const { pct: goalPct } = calcGoalProgress(account);
@@ -694,14 +766,16 @@ export default function AccountsPage() {
                   const pnl = accountTradingPnl(account);
                   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
                   const balColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+                  const recessed = isLifecycleClosed(account);
+                  const rowBg = idx % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)";
 
                   return (
                     <button
                       key={account.id}
                       className="w-full grid px-4 text-left transition-colors"
-                      style={{ gridTemplateColumns: TABLE_COLS, background: idx % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)", borderBottom: idx < accounts.length - 1 ? "1px solid var(--lucid-line)" : "none", alignItems: "center", minHeight: 48, minWidth: TABLE_MIN_WIDTH }}
+                      style={{ gridTemplateColumns: TABLE_COLS, background: rowBg, borderBottom: idx < visibleAccounts.length - 1 ? "1px solid var(--lucid-line)" : "none", alignItems: "center", minHeight: 48, minWidth: TABLE_MIN_WIDTH, opacity: recessed ? 0.55 : 1 }}
                       onMouseEnter={e => (e.currentTarget.style.background = "var(--lucid-surface-3)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = rowBg)}
                       onClick={() => setSelectedAccountId(account.id)}
                     >
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--lucid-ink)" }}>{account.account_name}</span>
@@ -713,7 +787,7 @@ export default function AccountsPage() {
                       <span>{prop && account.stage ? <StagePill stage={account.stage} /> : <span style={{ color: "var(--lucid-ink-3)" }}>—</span>}</span>
                       <span>{prop ? <MiniGoalBar pct={goalPct} isPassed={isPassed} /> : <span style={{ color: "var(--lucid-ink-3)" }}>—</span>}</span>
                       <span>{prop ? <MiniDrawdownBar pctUsed={ddPct} /> : <span style={{ color: "var(--lucid-ink-3)" }}>—</span>}</span>
-                      <span><StatusPill status={account.status} /></span>
+                      <span style={{ opacity: recessed ? 1 / 0.55 : 1 }}><StatusPill status={account.status} /></span>
                     </button>
                   );
                 })
@@ -724,17 +798,19 @@ export default function AccountsPage() {
 
         {/* GALLERY VIEW */}
         {!accountsQuery.isLoading && !accountsQuery.isError && view === "gallery" &&
-          (accounts.length === 0 ? (
+          (visibleAccounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <span style={{ fontSize: 40 }}>📊</span>
               <p style={{ fontSize: 15, fontWeight: 600, color: "var(--lucid-ink-2)" }}>No accounts yet</p>
               <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>Add your first account to start tracking your trading.</p>
-              <button className="mt-2 px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "#fff" }} onClick={() => setShowAddModal(true)}>+ Add Account</button>
+              <button className="mt-2 px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--lucid-accent)", color: "var(--lucid-page-bg)" }} onClick={() => setShowAddModal(true)}>+ Add Account</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {accounts.map(account => (
-                <AccountGalleryCard key={account.id} account={account} accountTrades={getAccountTrades(account.id)} onClick={() => setSelectedAccountId(account.id)} />
+              {visibleAccounts.map(account => (
+                <div key={account.id} style={{ opacity: isLifecycleClosed(account) ? 0.55 : 1 }}>
+                  <AccountGalleryCard account={account} accountTrades={getAccountTrades(account.id)} onClick={() => setSelectedAccountId(account.id)} recessed={isLifecycleClosed(account)} />
+                </div>
               ))}
             </div>
           ))}

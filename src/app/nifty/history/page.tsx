@@ -173,7 +173,7 @@ function HistoryPageInner({ scorecards }: { scorecards: PublicScorecard[] }) {
     : "";
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-350">
+    <div className="p-4 sm:p-6 space-y-5">
 
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="lt-rise lt-stagger-1 flex flex-wrap items-start justify-between gap-3">

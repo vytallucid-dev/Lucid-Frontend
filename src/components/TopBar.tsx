@@ -4,16 +4,48 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { LogOut, Settings, User as UserIcon, Menu } from "lucide-react";
+import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useSidebar } from "./SidebarContext";
+import { findActiveSection, findActiveSubtab } from "@/lib/nav";
 
-const sectionNames: Record<string, string> = {
-  "/": "Pulse",
-  "/ledger": "Ledger",
-  "/oracle": "Oracle",
-  "/settings": "Settings",
-};
+// Derives the top bar's label from the same nav map the dock renders from
+// (src/lib/nav.ts), plus — for routes with no matching sub-tab (a detail or
+// diagnostic page) — the page's own <h1>, read from the DOM rather than
+// duplicated into a second lookup table that could drift from the real copy.
+function usePageTitle(pathname: string | null): string | null {
+  const [title, setTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Runs after the new route's content has painted its own <h1>.
+    const raf = requestAnimationFrame(() => {
+      const h1 = document.querySelector("main h1");
+      setTitle(h1?.textContent?.trim() || null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pathname]);
+
+  return title;
+}
+
+function useSectionLabel(pathname: string): { primary: string; secondary: string | null } {
+  const section = findActiveSection(pathname);
+  const pageTitle = usePageTitle(pathname);
+
+  if (!section) return { primary: "Lucid", secondary: null };
+
+  const subtab = findActiveSubtab(section, pathname);
+  if (subtab) return { primary: section.label, secondary: subtab.label };
+
+  // Section has sub-tabs but none matched this path — a detail/diagnostic
+  // page nested under it (trade detail, account detail, USD Lab, V-Bottom,
+  // Velocity, …). Use that page's own title rather than inventing one.
+  if (section.subtabs && section.subtabs.length > 0) {
+    return { primary: section.label, secondary: pageTitle };
+  }
+
+  // Section with no sub-tabs at all (Dashboard) — label alone, no trailing word.
+  return { primary: section.label, secondary: null };
+}
 
 function formatIst(date: Date): string {
   const day = date.toLocaleDateString("en-US", {
@@ -47,14 +79,9 @@ type Status = "idle" | "fetching" | "error";
 const SCROLL_THRESHOLD = 12;
 
 export function TopBar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const section =
-    sectionNames[pathname] ||
-    sectionNames[
-      Object.keys(sectionNames).find((k) => k !== "/" && pathname.startsWith(k)) || "/"
-    ] ||
-    "Lucid";
+  const { primary: sectionLabel, secondary: subLabel } = useSectionLabel(pathname);
 
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -104,7 +131,6 @@ export function TopBar() {
 
   // Auth menu
   const { user, loading, signOut } = useAuth();
-  const { toggleMobile } = useSidebar();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -157,26 +183,20 @@ export function TopBar() {
       ].join(" ")}
     >
       <div className="flex items-center gap-2 min-w-0">
-        {/* Mobile menu toggle */}
-        <button
-          type="button"
-          onClick={toggleMobile}
-          className="lg:hidden -ml-1 p-2 rounded-md hover:bg-white/5 transition-colors shrink-0"
-          style={{ color: "var(--lucid-ink-3)" }}
-          aria-label="Open navigation menu"
-        >
-          <Menu size={18} />
-        </button>
         <span
           className="lt-serif text-base font-semibold truncate"
           style={{ color: "var(--lucid-ink)" }}
         >
-          {section}
+          {sectionLabel}
         </span>
-        <span className="hidden sm:inline" style={{ color: "var(--lucid-ink-3)" }}>/</span>
-        <span className="hidden sm:inline text-xs" style={{ color: "var(--lucid-ink-3)" }}>
-          Overview
-        </span>
+        {subLabel && (
+          <>
+            <span className="hidden sm:inline" style={{ color: "var(--lucid-ink-3)" }}>/</span>
+            <span className="hidden sm:inline text-xs truncate" style={{ color: "var(--lucid-ink-3)" }}>
+              {subLabel}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">

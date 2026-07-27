@@ -17,30 +17,27 @@ function ModelPill({ model }: { model: string }) {
 
 function kv(label: string, value: React.ReactNode) {
   return (
-    <div className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-      <span style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{label}</span>
-      <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{value}</span>
+    <div className="lx-content-row">
+      <span className="lx-content-row-label">{label}</span>
+      <span className="lx-content-row-value">{value}</span>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <p className="lx-eyebrow" style={{ marginBottom: 12 }}>{children}</p>;
+}
+
+function Section({ children, first }: { children: React.ReactNode; first?: boolean }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
+    <div className="lx-content-section" style={first ? { borderTop: "none", paddingTop: 0 } : undefined}>
       {children}
-    </p>
+    </div>
   );
 }
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-xl p-4 ${className ?? ""}`}
-      style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
-    >
-      {children}
-    </div>
-  );
+  return <div className={`lx-card lx-card-compact ${className ?? ""}`}>{children}</div>;
 }
 
 // ── Execution ladder ──────────────────────────────────────────────────────────
@@ -149,44 +146,36 @@ export function TradeDrawerContent({
   const pipsColor = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col">
 
       {/* Edit / Delete actions */}
       {(onEdit || onDelete) && (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2" style={{ marginBottom: 16 }}>
           {onEdit && (
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }}
-            >
-              <Pencil size={14} /> Edit
+            <button onClick={onEdit} className="lx-btn lx-btn-secondary" style={{ height: 32, paddingInline: 12, fontSize: 12.5 }}>
+              <Pencil size={13} /> Edit
             </button>
           )}
           {onDelete && (
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{ color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
-            >
-              <Trash2 size={14} /> Delete
+            <button onClick={onDelete} className="lx-btn lx-btn-danger" style={{ height: 32, paddingInline: 12, fontSize: 12.5 }}>
+              <Trash2 size={13} /> Delete
             </button>
           )}
         </div>
       )}
 
       {/* Section 1: Outcome */}
-      <Card>
+      <Section first>
         <div className="flex items-start justify-between">
           {/* P&L */}
           <div>
             {isLive ? (
               <div className="flex items-center gap-2">
                 <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
-                <span className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: "var(--lucid-accent)" }}>Live</span>
+                <span className="lx-metric-sm" style={{ color: "var(--lucid-accent)" }}>Live</span>
               </div>
             ) : (
-              <span className="lt-num" style={{ fontSize: 28, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
+              <span className="lx-metric-sm" style={{ color: pnlColor }}>
                 {formatCurrency(trade.blended_pnl)}
               </span>
             )}
@@ -195,11 +184,11 @@ export function TradeDrawerContent({
           {/* Pips + R:R + pills */}
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <span className="pill lt-num" style={{ color: isLive ? "var(--lucid-ink-3)" : pipsColor, background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line-2)" }}>
+              <span className="pill lx-value" style={{ color: isLive ? "var(--lucid-ink-3)" : pipsColor, background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line-2)" }}>
                 {isLive ? "— pips" : `${trade.total_pips > 0 ? "+" : ""}${trade.total_pips} pips`}
               </span>
               <span
-                className="pill lt-num"
+                className="pill lx-value"
                 style={{
                   background: "var(--lucid-surface-3)",
                   color: isLive ? "var(--lucid-ink-3)" : rrColor,
@@ -237,55 +226,49 @@ export function TradeDrawerContent({
             </div>
           </div>
         </div>
-      </Card>
+      </Section>
 
       {/* Section 2: Setup */}
-      <div>
+      <Section>
         <SectionTitle>Setup</SectionTitle>
-        <Card>
-          <div>
-            {kv("Pair",
-              <span className="flex items-center gap-1">
-                {config && <span>{config.flag_a}{config.flag_b}</span>}
-                <span>{config?.display_name ?? trade.pair}</span>
-              </span>
-            )}
-            {kv("Model", <ModelPill model={trade.model} />)}
-            {kv("Direction",
-              <span style={{ color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
-                {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
-              </span>
-            )}
-            {kv("Session", trade.session)}
-            {kv("Risk", `${trade.risk_pct}% ($${(trade.risk_pct / 100 * 10000).toFixed(0)} approx.)`)}
-          </div>
-        </Card>
-      </div>
+        <div className="lx-rows">
+          {kv("Pair",
+            <span className="flex items-center gap-1">
+              {config && <span>{config.flag_a}{config.flag_b}</span>}
+              <span>{config?.display_name ?? trade.pair}</span>
+            </span>
+          )}
+          {kv("Model", <ModelPill model={trade.model} />)}
+          {kv("Direction",
+            <span style={{ color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
+              {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
+            </span>
+          )}
+          {kv("Session", trade.session)}
+          {kv("Risk", `${trade.risk_pct}% ($${(trade.risk_pct / 100 * 10000).toFixed(0)} approx.)`)}
+        </div>
+      </Section>
 
       {/* Section 3: Execution */}
-      <div>
+      <Section>
         <SectionTitle>Execution</SectionTitle>
-        <Card>
-          <ExecutionLadder trade={trade} />
-          <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--lucid-line)" }}>
-            {kv("Opened", `${formatDate(trade.date_opened)} · ${formatTime(trade.date_opened)}`)}
-            {isLive
-              ? kv("Closed", <span style={{ color: "var(--lucid-pos)" }}>Running</span>)
-              : kv("Closed", `${formatDate(trade.date_closed)} · ${formatTime(trade.date_closed)}`)}
-            {kv("Held", heldDuration(trade.date_opened, trade.date_closed))}
-          </div>
-        </Card>
-      </div>
+        <ExecutionLadder trade={trade} />
+        <div className="lx-rows" style={{ marginTop: 16 }}>
+          {kv("Opened", `${formatDate(trade.date_opened)} · ${formatTime(trade.date_opened)}`)}
+          {isLive
+            ? kv("Closed", <span style={{ color: "var(--lucid-pos)" }}>Running</span>)
+            : kv("Closed", `${formatDate(trade.date_closed)} · ${formatTime(trade.date_closed)}`)}
+          {kv("Held", heldDuration(trade.date_opened, trade.date_closed))}
+        </div>
+      </Section>
 
       {/* Section 4: Context */}
-      <div>
+      <Section>
         <SectionTitle>Context</SectionTitle>
-        <Card>
+        <div className="lx-rows">
           {kv("Lucid Score",
-            <span className="lt-num" style={{ fontVariantNumeric: "tabular-nums" }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--lucid-ink)" }}>
-                {trade.fundamental_score ?? "—"}
-              </span>
+            <span className="lx-metric-sm" style={{ fontSize: 16, color: "var(--lucid-ink)" }}>
+              {trade.fundamental_score ?? "—"}
             </span>
           )}
           {kv("Psychology",
@@ -296,25 +279,23 @@ export function TradeDrawerContent({
               {trade.psychology}
             </span>
           )}
-          <div className="pt-2">
-            <p style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Notes</p>
-            <p style={{ fontSize: 13, color: trade.notes ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", fontStyle: trade.notes ? "normal" : "italic", lineHeight: 1.6 }}>
-              {trade.notes || "No notes for this trade."}
-            </p>
-          </div>
-        </Card>
-      </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <p className="lx-eyebrow" style={{ marginBottom: 6 }}>Notes</p>
+          <p style={{ fontSize: 13, color: trade.notes ? "var(--lucid-ink-2)" : "var(--lucid-ink-3)", fontStyle: trade.notes ? "normal" : "italic", lineHeight: 1.6 }}>
+            {trade.notes || "No notes for this trade."}
+          </p>
+        </div>
+      </Section>
 
       {/* Section 5: Screenshots */}
-      <div>
+      <Section>
         <SectionTitle>Screenshots</SectionTitle>
-        <Card>
-          <ScreenshotGallery urls={trade.screenshots} tileHeight={150} />
-        </Card>
-      </div>
+        <ScreenshotGallery urls={trade.screenshots} tileHeight={150} />
+      </Section>
 
       {/* Section 6: Memory */}
-      <div>
+      <Section>
         <SectionTitle>Memory</SectionTitle>
         <div className="flex flex-col gap-3">
 
@@ -448,7 +429,7 @@ export function TradeDrawerContent({
             )}
           </Card>
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

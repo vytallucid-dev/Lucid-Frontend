@@ -25,7 +25,7 @@ export function DetailPageLayout({
         className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-4 shrink-0"
         style={{
           borderBottom: "1px solid var(--border-subtle)",
-          background: "rgba(2, 8, 23, 0.6)",
+          background: "var(--lucid-surface)",
           backdropFilter: "blur(8px)",
         }}
       >
@@ -34,18 +34,18 @@ export function DetailPageLayout({
           <Link
             href={backHref}
             className="flex items-center gap-1.5 text-sm transition-colors hover:opacity-80 shrink-0"
-            style={{ color: "#64748B" }}
+            style={{ color: "var(--lucid-ink-3)" }}
           >
             <ArrowLeft size={15} />
             <span>{backLabel}</span>
           </Link>
           <div
             className="w-px h-4 shrink-0"
-            style={{ background: "rgba(148, 163, 184, 0.15)" }}
+            style={{ background: "var(--lucid-line-2)" }}
           />
           <h1
             className="text-lg sm:text-xl font-semibold truncate"
-            style={{ color: "#E2E8F0" }}
+            style={{ color: "var(--lucid-ink)" }}
           >
             {title}
           </h1>

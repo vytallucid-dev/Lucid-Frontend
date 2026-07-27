@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
-import { readChartTokens, baseChartOptions, APEX_THEME_CSS, type ChartTokens } from "./chartTheme";
+import { readChartTokens, baseChartOptions, APEX_THEME_CSS, type ChartTokens } from "../shared/chartTheme";
 import type { AnalysisSubject, ChartType, ChartKind } from "./types";
 
 // ApexCharts touches `window` → must never be server-rendered. Dynamic import

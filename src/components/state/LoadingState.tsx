@@ -47,15 +47,15 @@ export function LoadingState({
       <div className="flex items-center gap-1.5" aria-hidden="true">
         <span
           className="block w-2 h-2 rounded-full animate-pulse"
-          style={{ background: "rgba(205, 167, 79, 0.65)", animationDelay: "0ms" }}
+          style={{ background: "var(--lucid-accent)", animationDelay: "0ms" }}
         />
         <span
           className="block w-2 h-2 rounded-full animate-pulse"
-          style={{ background: "rgba(205, 167, 79, 0.65)", animationDelay: "150ms" }}
+          style={{ background: "var(--lucid-accent)", animationDelay: "150ms" }}
         />
         <span
           className="block w-2 h-2 rounded-full animate-pulse"
-          style={{ background: "rgba(205, 167, 79, 0.65)", animationDelay: "300ms" }}
+          style={{ background: "var(--lucid-accent)", animationDelay: "300ms" }}
         />
       </div>
       {lines.length > 0 && (

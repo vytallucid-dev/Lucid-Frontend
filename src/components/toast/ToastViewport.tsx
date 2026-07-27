@@ -46,10 +46,10 @@ function ToastCard({ item }: { item: ToastItem }) {
         <Icon size={18} style={{ color: variant.accent, flexShrink: 0, marginTop: 1 }} />
 
         <div className="flex-1 min-w-0">
-          <p style={{ fontSize: 13, fontWeight: 600, color: "#F1F5F9", lineHeight: 1.35 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--lucid-ink)", lineHeight: 1.35 }}>
             {item.title ?? variant.defaultTitle}
           </p>
-          <p style={{ fontSize: 12.5, color: "#94A3B8", lineHeight: 1.45, marginTop: 2, wordBreak: "break-word" }}>
+          <p style={{ fontSize: 12.5, color: "var(--lucid-ink-2)", lineHeight: 1.45, marginTop: 2, wordBreak: "break-word" }}>
             {item.message}
           </p>
         </div>
@@ -58,7 +58,7 @@ function ToastCard({ item }: { item: ToastItem }) {
           onClick={() => setLeaving(true)}
           aria-label="Dismiss notification"
           className="p-1 rounded-md transition-colors hover:bg-white/10"
-          style={{ color: "#64748B", flexShrink: 0 }}
+          style={{ color: "var(--lucid-ink-3)", flexShrink: 0 }}
         >
           <X size={14} />
         </button>

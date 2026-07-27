@@ -17,17 +17,17 @@ export function EmptyState({
       role="status"
     >
       {icon && (
-        <div style={{ color: "#475569" }} aria-hidden="true">
+        <div style={{ color: "var(--lucid-ink-3)" }} aria-hidden="true">
           {icon}
         </div>
       )}
-      <h3 className="text-sm font-semibold" style={{ color: "#94A3B8" }}>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--lucid-ink-2)" }}>
         {title}
       </h3>
       {description && (
         <p
           className="text-xs leading-relaxed max-w-sm"
-          style={{ color: "#64748B" }}
+          style={{ color: "var(--lucid-ink-3)" }}
         >
           {description}
         </p>

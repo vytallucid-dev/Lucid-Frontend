@@ -6,6 +6,42 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getAdminIndicators, type AdminIndicator } from "@/lib/api/admin";
 
+interface ModuleStat {
+  label: string;
+  value: number;
+  /** True for a fixed fact not derived from the indicator query (e.g. a
+   *  known country count) — always renders its value, never the query's
+   *  loading/error state, since a fetch failure doesn't make it unknown. */
+  static?: boolean;
+}
+
+function StatTile({ stat, loading, isError }: { stat: ModuleStat; loading: boolean; isError: boolean }) {
+  const showLoading = loading && !stat.static;
+  const showError = isError && !stat.static;
+  return (
+    <div className="lt-card-2 flex flex-col gap-1 rounded-xl px-2 sm:px-4 py-3">
+      <span className="text-[9px] sm:text-[10px] uppercase tracking-wider" style={{ color: "var(--lucid-ink-3)" }}>
+        {stat.label}
+      </span>
+      {showLoading ? (
+        <span className="lt-num text-base sm:text-lg font-bold" style={{ color: "var(--lucid-ink-3)" }}>—</span>
+      ) : showError ? (
+        <span className="lt-num text-base sm:text-lg font-bold flex items-center gap-1" style={{ color: "var(--lucid-neg)" }}>
+          <AlertCircle size={14} />
+          Error
+        </span>
+      ) : (
+        <span
+          className="lt-num text-base sm:text-lg font-bold"
+          style={{ color: !stat.static && stat.value === 0 ? "var(--lucid-warn)" : "var(--lucid-ink)" }}
+        >
+          {stat.value}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ModuleCard({
   title,
   subtitle,
@@ -16,16 +52,18 @@ function ModuleCard({
   href,
   indicators,
   loading,
+  isError,
 }: {
   title: string;
   subtitle: string;
   description: string;
   icon: React.ElementType;
   iconColor: string;
-  stats: { label: string; value: string }[];
+  stats: ModuleStat[];
   href: string;
   indicators: AdminIndicator[];
   loading: boolean;
+  isError: boolean;
 }) {
   const router = useRouter();
 
@@ -83,17 +121,7 @@ function ModuleCard({
         style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}
       >
         {stats.map((s) => (
-          <div
-            key={s.label}
-            className="lt-card-2 flex flex-col gap-1 rounded-xl px-2 sm:px-4 py-3"
-          >
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider" style={{ color: "var(--lucid-ink-3)" }}>
-              {s.label}
-            </span>
-            <span className="lt-num text-base sm:text-lg font-bold" style={{ color: "var(--lucid-ink)" }}>
-              {s.value}
-            </span>
-          </div>
+          <StatTile key={s.label} stat={s} loading={loading} isError={isError} />
         ))}
       </div>
 
@@ -155,6 +183,7 @@ export default function DataPage() {
   const {
     data: niftyData,
     isLoading: niftyLoading,
+    isError: niftyIsError,
   } = useQuery({
     queryKey: ["admin", "indicators", "nifty"],
     queryFn: () => getAdminIndicators("nifty"),
@@ -165,6 +194,7 @@ export default function DataPage() {
   const {
     data: edgefinderData,
     isLoading: efLoading,
+    isError: efIsError,
   } = useQuery({
     queryKey: ["admin", "indicators", "edgefinder"],
     queryFn: () => getAdminIndicators("edgefinder"),
@@ -226,13 +256,14 @@ export default function DataPage() {
           icon={Activity}
           iconColor="var(--lucid-pos)"
           stats={[
-            { label: "Total Indicators", value: niftyLoading ? "—" : String(niftyIndicators.length || 13) },
-            { label: "Domestic", value: niftyLoading ? "—" : String(niftyIndicators.filter((i) => i.compositeGroup === "domestic").length || 8) },
-            { label: "External", value: niftyLoading ? "—" : String(niftyIndicators.filter((i) => i.compositeGroup === "external").length || 5) },
+            { label: "Total Indicators", value: niftyIndicators.length },
+            { label: "Domestic", value: niftyIndicators.filter((i) => i.compositeGroup === "domestic").length },
+            { label: "External", value: niftyIndicators.filter((i) => i.compositeGroup === "external").length },
           ]}
           href="/data/nifty"
           indicators={niftyIndicators}
           loading={niftyLoading}
+          isError={niftyIsError}
         />
 
         <ModuleCard
@@ -242,13 +273,14 @@ export default function DataPage() {
           icon={BarChart2}
           iconColor="var(--lucid-accent)"
           stats={[
-            { label: "Total Indicators", value: efLoading ? "—" : String(edgefinderIndicators.length || 41) },
-            { label: "Countries", value: "4" },
-            { label: "COT + Rates", value: "9" },
+            { label: "Total Indicators", value: edgefinderIndicators.length },
+            { label: "Countries", value: 4, static: true },
+            { label: "COT + Rates", value: 9, static: true },
           ]}
           href="/data/edgefinder"
           indicators={edgefinderIndicators}
           loading={efLoading}
+          isError={efIsError}
         />
       </div>
 

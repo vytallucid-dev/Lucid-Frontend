@@ -667,15 +667,6 @@ export function getAccountById(id: string): Account | undefined {
   return accounts.find(a => a.id === id);
 }
 
-export function getDrawdownPct(account: Account): number {
-  const drawdown = account.account_size - account.current_balance;
-  return drawdown > 0 ? (drawdown / account.account_size) * 100 : 0;
-}
-
-export function getProfitPct(account: Account): number {
-  return ((account.current_balance - account.account_size) / account.account_size) * 100;
-}
-
 export function getDistanceToEntry(planned: PlannedTrade): { pips: number; direction: 'above' | 'below' | 'at' } {
   const pipMultiplier = planned.pair === 'XAUUSD' ? 1 : (planned.pair.endsWith('JPY') ? 100 : 10000);
   const diff = (planned.current_market_price - planned.planned_entry) * pipMultiplier;

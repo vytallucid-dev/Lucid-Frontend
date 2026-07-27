@@ -168,30 +168,23 @@ function PlannedLadder({ trade }: { trade: PlannedTrade }) {
   );
 }
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Section({ children, first }: { children: React.ReactNode; first?: boolean }) {
   return (
-    <div
-      className={`lt-card rounded-xl p-4 ${className ?? ""}`}
-      style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line)" }}
-    >
+    <div className="lx-content-section" style={first ? { borderTop: "none", paddingTop: 0 } : undefined}>
       {children}
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="lt-serif text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--lucid-ink-3)", letterSpacing: "0.08em" }}>
-      {children}
-    </p>
-  );
+  return <p className="lx-eyebrow" style={{ marginBottom: 12 }}>{children}</p>;
 }
 
 function kv(label: string, value: React.ReactNode) {
   return (
-    <div className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
-      <span style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>{label}</span>
-      <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{value}</span>
+    <div className="lx-content-row">
+      <span className="lx-content-row-label">{label}</span>
+      <span className="lx-content-row-value">{value}</span>
     </div>
   );
 }
@@ -213,53 +206,55 @@ export function PlannedDrawerContent({
   const isNearTrigger = trade.status === "Ready" && dist.pips <= 10;
 
   return (
-    <div className="flex flex-col gap-5 pb-24">
+    <div className="flex flex-col pb-6">
       {/* Header block */}
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            {config && (
-              <span style={{ fontSize: 18, lineHeight: 1 }}>
-                {config.flag_a}{config.flag_b}
+      <Section first>
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              {config && (
+                <span style={{ fontSize: 18, lineHeight: 1 }}>
+                  {config.flag_a}{config.flag_b}
+                </span>
+              )}
+              <span className="lx-heading" style={{ fontSize: 18 }}>
+                {config?.display_name ?? trade.pair}
               </span>
-            )}
-            <span className="lt-serif text-lg font-bold" style={{ color: "var(--lucid-ink)" }}>
-              {config?.display_name ?? trade.pair}
-            </span>
-            <ModelPill model={trade.model} />
+              <ModelPill model={trade.model} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="lx-value"
+                style={{
+                  fontWeight: 600,
+                  color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)",
+                }}
+              >
+                {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
+              </span>
+              <StatusPill status={trade.status} />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="lt-num"
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: trade.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)",
-              }}
-            >
-              {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
-            </span>
-            <StatusPill status={trade.status} />
-          </div>
+          <ConvictionPill conviction={trade.conviction} />
         </div>
-        <ConvictionPill conviction={trade.conviction} />
-      </div>
+      </Section>
 
-      {/* Setup card */}
-      <Card>
+      {/* Setup */}
+      <Section>
         <SectionTitle>Setup Levels</SectionTitle>
         <PlannedLadder trade={trade} />
-        <div style={{ height: 1, background: "var(--lucid-line)", margin: "12px 0" }} />
-        {kv("R:R Plan", <span className="lt-num" style={{ color: rr >= 2 ? "var(--lucid-pos)" : "var(--lucid-ink)", fontWeight: 600 }}>{rr.toFixed(2)}R</span>)}
-        {kv("Planned Risk", <span className="lt-num">{`${trade.planned_risk_pct}%`}</span>)}
-      </Card>
+        <div className="lx-rows" style={{ marginTop: 12 }}>
+          {kv("R:R Plan", <span className="lx-value" style={{ color: rr >= 2 ? "var(--lucid-pos)" : "var(--lucid-ink)", fontWeight: 600 }}>{rr.toFixed(2)}R</span>)}
+          {kv("Planned Risk", <span className="lx-value">{`${trade.planned_risk_pct}%`}</span>)}
+        </div>
+      </Section>
 
-      {/* Distance card */}
-      <Card>
+      {/* Distance */}
+      <Section>
         <SectionTitle>Distance to Entry</SectionTitle>
         <div className="flex flex-col gap-1 mb-3">
           <DistanceBadge trade={trade} large />
-          <p className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginTop: 4 }}>
+          <p className="lx-value" style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginTop: 4 }}>
             Current: {trade.current_market_price} · Planned: {trade.planned_entry}
           </p>
         </div>
@@ -274,58 +269,49 @@ export function PlannedDrawerContent({
             </span>
           </div>
         )}
-      </Card>
+      </Section>
 
       {/* Notes */}
       {trade.notes && (
-        <Card>
+        <Section>
           <SectionTitle>Notes</SectionTitle>
-          <p style={{ fontSize: 13, color: "var(--lucid-ink-2)", lineHeight: 1.6 }}>{trade.notes}</p>
-        </Card>
+          <p className="lx-body">{trade.notes}</p>
+        </Section>
       )}
 
       {/* Screenshots */}
       {trade.screenshots.length > 0 && (
-        <Card>
+        <Section>
           <SectionTitle>Screenshots</SectionTitle>
           <ScreenshotGallery urls={trade.screenshots} tileHeight={150} />
-        </Card>
+        </Section>
       )}
 
       {/* Added date */}
-      <p className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>
+      <p className="lx-micro" style={{ marginTop: 16 }}>
         Added {new Date(trade.date_added).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
       </p>
 
-      {/* Sticky bottom action bar */}
-      <div
-        className="fixed bottom-0 right-0 flex items-center gap-3 px-4 sm:px-6 py-4 w-full sm:w-auto"
-        style={{
-          maxWidth: 480,
-          background: "var(--lucid-surface-2)",
-          borderTop: "1px solid var(--lucid-line)",
-          zIndex: 10,
-        }}
-      >
-        {canConvert && (
-          <button
-            onClick={() => onConvert(trade)}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-            style={{ background: "var(--lucid-accent)", color: "var(--lucid-bg)" }}
-          >
-            Convert to Live Trade
-          </button>
-        )}
-        {trade.status !== "Invalidated" && trade.status !== "Cancelled" && (
-          <button
-            onClick={() => onMarkInvalidated(trade)}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5"
-            style={{ color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line-2)" }}
-          >
-            Mark Invalidated
-          </button>
-        )}
-      </div>
+      {/* Actions — normal flow inside the drawer body, same position other
+          drawer contents use for their bottom actions (in-flow, not fixed to
+          the viewport: `position: fixed` here was establishing its containing
+          block against the browser window instead of the drawer panel, since
+          this content renders nested inside DetailDrawer's scrollable body —
+          that's what let it float free of the drawer). */}
+      {(canConvert || (trade.status !== "Invalidated" && trade.status !== "Cancelled")) && (
+        <div className="flex items-center gap-3" style={{ marginTop: 20 }}>
+          {canConvert && (
+            <button onClick={() => onConvert(trade)} className="lx-btn lx-btn-primary flex-1">
+              Convert to Live Trade
+            </button>
+          )}
+          {trade.status !== "Invalidated" && trade.status !== "Cancelled" && (
+            <button onClick={() => onMarkInvalidated(trade)} className="lx-btn lx-btn-secondary">
+              Mark Invalidated
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

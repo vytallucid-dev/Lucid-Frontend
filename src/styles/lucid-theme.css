@@ -42,6 +42,28 @@
 
   --lucid-cool: #4ea1e6;
 
+  /* Carried over un-migrated from globals.css's legacy palette (Step 2). Not
+     part of the warm editorial system — intended role unresolved. Do not
+     reassign or fold into an existing token without a deliberate decision. */
+  --lucid-purple: #A855F7;
+  --lucid-purple-bg: rgba(168, 85, 247, 0.15);
+
+  /* Override / adjustment marker (Step 3) — "an automated rule modified this
+     value." Distinct from brand gold and from pos/neg/warn status colours by
+     design; must never be reassigned to mean direction or regime. Resolves
+     --lucid-purple above into a real semantic role rather than leaving it an
+     orphan; same values, role-based name. */
+  --lucid-override: #A855F7;
+  --lucid-override-bg: rgba(168, 85, 247, 0.15);
+
+  /* Modal backdrop dimmer (Step 3) — the scrim behind drawers/dialogs. A
+     structural, colour-agnostic darkening layer, not a tint of a status or
+     brand colour, so it gets its own name rather than a -bg/-bd suffix.
+     0.6 → 0.72 (Fix 1): the scrim lost its backdrop-filter blur (expensive to
+     recomposite on every scroll frame); opacity alone now carries all of the
+     separation from the page behind it, so it needed to go up to compensate. */
+  --lucid-scrim: rgba(0, 0, 0, 0.72);
+
   /* 5-step score scale (NIFTY bands / Oracle bias) */
   --lucid-scale-0: #e2584d; /* strong bearish */
   --lucid-scale-1: #e0913f; /* bearish */
@@ -63,6 +85,96 @@
   /* Font sizing base (not applied globally here) */
   --lucid-fs-base: 13.5px;
   --lucid-lh-base: 1.55;
+
+  /* Motion (Step 4) — shared durations + easing curves. Nothing in this file
+     consumed a token for these before; every transition/animation above kept
+     its own literal value and stays that way (not touched by this addition).
+     New motion (the Dock) should reach for these instead of a fresh literal. */
+  --lucid-dur-fast: 0.15s;
+  --lucid-dur-base: 0.2s;
+  --lucid-dur-slow: 0.32s;
+  --lucid-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --lucid-ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Ambient drift (Step 6) — a fourth, much slower duration tier for the hero's
+     background blobs and orb bob/tether-fade. Everything above tops out at
+     --lucid-dur-slow (0.32s), which is an interaction-feedback timescale, not
+     an atmosphere timescale; this is a distinct tier, not a replacement. */
+  --lucid-dur-drift: 42s;
+
+  /* Page background (Step 6) — darker than --lucid-surface, for the Dashboard
+     hero and page body only; cards keep --lucid-surface. The depth step
+     between this and --lucid-surface is what makes cards (and the alignment
+     field) read as floating above the page rather than flush with it. */
+  --lucid-page-bg: #08090C;
+
+  /* Ambient glow (Step 6) — very low-opacity radial-blob colours for the hero
+     background, derived from the existing accent/pos/neg tokens at
+     atmosphere-level opacity (0.04–0.10, per spec). These must never read as
+     UI — no border, no text, no interactive element may use them. */
+  --lucid-glow-accent: rgba(205, 167, 79, 0.07);
+  --lucid-glow-pos: rgba(72, 186, 124, 0.05);
+  --lucid-glow-neg: rgba(226, 88, 77, 0.05);
+
+  /* Glass (dock fix) — translucent floating surfaces for chrome that sits
+     above page content, not page-level cards. Derived from --lucid-surface-2
+     (#171a20 → rgb(23,26,32)) at reduced opacity, same material family as the
+     rest of the app, just see-through. Only meant for the dock/raised group;
+     everything else keeps the flat opaque surfaces this file opens with. */
+  --lucid-glass: rgba(23, 26, 32, 0.8);
+  --lucid-glass-2: rgba(23, 26, 32, 0.88);
+  --lucid-glass-bd: rgba(255, 255, 255, 0.14);
+  --lucid-glass-blur: 20px;
+  --lucid-elev-float: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.35);
+
+  /* ── Visual pass (Step 7) ────────────────────────────────────────────────
+     Tokens the card/dock/field system below needs that didn't exist yet.
+     Every one of these replaces a literal a component would otherwise have
+     had to inline; nothing here reassigns an existing colour's meaning. ── */
+
+  /* Card inner top highlight — the single inset line that catches light on a
+     card's top edge. Not a shadow (flat page cards cast none); an inset only. */
+  --lucid-card-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* Neutral interaction washes. Deliberately colourless — hover on a row or a
+     dock pill is a state, not a meaning, so it must not borrow gold. */
+  --lucid-hover-row: rgba(255, 255, 255, 0.025);
+  --lucid-hover-soft: rgba(255, 255, 255, 0.04);
+
+  /* Dock active pill tint — gold at interactive-state opacity, distinctly
+     lower than --lucid-accent-bg (0.12) so an active pill reads as a state
+     rather than as a filled gold button. */
+  --lucid-dock-active-bg: rgba(205, 167, 79, 0.10);
+
+  /* Orb specular highlight — the small upper-left light spot that turns a
+     circle into a sphere. Warm off-white, matching --lucid-ink's temperature. */
+  --lucid-orb-specular: rgba(241, 239, 233, 0.55);
+
+  /* Focus ring — gold, for keyboard focus on orbs and other bare-element
+     interactives that have no border of their own to light up. */
+  --lucid-focus-ring: 0 0 0 2px var(--lucid-page-bg), 0 0 0 4px var(--lucid-accent);
+
+  /* Small drop shadow for a raised control element (e.g. a toggle-switch
+     thumb) — much lighter than --lucid-elev-1, which is sized for cards. */
+  --lucid-elev-thumb: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* Page container geometry — one measure and one padding ramp shared by every
+     band, so all left edges align down the whole page. */
+  --lucid-container: 1440px;
+  --lucid-gutter: 16px;
+  --lucid-band-y: 48px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --lucid-gutter: 24px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --lucid-gutter: 40px;
+    --lucid-band-y: 72px;
+  }
 }
 
 .lt-card {
@@ -158,16 +270,20 @@ td.lt-eyebrow {
   transition: background-color 0.2s ease, border-color 0.2s ease, height 0.2s ease;
 }
 
+/* Scrolled top bar sits on the PAGE colour, not the card colour. Using
+   --lucid-surface here was the second half of the background seam: the bar
+   read as a lighter band pinned above a deeper page. Same ground + a hairline
+   is what makes it disappear into the page instead. */
 .lt-topbar-scrolled {
-  background: var(--lucid-surface);
+  background: var(--lucid-page-bg);
   border-bottom: 1px solid var(--lucid-line);
   transition: background-color 0.2s ease, border-color 0.2s ease, height 0.2s ease;
 }
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .lt-topbar-scrolled {
-    background: color-mix(in srgb, var(--lucid-surface) 82%, transparent);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--lucid-page-bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
   }
 }
 
@@ -552,6 +668,709 @@ td.lt-eyebrow {
 }
 
 /* ============================================================
+   DOCK (Step 4) — floating bottom-centre nav, sub-tab group pop-in
+   ============================================================ */
+@keyframes lucid-dock-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lucid-dock-pop {
+  animation: lucid-dock-pop var(--lucid-dur-slow) var(--lucid-ease-pop) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucid-dock-pop {
+    animation: none;
+  }
+}
+
+/* Glass surface for the dock bar + raised sub-tab group (dock fix). Blur
+   needs the saturate boost alongside it — blur alone over this dark a
+   background reads as flat grey; saturate lets the page colour underneath
+   still read through the glass. -webkit- prefix kept for Safari. */
+.lucid-glass {
+  background: var(--lucid-glass);
+  border: 1px solid var(--lucid-glass-bd);
+  box-shadow: var(--lucid-elev-float);
+  -webkit-backdrop-filter: blur(var(--lucid-glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--lucid-glass-blur)) saturate(150%);
+}
+.lucid-glass-2 {
+  background: var(--lucid-glass-2);
+  border: 1px solid var(--lucid-glass-bd);
+  box-shadow: var(--lucid-elev-float);
+  -webkit-backdrop-filter: blur(var(--lucid-glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--lucid-glass-blur)) saturate(150%);
+}
+/* No backdrop-filter support: a translucent panel with nothing blurred behind
+   it is unreadable, so fall back to substantially more opaque flat surfaces. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lucid-glass {
+    background: rgba(23, 26, 32, 0.97);
+  }
+  .lucid-glass-2 {
+    background: rgba(23, 26, 32, 0.985);
+  }
+}
+
+/* ── Dock craft (Step 7) — pill geometry, states, sub-tab group ────────────
+   The bar and group keep .lucid-glass/.lucid-glass-2 above (blur + saturate);
+   these add the measured pill sizing and state treatment on top. ── */
+.lucid-dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 999px;
+}
+.lucid-dock-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  font-family: var(--lucid-font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--lucid-ink-2);
+  background: transparent;
+  transition:
+    color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lucid-dock-pill:hover {
+  color: var(--lucid-ink);
+  background: var(--lucid-hover-soft);
+}
+.lucid-dock-pill.is-active {
+  color: var(--lucid-ink);
+  background: var(--lucid-dock-active-bg);
+}
+/* Sub-tab affordance dot — 3px, centred 4px beneath any pill that has
+   sub-tabs, shown at all times so the dock always previews which pills open
+   a group. Dim ink at rest; gold once that pill is the active section or its
+   group is open. A pill with no sub-tabs (Dashboard) never gets a dot. */
+.lucid-dock-pill.has-subtabs::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -4px;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--lucid-ink-3);
+  opacity: 0.6;
+}
+.lucid-dock-pill.has-subtabs.is-active::after,
+.lucid-dock-pill.has-subtabs.is-open::after {
+  background: var(--lucid-accent);
+  opacity: 1;
+}
+.lucid-dock-pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--lucid-accent);
+}
+
+/* Icon buttons — 32×32, quiet at rest. */
+.lucid-dock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--lucid-ink-3);
+  transition:
+    color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lucid-dock-icon:hover {
+  color: var(--lucid-ink);
+  background: var(--lucid-hover-soft);
+}
+.lucid-dock-icon.is-active {
+  color: var(--lucid-ink);
+  background: var(--lucid-dock-active-bg);
+}
+.lucid-dock-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--lucid-accent);
+}
+
+/* 1px × 18px divider. */
+.lucid-dock-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  margin-inline: 4px;
+  background: var(--lucid-line-2);
+}
+
+/* Sub-tab group — nearer than the bar, so slightly brighter glass. */
+.lucid-dock-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px;
+  border-radius: 999px;
+}
+.lucid-dock-subpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding-inline: 12px;
+  border-radius: 999px;
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--lucid-ink-2);
+  background: transparent;
+  transition:
+    color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lucid-dock-subpill:hover {
+  color: var(--lucid-ink);
+  background: var(--lucid-hover-soft);
+}
+/* Active sub-tab: gold fill with dark text — the one place gold goes solid. */
+.lucid-dock-subpill.is-active {
+  color: var(--lucid-page-bg);
+  background: var(--lucid-accent);
+}
+.lucid-dock-subpill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--lucid-accent);
+}
+.lucid-dock-subpill.is-tools {
+  color: var(--lucid-accent);
+  background: var(--lucid-accent-bg);
+}
+.lucid-dock-subpill.is-tools:hover {
+  color: var(--lucid-gold-bright);
+  background: var(--lucid-accent-bg);
+}
+
+/* ============================================================
+   PAGE SYSTEM (Step 7) — container, band rhythm, card, type scale
+   One container measure, one padding ramp, one card treatment. Everything
+   on the Dashboard opts into these rather than choosing its own widths.
+   ============================================================ */
+
+/* ── Container: the single vertical line the whole page aligns to ── */
+.lx-container {
+  width: 100%;
+  max-width: var(--lucid-container);
+  margin-inline: auto;
+  padding-inline: var(--lucid-gutter);
+}
+
+/* ── Band: one content section's vertical rhythm ── */
+.lx-band {
+  padding-block: var(--lucid-band-y);
+}
+/* A band's hairline rule spans the container, not the viewport. */
+.lx-rule {
+  height: 1px;
+  background: var(--lucid-line);
+}
+/* Band header rhythm: eyebrow → 10px → heading → 28px → content. */
+.lx-band-head {
+  margin-bottom: 28px;
+}
+.lx-band-head > .lx-eyebrow + .lx-heading {
+  margin-top: 10px;
+}
+
+/* ── Type scale — the exact roles the design uses, nothing else ── */
+.lx-eyebrow {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+.lx-heading {
+  font-family: var(--lucid-font-serif);
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--lucid-ink);
+  line-height: 1.15;
+}
+.lx-metric {
+  font-family: var(--lucid-font-mono);
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.lx-metric-sm {
+  font-family: var(--lucid-font-mono);
+  font-size: 22px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.lx-value {
+  font-family: var(--lucid-font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.lx-body {
+  font-family: var(--lucid-font-sans);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--lucid-ink-2);
+}
+.lx-micro {
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  color: var(--lucid-ink-3);
+}
+.lx-hero-num {
+  font-family: var(--lucid-font-serif);
+  font-size: clamp(48px, 6vw, 84px);
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Universal tabular figures — applied to every numeric output so values never
+   change width as they update. */
+.lx-tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Card: flat on the page, lit at the top edge, no drop shadow ── */
+.lx-card {
+  background: var(--lucid-surface);
+  border: 1px solid var(--lucid-line);
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: var(--lucid-card-inset);
+}
+.lx-card-compact {
+  padding: 22px;
+}
+/* Only interactive cards respond to hover — a static panel stays static. */
+.lx-card-interactive {
+  transition: border-color var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lx-card-interactive:hover {
+  border-color: var(--lucid-line-2);
+}
+
+/* ── Grids ── */
+.lx-grid-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+.lx-grid-two {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 640px) {
+  .lx-grid-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .lx-grid-metrics {
+    grid-template-columns: repeat(var(--lx-cols, 4), minmax(0, 1fr));
+  }
+  .lx-grid-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Rows inside cards: hairline-separated, no rule at either end ── */
+.lx-rows > * + * {
+  border-top: 1px solid var(--lucid-line);
+}
+.lx-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding-block: 14px;
+  text-align: left;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-row:hover {
+  background: var(--lucid-hover-row);
+}
+/* Numbers right, text left — always. */
+.lx-num-cell {
+  margin-left: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   FORM SYSTEM (overlay reskin) — labels, inputs, buttons, grid.
+   Everything here is presentational only: no field, validation rule,
+   default value, or submit behaviour changes when a component adopts it.
+   ============================================================ */
+
+.lx-field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+
+.lx-input {
+  width: 100%;
+  height: 38px;
+  padding-inline: 12px;
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line);
+  border-radius: 8px;
+  font-family: var(--lucid-font-sans);
+  font-size: 13px;
+  color: var(--lucid-ink);
+  outline: none;
+  transition: border-color var(--lucid-dur-fast) var(--lucid-ease-out), box-shadow var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-input::placeholder {
+  color: var(--lucid-ink-3);
+}
+.lx-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--lucid-line-2);
+}
+.lx-input:focus {
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lx-input:disabled:hover {
+  border-color: var(--lucid-line);
+}
+/* Numeric inputs — mono + tabular so a price/size never shifts width while
+   the user types. Compose with `.lx-input`: `class="lx-input lx-input-num"`. */
+.lx-input-num {
+  font-family: var(--lucid-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Invalid state — field border switches to --lucid-neg while its error shows.
+   Applied alongside `.lx-input`, driven by the same validation state the
+   component already tracks (no new validation rule). */
+.lx-input-invalid {
+  border-color: var(--lucid-neg);
+}
+.lx-input-invalid:focus {
+  border-color: var(--lucid-neg);
+  box-shadow: 0 0 0 2px var(--lucid-page-bg), 0 0 0 4px var(--lucid-neg-bd);
+}
+
+.lx-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%2362646C' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.lx-textarea {
+  min-height: 88px;
+  padding-block: 10px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.lx-field {
+  margin-bottom: 20px;
+}
+.lx-field:last-child {
+  margin-bottom: 0;
+}
+
+.lx-field-error {
+  margin-top: 6px;
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  color: var(--lucid-neg);
+}
+
+.lx-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 20px;
+}
+@media (max-width: 639px) {
+  .lx-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lx-field-full {
+  grid-column: 1 / -1;
+}
+
+/* ── Buttons ── */
+.lx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding-inline: 18px;
+  border-radius: 8px;
+  font-family: var(--lucid-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out), color var(--lucid-dur-fast) var(--lucid-ease-out), border-color var(--lucid-dur-fast) var(--lucid-ease-out), opacity var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lx-btn-primary {
+  background: var(--lucid-accent);
+  color: var(--lucid-page-bg);
+}
+.lx-btn-primary:hover:not(:disabled) {
+  background: var(--lucid-gold-bright);
+}
+.lx-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--lucid-line-2);
+  color: var(--lucid-ink);
+}
+.lx-btn-secondary:hover:not(:disabled) {
+  background: var(--lucid-hover-soft);
+}
+.lx-btn-danger {
+  background: transparent;
+  border: 1px solid var(--lucid-neg);
+  color: var(--lucid-neg);
+}
+.lx-btn-danger:hover:not(:disabled) {
+  background: var(--lucid-neg-bg);
+}
+
+/* ============================================================
+   OVERLAY SHELL (modals + drawers) — scrim, panel, header/body/footer.
+   ============================================================ */
+
+/* No backdrop-filter here on purpose. A blur behind an open overlay forces the
+   browser to re-composite the entire page area on every frame the overlay's
+   content repaints — by far the most expensive thing in this stack, for very
+   little visual gain over a solid scrim. Separation instead comes from
+   opacity alone; --lucid-scrim is tuned dark enough on its own. */
+.lx-overlay-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--lucid-scrim);
+  animation: lx-scrim-fade var(--lucid-dur-base) var(--lucid-ease-out) backwards;
+}
+@keyframes lx-scrim-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lx-modal-panel {
+  background: var(--lucid-surface);
+  border: 1px solid var(--lucid-line);
+  border-radius: 16px;
+  box-shadow: var(--lucid-elev-float), var(--lucid-card-inset);
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  width: 100%;
+  animation: lx-modal-rise var(--lucid-dur-base) var(--lucid-ease-out) backwards;
+}
+.lx-modal-panel.lx-modal-confirm {
+  max-width: 420px;
+}
+.lx-modal-panel.lx-modal-form {
+  max-width: 640px;
+}
+@media (max-width: 639px) {
+  .lx-modal-panel {
+    width: calc(100vw - 32px);
+  }
+}
+@keyframes lx-modal-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-overlay-scrim,
+  .lx-modal-panel {
+    animation: none;
+  }
+}
+
+.lx-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--lucid-line);
+  flex-shrink: 0;
+}
+.lx-overlay-title {
+  font-family: var(--lucid-font-serif);
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--lucid-ink);
+  line-height: 1.2;
+}
+.lx-overlay-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--lucid-ink-3);
+  flex-shrink: 0;
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out), background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overlay-close:hover {
+  color: var(--lucid-ink);
+  background: var(--lucid-hover-soft);
+}
+.lx-overlay-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--lucid-accent);
+}
+
+.lx-overlay-body {
+  padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+  min-height: 0;
+}
+
+.lx-overlay-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--lucid-line);
+  flex-shrink: 0;
+}
+
+/* Confirm-dialog icon badge. */
+.lx-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--lucid-neg-bg);
+  color: var(--lucid-neg);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   DRAWER SHELL — right-side slide-in panel.
+   ============================================================ */
+
+.lx-drawer-panel {
+  background: var(--lucid-surface);
+  border-left: 1px solid var(--lucid-line);
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+  box-shadow: var(--lucid-elev-float);
+  width: 480px;
+  max-width: 100vw;
+  animation: lx-drawer-slide-in var(--lucid-dur-base) var(--lucid-ease-out) backwards;
+}
+@media (max-width: 639px) {
+  .lx-drawer-panel {
+    width: 100vw;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+@keyframes lx-drawer-slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-drawer-panel {
+    animation: none;
+  }
+}
+
+/* ── Drawer content — section rhythm, field rows, progress bars ── */
+.lx-content-section {
+  padding-block: 20px;
+  border-top: 1px solid var(--lucid-line);
+}
+.lx-content-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.lx-content-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+}
+.lx-content-row-label {
+  font-family: var(--lucid-font-sans);
+  font-size: 11px;
+  color: var(--lucid-ink-3);
+}
+.lx-content-row-value {
+  font-family: var(--lucid-font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--lucid-ink);
+  text-align: right;
+}
+.lx-progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--lucid-hover-row);
+  overflow: hidden;
+}
+.lx-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.lx-gallery-tile {
+  border-radius: 10px;
+  border: 1px solid var(--lucid-line);
+  overflow: hidden;
+}
+
+/* ============================================================
    SEGMENTED control (replaces range dropdown)
    ============================================================ */
 .lt-segment {
@@ -579,4 +1398,105 @@ td.lt-eyebrow {
   color: var(--lucid-ink);
   background: var(--lucid-surface-3);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
+   ALIGNMENT FIELD (Step 6) — hero background blobs, orb float/tether/ring.
+   All driven by --lucid-dur-drift so they read as weather, not UI motion.
+   JS also gates every one of these behind usePrefersReducedMotion (belt and
+   suspenders — the classes below are only ever applied when motion is on),
+   but each keyframe still gets its own reduced-motion override here in case
+   a class is ever reused somewhere that skips the JS gate.
+   ============================================================ */
+@keyframes lucid-blob-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(3%, -4%) scale(1.05); }
+  66%  { transform: translate(-2%, 3%) scale(0.97); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.lucid-blob {
+  animation: lucid-blob-drift var(--lucid-dur-drift) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucid-blob {
+    animation: none;
+  }
+}
+
+/* Orb float — a slow suspension drift, not a bob. Travels ≤12px vertically and
+   ≤6px horizontally; each orb gets its own duration (7–13s) and a negative
+   delay from JS so the field never pulses in unison. Applied to the orb's
+   outer wrapper, leaving the inner link's transform free for hover scale. */
+@keyframes lucid-orb-float {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(3px, -7px); }
+  50%  { transform: translate(-4px, -12px); }
+  75%  { transform: translate(-6px, -5px); }
+  100% { transform: translate(0, 0); }
+}
+.lucid-orb-float {
+  animation: lucid-orb-float 10s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucid-orb-float {
+    animation: none;
+    transform: none;
+  }
+}
+
+@keyframes lucid-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.lucid-ring-spin {
+  animation: lucid-ring-spin 14s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucid-ring-spin {
+    animation: none;
+  }
+}
+
+/* ── Orb interaction. Hover/focus lifts the sphere, brightens its halo and its
+   label together — driven by CSS state on the link so there is no JS style
+   mutation and no chance of hover and focus fighting each other. ── */
+.lucid-orb-link {
+  outline: none;
+  transition: transform var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lucid-orb-link:hover,
+.lucid-orb-link:focus-visible {
+  transform: scale(1.06);
+}
+/* Halo brightening on hover/focus. The halo's resting opacity is baked into
+   its gradient colour (it varies per orb with signal strength), so a fixed
+   `opacity` value here would flatten every orb to the same brightness. A
+   filter multiplies whatever that orb's own opacity already is, which is what
+   "+40%" has to mean when the baseline differs per orb. */
+.lucid-orb-halo {
+  transition: filter var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lucid-orb-link:hover .lucid-orb-halo,
+.lucid-orb-link:focus-visible .lucid-orb-halo {
+  filter: opacity(1.4);
+}
+.lucid-orb-label {
+  transition: color var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lucid-orb-link:hover .lucid-orb-label,
+.lucid-orb-link:focus-visible .lucid-orb-label {
+  color: var(--lucid-ink);
+}
+.lucid-orb-link:focus-visible .lucid-orb-body {
+  box-shadow: var(--lucid-focus-ring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lucid-orb-link {
+    transition: none;
+  }
+  .lucid-orb-link:hover,
+  .lucid-orb-link:focus-visible {
+    transform: none;
+  }
 }

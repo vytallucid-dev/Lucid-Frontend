@@ -3,17 +3,23 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { X, Maximize2 } from "lucide-react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface DetailDrawerProps {
   open: boolean;
   onClose: () => void;
   expandHref?: string;
   title: string;
+  /** Optional label shown above the title, e.g. a pair symbol or account type. */
+  eyebrow?: string;
   children: React.ReactNode;
 }
 
-export function DetailDrawer({ open, onClose, expandHref, title, children }: DetailDrawerProps) {
+export function DetailDrawer({ open, onClose, expandHref, title, eyebrow, children }: DetailDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(drawerRef, open);
+  useScrollLock(drawerRef, open);
 
   // Close on Esc
   useEffect(() => {
@@ -25,24 +31,13 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
   if (!open) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ background: "rgba(0, 0, 0, 0.6)" }}
+        className="lx-overlay-scrim fixed inset-0 z-40"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -50,50 +45,35 @@ export function DetailDrawer({ open, onClose, expandHref, title, children }: Det
       {/* Drawer panel */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 h-screen z-50 flex flex-col drawer-enter w-full max-w-120"
-        style={{
-          background: "var(--lucid-surface-2)",
-          borderLeft: "1px solid var(--lucid-line)",
-        }}
+        className="lx-drawer-panel fixed top-0 right-0 h-screen z-50 flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0"
-          style={{ borderBottom: "1px solid var(--lucid-line)" }}
-        >
-          <h2
-            className="lt-serif text-base font-semibold truncate"
-            style={{ color: "var(--lucid-ink)" }}
-          >
-            {title}
-          </h2>
-          <div className="flex items-center gap-1">
+        <div className="lx-overlay-header">
+          <div className="min-w-0">
+            {eyebrow && <div className="lx-eyebrow" style={{ marginBottom: 6 }}>{eyebrow}</div>}
+            <h2 className="lx-overlay-title truncate">{title}</h2>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             {expandHref && (
               <Link
                 href={expandHref}
-                className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-                style={{ color: "var(--lucid-ink-3)" }}
+                className="lx-overlay-close"
                 title="Open full page"
               >
                 <Maximize2 size={15} />
               </Link>
             )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-              style={{ color: "var(--lucid-ink-3)" }}
-              title="Close"
-            >
+            <button onClick={onClose} className="lx-overlay-close" title="Close">
               <X size={15} />
             </button>
           </div>
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+        <div className="lx-overlay-body">
           {children}
         </div>
       </div>
