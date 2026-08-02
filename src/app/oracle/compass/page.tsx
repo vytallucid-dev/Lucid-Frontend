@@ -23,7 +23,7 @@ import type {
   PublicCompassGateState,
   PublicCompassOverrideState,
 } from "@/lib/api/oracle";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 
@@ -90,10 +90,20 @@ const OVERRIDES: OverrideDef[] = [
     id: 1,
     code: "OVERRIDE_1_BAD_NEWS_GOOD_NEWS",
     name: "Bad News Good News (Stocks)",
-    affected: ["SPY", "NAS100"],
+    // Eligibility is assetClass === "index", not an enumerated code list — a
+    // newly activated index needs no copy change here. Currently: SPY,
+    // NAS100, US30 (US30 added Phase 4).
+    affected: ["SPY", "NAS100", "US30"],
     summary: "Weak US jobs data inverts for equity scoring — Fed pivot trade.",
-    changes: ["NFP miss: −1 → +1", "Higher unemployment: −1 → +1", "ADP/JOLTS/claims miss: −1 → +1"],
-    note: "Ungated. CPI/PPI/PCE direction unchanged — inflation still hurts stocks via discount rate.",
+    // Phase 5 excluded US_UNEMP from this override's read site (it's shared
+    // US_JOBS_CODES with Override 4, where UNEMP's polarity still composes
+    // correctly): US_UNEMP is inverted with -1 index polarity, so a composed
+    // -1 means unemployment printed BELOW forecast — a strong labour print,
+    // not a miss. Doubling that into +2 bullish would apply the override's
+    // "weak jobs is dovish" premise backwards. NFP/ADP/JOLTS/Jobless Claims
+    // are unaffected by that fix and remain the only four members.
+    changes: ["NFP miss: −1 → +1", "ADP/JOLTS/Jobless Claims miss: −1 → +1"],
+    note: "Ungated. CPI/PPI/PCE direction unchanged — inflation still hurts stocks via discount rate. Unemployment is not part of this override (see Phase 5 note).",
     gate: null,
   },
   {
@@ -110,9 +120,13 @@ const OVERRIDES: OverrideDef[] = [
     id: 3,
     code: "OVERRIDE_3_JPY_SAFE_HAVEN",
     name: "JPY Safe-Haven Boost",
-    affected: ["JPY", "USDJPY", "EURJPY", "GBPJPY"],
+    // Eligibility is quoteCurrency === "JPY", read from each pair's own
+    // definition, not a hand-maintained pair-code set — Phase 5 fixed a bug
+    // where the old hardcoded set (USDJPY/EURJPY/GBPJPY) silently excluded
+    // AUDJPY. Applies to every JPY-quote pair; currently all four.
+    affected: ["JPY", "USDJPY", "EURJPY", "GBPJPY", "AUDJPY"],
     summary: "+1 added to JPY standalone score — carry trades unwinding.",
-    changes: ["Propagates to pairs: USDJPY −1, EURJPY −1, GBPJPY −1"],
+    changes: ["Propagates to pairs: USDJPY −1, EURJPY −1, GBPJPY −1, AUDJPY −1"],
     note: "Gated by the rate gate (8A): suppressed when US2Y is above its 21d SMA, unless a Carry Shock bypasses.",
     gate: "rate",
   },
@@ -130,27 +144,45 @@ const OVERRIDES: OverrideDef[] = [
     id: 5,
     code: "OVERRIDE_5_CARRY_UNWIND",
     name: "Carry Unwind",
-    affected: ["EURJPY", "GBPJPY"],
+    // Eligibility is isCarryPair (Asset.metadata, a data property), not a
+    // hand-maintained two-pair set — Phase 5 replaced the literal
+    // EURJPY/GBPJPY check. Currently carry-flagged: AUDJPY, EURJPY, GBPJPY
+    // (not USDJPY).
+    affected: ["AUDJPY", "EURJPY", "GBPJPY"],
     summary: "Automatic −1 adjustment on top of Override 3.",
-    changes: ["Total Risk-Off effect on EURJPY/GBPJPY: −2 combined."],
+    changes: ["Total Risk-Off effect on AUDJPY/EURJPY/GBPJPY: −2 combined."],
     note: "Gated by the same rate gate (8A) as Override 3.",
     gate: "rate",
   },
 ];
 
+// Cosmetic display metadata only — flag + sort order for the Score Impact
+// table. NOT a membership list: `data.scoreImpact` (the API response) is
+// what determines which rows render; both read sites below fall back safely
+// (order 99, a globe flag) for any asset not listed here, so an unlisted row
+// still renders, just without a specific flag/position. Kept local because
+// it's a pure ordering/glyph preference, the kind Part 2 explicitly allows —
+// extended with AUD, the four AUD pairs and US30 so they don't degrade to
+// the generic fallback now that they can appear in scoreImpact.
 const ASSET_META: Record<string, { flag: string; order: number }> = {
   EURUSD: { flag: "🇪🇺", order: 1 },
   GBPUSD: { flag: "🇬🇧", order: 2 },
   USDJPY: { flag: "🇯🇵", order: 3 },
   EURJPY: { flag: "🇪🇺", order: 4 },
   GBPJPY: { flag: "🇬🇧", order: 5 },
-  XAUUSD: { flag: "🥇", order: 6 },
-  SPY: { flag: "🇺🇸", order: 7 },
-  NAS100: { flag: "🇺🇸", order: 8 },
-  USD: { flag: "🇺🇸", order: 9 },
-  EUR: { flag: "🇪🇺", order: 10 },
-  GBP: { flag: "🇬🇧", order: 11 },
-  JPY: { flag: "🇯🇵", order: 12 },
+  AUDUSD: { flag: "🇦🇺", order: 6 },
+  AUDJPY: { flag: "🇦🇺", order: 7 },
+  EURAUD: { flag: "🇪🇺", order: 8 },
+  GBPAUD: { flag: "🇬🇧", order: 9 },
+  XAUUSD: { flag: "🥇", order: 10 },
+  SPY: { flag: "🇺🇸", order: 11 },
+  NAS100: { flag: "🇺🇸", order: 12 },
+  US30: { flag: "🇺🇸", order: 13 },
+  USD: { flag: "🇺🇸", order: 14 },
+  EUR: { flag: "🇪🇺", order: 15 },
+  GBP: { flag: "🇬🇧", order: 16 },
+  JPY: { flag: "🇯🇵", order: 17 },
+  AUD: { flag: "🇦🇺", order: 18 },
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1012,7 +1044,7 @@ export default function CompassPage() {
   const { data, isLoading, error, refetch } = useCompass();
   const [expandedStack, setExpandedStack] = useState(false);
 
-  if (isLoading) return <LoadingState stages={["Loading Compass…", "Weighing regime votes…", "Classifying the market…"]} />;
+  if (isLoading) return <PageSkeleton cards={3} blocks={2} blockHeight={280} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data)
     return (

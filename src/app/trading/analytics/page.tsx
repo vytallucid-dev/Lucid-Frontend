@@ -15,7 +15,7 @@ import {
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { formatCurrency, type Trade } from "@/lib/demo-data";
 import { useTrades, useAccounts } from "@/hooks/useTrading";
-import { LoadingState } from "@/components/state/LoadingState";
+import { Skeleton, SkeletonCard } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -546,8 +546,24 @@ export default function AnalyticsPage() {
 
   if (tradesQuery.isLoading) {
     return (
-      <div className="px-4 sm:px-6 py-6">
-        <LoadingState message="Loading analytics…" />
+      <div className="px-4 sm:px-6 py-4 sm:py-6 flex flex-col" style={{ gap: 20 }} aria-hidden="true">
+        <div>
+          <Skeleton bare height={26} width={168} />
+          <Skeleton bare height={11} width={340} style={{ marginTop: 8 }} />
+        </div>
+        <div className="lx-grid-metrics">
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonCard key={i} height={116} />
+          ))}
+        </div>
+        <div className="lx-grid-two">
+          {[0, 1].map((i) => (
+            <div key={i} className="lx-card">
+              <Skeleton bare height={9} width={104} />
+              <Skeleton bare height={260} radius={10} style={{ marginTop: 16 }} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useCompass } from "@/hooks/useCompass";
 import { usePrefersReducedMotion } from "@/components/motion";
 
@@ -88,66 +87,12 @@ function ambienceFor(regime: Regime | undefined): Ambience {
   }
 }
 
-const DEV_MODE = process.env.NODE_ENV !== "production";
-
-/**
- * Dev-only ambience preview toggle. Cycles the three regimes so the effect can
- * be judged without waiting for the market to actually move through them.
- * Touches nothing but this component's own blob colours/opacity/drift — the
- * real regime label elsewhere in the hero comes from useRegimeLabel(), which
- * reads the Compass query directly and is untouched by this override.
- *
- * Deletable in one edit: remove the `previewRegime` prop, the `<RegimePreviewControl>`
- * render, and this component, and HeroAmbience reverts to reading the real
- * regime only.
- */
-function RegimePreviewControl({ value, onChange }: { value: Regime | null; onChange: (r: Regime | null) => void }) {
-  const options: (Regime | null)[] = [null, "Risk-On", "Caution", "Risk-Off"];
-  return (
-    <div
-      className="absolute bottom-2 left-2 flex items-center gap-1 pointer-events-auto"
-      style={{ zIndex: 5 }}
-    >
-      <span
-        className="lx-micro"
-        style={{ color: "var(--lucid-ink-3)", opacity: 0.6, marginRight: 2 }}
-      >
-        preview:
-      </span>
-      {options.map((opt) => (
-        <button
-          key={opt ?? "live"}
-          type="button"
-          onClick={() => onChange(opt)}
-          title={opt ? `Preview ${opt} ambience (dev only)` : "Use live regime (dev only)"}
-          className="lx-micro"
-          style={{
-            padding: "2px 6px",
-            borderRadius: 4,
-            border: "1px solid var(--lucid-line-2)",
-            background: value === opt ? "var(--lucid-hover-soft)" : "transparent",
-            color: value === opt ? "var(--lucid-ink)" : "var(--lucid-ink-3)",
-            opacity: 0.7,
-          }}
-        >
-          {opt ?? "live"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function HeroAmbience() {
   const reducedMotion = usePrefersReducedMotion();
   // Reused exactly as Oracle calls it — same hook, same query key. Errors are
   // swallowed on purpose: atmosphere must never surface a loading/error state.
   const compassQuery = useCompass();
-  const realRegime = compassQuery.data?.current?.finalRegime;
-
-  // Dev-only preview override — always undefined (i.e. inert) in production,
-  // since DEV_MODE is a build-time constant and this branch never runs there.
-  const [previewRegime, setPreviewRegime] = useState<Regime | null>(null);
-  const regime = DEV_MODE && previewRegime ? previewRegime : realRegime;
+  const regime = compassQuery.data?.current?.finalRegime;
   const ambience = ambienceFor(regime);
 
   const driftStyle = (delaySeconds: number): React.CSSProperties =>
@@ -205,7 +150,6 @@ export function HeroAmbience() {
           ...driftStyle(-28),
         }}
       />
-      {DEV_MODE && <RegimePreviewControl value={previewRegime} onChange={setPreviewRegime} />}
     </div>
   );
 }

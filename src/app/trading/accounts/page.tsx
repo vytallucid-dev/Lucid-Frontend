@@ -27,7 +27,7 @@ import {
 } from "@/hooks/useTrading";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { CreateAccountPayload } from "@/lib/api/trading";
-import { LoadingState } from "@/components/state/LoadingState";
+import { SkeletonGridRows, SkeletonCard } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { toast } from "@/components/toast";
@@ -733,7 +733,23 @@ export default function AccountsPage() {
 
       {/* Content */}
       <div className="flex-1 px-4 sm:px-6 py-5">
-        {accountsQuery.isLoading && <LoadingState message="Loading accounts…" />}
+        {/* Same grid template and min-width as the real table (or the same card
+            grid in gallery view), so rows arrive without moving anything. */}
+        {accountsQuery.isLoading &&
+          (view === "table" ? (
+            <SkeletonGridRows
+              columns={TABLE_COLS}
+              columnCount={TABLE_HEADERS.length}
+              minWidth={TABLE_MIN_WIDTH}
+              rows={7}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} height={232} />
+              ))}
+            </div>
+          ))}
         {accountsQuery.isError && (
           <ErrorState error={accountsQuery.error} onRetry={() => accountsQuery.refetch()} title="Couldn't load accounts" />
         )}

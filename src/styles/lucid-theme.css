@@ -158,6 +158,40 @@
      thumb) — much lighter than --lucid-elev-1, which is sized for cards. */
   --lucid-elev-thumb: 0 1px 3px rgba(0, 0, 0, 0.3);
 
+  /* Deep page ground — one step below --lucid-page-bg, for a full-bleed band
+     that acts as a visual breath between two data-heavy sections. Nothing on
+     it is a card; the darkness IS the separation. */
+  --lucid-page-bg-deep: #06070a;
+
+  /* Sydney's session colour. The other four sessions reuse existing semantic
+     tokens (Tokyo → neg, Mumbai → warn, London → ctx, New York → pos); Sydney
+     had no near-equivalent in the palette, so it gets one token of its own.
+     Deliberately NOT gold: gold is brand and interactive, and a trading
+     session is data. */
+  --lucid-session-syd: #8b93ff;
+
+  /* Directional washes — a status colour at atmosphere strength, for the soft
+     radial glow behind a score gauge. Distinct from the -bg tokens (0.11–0.12),
+     which sit behind text and borders and must stay legible; these sit behind
+     nothing and only tint a surface. */
+  --lucid-pos-wash: rgba(72, 186, 124, 0.1);
+  --lucid-neg-wash: rgba(226, 88, 77, 0.1);
+  --lucid-accent-wash: rgba(205, 167, 79, 0.1);
+
+  /* Skeleton sheen — the highlight that sweeps a loading placeholder. The
+     placeholder FILL is --lucid-surface-2 and its edge is --lucid-line (a
+     skeleton must read as absence, so it never gets a colour of its own); this
+     is only the moving light on top, and it is the one value that had no
+     existing token. Deliberately fainter than --lucid-hover-soft: a skeleton
+     must never look like something you can interact with. */
+  --lucid-skeleton-sheen: rgba(255, 255, 255, 0.045);
+
+  /* Popover surface — a floating panel anchored to a control (the scorecard
+     picker), as opposed to a page card (--lucid-surface) or a modal
+     (.lx-modal-panel). Same material family, one step brighter than the card
+     it opens over so the layering reads without a scrim behind it. */
+  --lucid-popover: #191c23;
+
   /* Page container geometry — one measure and one padding ramp shared by every
      band, so all left edges align down the whole page. */
   --lucid-container: 1440px;
@@ -1499,4 +1533,728 @@ td.lt-eyebrow {
   .lucid-orb-link:focus-visible {
     transform: none;
   }
+}
+
+/* ============================================================
+   LOADING SYSTEM — skeletons, soft content swap, refetch pip.
+   One vocabulary for "content is on its way", used by every page.
+   The shapes themselves live in src/components/state/Skeleton.tsx;
+   this is only the material.
+   ============================================================ */
+
+/* A skeleton block. Fill is the surface step, edge is the hairline — the same
+   two tokens a real card uses, so a skeleton occupies the page like content
+   without ever being mistaken for it. Sized entirely by the caller, because a
+   loader that isn't the shape of what's arriving causes the layout shift it was
+   supposed to prevent. */
+.lx-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line);
+  border-radius: var(--lucid-r-sm);
+}
+.lx-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--lucid-skeleton-sheen), transparent);
+  animation: lx-skeleton-sweep 1.5s var(--lucid-ease-out) infinite;
+}
+@keyframes lx-skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+/* Borderless variant, for skeleton text lines inside an already-bordered card
+   (a bordered line inside a bordered box reads as a nested control). */
+.lx-skeleton-bare {
+  border-color: transparent;
+}
+/* Under reduced motion the sheen is removed outright rather than paused — a
+   static block is the correct skeleton, not a frozen gradient. */
+@media (prefers-reduced-motion: reduce) {
+  .lx-skeleton::after {
+    display: none;
+  }
+}
+
+/* Soft swap — content already on screen while its replacement loads (switching
+   asset on a scorecard). The old content HOLDS at reduced opacity, keeping its
+   exact box, so nothing collapses and nothing shifts when the new content
+   lands. Opacity only: no transform, nothing that moves. */
+/* --lucid-dur-fast, not -slow: the thing being animated is a fetch that
+   usually finishes in a couple of hundred milliseconds. A 0.32s ramp to the
+   dimmed state meant the dim was still a fifth of the way there when the new
+   data replaced it — the transition was slower than the event it described,
+   which is the same as having no transition at all. */
+.lx-swap {
+  transition:
+    opacity var(--lucid-dur-fast) var(--lucid-ease-out),
+    filter var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-swap-busy {
+  opacity: 0.4;
+  filter: saturate(0.8);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-swap {
+    transition: none;
+  }
+}
+
+/* Background refetch — a pip, not a screen. Never blanks anything. */
+.lx-refetch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+.lx-refetch-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--lucid-accent);
+  animation: lx-refetch-breathe 1.4s ease-in-out infinite;
+}
+@keyframes lx-refetch-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-refetch-dot {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   PICKER — the keyboard-first combobox behind the scorecard
+   selectors. Trigger reuses .lx-input's material; the panel is a
+   popover anchored to it (not a modal — it never takes the page).
+   ============================================================ */
+
+.lx-picker {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-width: 340px;
+}
+/* The picker wrapping a whole card region rather than a pill — the wrapper must
+   not impose the pill's measure on the card it now contains. */
+.lx-picker-block {
+  display: block;
+  max-width: none;
+}
+
+/* Trigger — always shows the current selection, even closed. */
+.lx-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  padding-inline: 14px;
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 10px;
+  color: var(--lucid-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-picker-trigger:hover {
+  border-color: var(--lucid-line-3);
+  background: var(--lucid-surface-3);
+}
+.lx-picker-trigger[aria-expanded="true"] {
+  border-color: var(--lucid-accent-bd);
+}
+.lx-picker-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-picker-name {
+  font-family: var(--lucid-font-serif);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--lucid-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lx-picker-chev {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--lucid-ink-3);
+  transition: transform var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lx-picker-trigger[aria-expanded="true"] .lx-picker-chev {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-picker-chev {
+    transition: none;
+  }
+}
+
+/* Panel — anchored below the trigger, never wider than the viewport. */
+.lx-picker-panel {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  min-width: 260px;
+  max-width: calc(100vw - 32px);
+  background: var(--lucid-popover);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 12px;
+  box-shadow: var(--lucid-elev-float);
+  overflow: hidden;
+  animation: lx-picker-open var(--lucid-dur-fast) var(--lucid-ease-out) backwards;
+}
+/* Its own readable measure, for when the trigger is a whole card. A list of
+   seven short names stretched across a card is not a list, it is a table with
+   one column of air. `min()` is what keeps it on-screen at phone width. */
+.lx-picker-panel-fixed {
+  width: min(356px, calc(100vw - 32px));
+  min-width: 0;
+}
+/* Flipped above when there isn't room beneath (measured at open time). */
+.lx-picker-panel-above {
+  top: auto;
+  bottom: calc(100% + 6px);
+  animation-name: lx-picker-open-up;
+}
+@keyframes lx-picker-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes lx-picker-open-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-picker-panel {
+    animation: none;
+  }
+}
+
+/* ── Identity trigger — the score card's gauge + name, acting as the picker.
+   A control, so it lifts on hover and takes a gold focus ring; but it lives
+   inside a card, so it carries no border or fill of its own at rest. ── */
+.lx-identity-trigger {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    transform var(--lucid-dur-base) var(--lucid-ease-out),
+    border-color var(--lucid-dur-base) var(--lucid-ease-out),
+    background-color var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lx-identity-trigger:hover {
+  transform: translateY(-2px);
+  border-color: var(--lucid-line-2);
+  background: var(--lucid-hover-soft);
+}
+.lx-identity-trigger:focus-visible {
+  outline: none;
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-identity-trigger .lx-identity-chev {
+  color: var(--lucid-ink-3);
+  flex-shrink: 0;
+  transition:
+    transform var(--lucid-dur-base) var(--lucid-ease-out),
+    color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-identity-trigger:hover .lx-identity-chev {
+  color: var(--lucid-ink-2);
+}
+.lx-identity-trigger[aria-expanded="true"] .lx-identity-chev {
+  transform: rotate(180deg);
+  color: var(--lucid-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-identity-trigger,
+  .lx-identity-trigger .lx-identity-chev {
+    transition: none;
+  }
+  .lx-identity-trigger:hover {
+    transform: none;
+  }
+}
+
+/* ── Chart trigger — the score-history card, which opens the trajectory view.
+   The hint stays visible at rest (nobody should have to discover this by
+   hovering) and only brightens on hover/focus. ── */
+.lx-chart-trigger {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--lucid-dur-base) var(--lucid-ease-out),
+    background-color var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.lx-chart-trigger:hover {
+  border-color: var(--lucid-line-2);
+  background: var(--lucid-hover-row);
+}
+.lx-chart-trigger:focus-visible {
+  outline: none;
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-chart-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--lucid-ink-3);
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-chart-trigger:hover .lx-chart-hint,
+.lx-chart-trigger:focus-visible .lx-chart-hint {
+  color: var(--lucid-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-chart-trigger,
+  .lx-chart-hint {
+    transition: none;
+  }
+}
+
+.lx-picker-search {
+  padding: 10px;
+  border-bottom: 1px solid var(--lucid-line);
+}
+.lx-picker-list {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+}
+.lx-picker-group {
+  padding: 8px 10px 4px;
+}
+.lx-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--lucid-ink-2);
+  background: transparent;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-picker-option:hover {
+  background: var(--lucid-hover-soft);
+}
+/* Active = where the keyboard is. Selected = what the page is showing. They are
+   different states and must look different, so active gets the wash and
+   selected gets the gold rail. */
+.lx-picker-option.is-active {
+  background: var(--lucid-hover-soft);
+  color: var(--lucid-ink);
+}
+.lx-picker-option.is-selected {
+  color: var(--lucid-ink);
+}
+.lx-picker-option.is-selected::before {
+  content: "";
+  width: 2px;
+  align-self: stretch;
+  margin-right: 2px;
+  border-radius: 2px;
+  background: var(--lucid-accent);
+}
+.lx-picker-empty {
+  padding: 20px 12px;
+  text-align: center;
+}
+.lx-picker-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--lucid-line);
+  color: var(--lucid-ink-3);
+}
+.lx-picker-key {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 4px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  color: var(--lucid-ink-3);
+}
+
+/* ============================================================
+   DASHBOARD BANDS (below the hero) — the rhythm the redesign
+   is built on: a slim strip, two heavy bands, one full-bleed
+   breath, then two lighter ones. Scoped with `dash-` so none
+   of it can alter a shared utility on another page.
+   The hero uses none of these.
+   ============================================================ */
+
+/* Band vertical rhythm. 64px at desktop, tightened on mobile where 64 top and
+   bottom on a phone reads as a gap, not a rhythm. */
+.dash-band {
+  padding-block: 44px;
+}
+@media (min-width: 1024px) {
+  .dash-band {
+    padding-block: 64px;
+  }
+}
+/* The quick strip is deliberately NOT a band — it is the thin bar that makes
+   the heavy band beneath it read as heavy. */
+.dash-band-slim {
+  padding-block: 16px;
+}
+/* The full-bleed breath. Sits on the deep ground, spans the viewport, and
+   re-establishes the container inside itself. */
+.dash-bleed {
+  background: var(--lucid-page-bg-deep);
+  border-top: 1px solid var(--lucid-line);
+  border-bottom: 1px solid var(--lucid-line);
+  padding-block: 44px;
+}
+@media (min-width: 1024px) {
+  .dash-bleed {
+    padding-block: 56px;
+  }
+}
+
+/* Band header: eyebrow → 12px → title → 30px → content. */
+.dash-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+.dash-title {
+  font-family: var(--lucid-font-serif);
+  font-size: 27px;
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--lucid-ink);
+  margin-top: 12px;
+}
+
+/* ── Live position card — the page's dominant element ── */
+.dash-pos {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition:
+    transform var(--lucid-dur-base) var(--lucid-ease-out),
+    border-color var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.dash-pos:hover {
+  transform: translateY(-2px);
+  border-color: var(--lucid-line-2);
+}
+.dash-pos:focus-visible {
+  outline: none;
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-focus-ring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-pos {
+    transition: border-color var(--lucid-dur-base) var(--lucid-ease-out);
+  }
+  .dash-pos:hover {
+    transform: none;
+  }
+}
+/* The direction-coloured glow bleeding from the top-right corner. Set
+   --dash-glow to the direction token on the card. */
+.dash-pos-glow {
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--dash-glow) 9%, transparent),
+    transparent 70%
+  );
+}
+/* Stop → entry → target track. */
+.dash-track {
+  position: relative;
+  height: 5px;
+  border-radius: 5px;
+  background: var(--lucid-hover-soft);
+}
+.dash-track-fill {
+  position: absolute;
+  top: 0;
+  height: 5px;
+  border-radius: 5px;
+  background: var(--dash-glow);
+}
+.dash-track-mark {
+  position: absolute;
+  top: -2px;
+  width: 9px;
+  height: 9px;
+  margin-left: -4px;
+  border-radius: 999px;
+  background: var(--dash-glow);
+  box-shadow: 0 0 10px var(--dash-glow);
+}
+.dash-track-tick {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 13px;
+  background: var(--lucid-line-2);
+}
+
+/* ── Planned row ── */
+.dash-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  padding-block: 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.dash-plan-row:hover {
+  background: var(--lucid-hover-row);
+}
+.dash-plan-row:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+  border-radius: 8px;
+}
+.dash-plan-track {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--lucid-hover-soft);
+  overflow: hidden;
+}
+
+/* ── Capital card. Evaluation accounts read as provisional: no fill, no
+   inner highlight, recessed — so managed capital is the only thing that
+   looks solid. ── */
+.dash-acct {
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition:
+    transform var(--lucid-dur-base) var(--lucid-ease-out),
+    border-color var(--lucid-dur-base) var(--lucid-ease-out),
+    opacity var(--lucid-dur-base) var(--lucid-ease-out);
+}
+.dash-acct:hover {
+  transform: translateY(-2px);
+  border-color: var(--lucid-line-2);
+}
+.dash-acct:focus-visible {
+  outline: none;
+  border-color: var(--lucid-accent-bd);
+  box-shadow: var(--lucid-focus-ring);
+}
+.dash-acct-eval {
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.62;
+}
+.dash-acct-eval:hover {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-acct {
+    transition:
+      border-color var(--lucid-dur-base) var(--lucid-ease-out),
+      opacity var(--lucid-dur-base) var(--lucid-ease-out);
+  }
+  .dash-acct:hover {
+    transform: none;
+  }
+}
+
+/* ── Session list (Today band) ── */
+.dash-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--lucid-line);
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS — the kbd chip, the dock's hint, and the
+   help overlay. The chip is the same treatment as the picker
+   footer's .lx-picker-key, one size up so it reads as a key
+   you press rather than a legend you skim.
+   ============================================================ */
+
+.lx-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 6px;
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 5px;
+  background: var(--lucid-surface-2);
+  font-family: var(--lucid-font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--lucid-ink-2);
+}
+/* A sequence renders as separate chips, because that is what it is: two
+   presses, not a chord. */
+.lx-kbd-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Dock hint — quietest control in the bar. Sized to the icon buttons so the
+   bar's rhythm is untouched. */
+.lucid-dock-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  transition:
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out),
+    opacity var(--lucid-dur-fast) var(--lucid-ease-out);
+  opacity: 0.55;
+}
+.lucid-dock-hint:hover {
+  opacity: 1;
+  background: var(--lucid-hover-soft);
+}
+.lucid-dock-hint:focus-visible {
+  outline: none;
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--lucid-accent);
+}
+/* Armed `g`. The chip goes gold and full-strength — the entire feedback for a
+   pending sequence, and it disappears on its own when the sequence resolves
+   or times out. */
+.lucid-dock-hint.is-pending {
+  opacity: 1;
+}
+.lucid-dock-hint.is-pending .lx-kbd {
+  color: var(--lucid-accent);
+  border-color: var(--lucid-accent-bd);
+  background: var(--lucid-accent-bg);
+}
+
+/* Help overlay. Above the drawer shell (z-50) and the full-screen tool views
+   (z-100) — it is the one thing that is allowed on top of everything, since
+   it exists for the moment you are lost inside something else. */
+.lx-help-scrim {
+  z-index: 120;
+}
+.lx-help-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 121;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.lx-help-panel {
+  max-width: 520px;
+}
+/* Reduced motion is already handled for .lx-modal-panel in CSS; this class is
+   what usePrefersReducedMotion() applies, so the JS mechanism in motion.tsx
+   and the media query agree rather than one silently overriding the other. */
+.lx-no-anim {
+  animation: none !important;
+}
+
+.lx-help-group + .lx-help-group {
+  margin-top: 22px;
+}
+.lx-help-group > .lx-eyebrow {
+  margin-bottom: 10px;
+}
+.lx-help-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 7px;
+}
+.lx-help-row + .lx-help-row {
+  border-top: 1px solid var(--lucid-line);
+}
+/* Fixed gutter for the keys so every label starts on the same line, whether
+   its binding is one chip or two. */
+.lx-help-row > .lx-kbd-row {
+  width: 56px;
+}
+.lx-help-label {
+  font-family: var(--lucid-font-sans);
+  font-size: 13px;
+  color: var(--lucid-ink-2);
+  min-width: 0;
+}
+.lx-help-scope {
+  color: var(--lucid-ink-3);
+}
+.lx-help-foot {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--lucid-line);
+  line-height: 1.7;
 }

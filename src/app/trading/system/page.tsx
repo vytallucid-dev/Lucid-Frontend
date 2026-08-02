@@ -17,7 +17,7 @@ import {
   useCreatePair, useUpdatePair, useDeletePair,
 } from "@/hooks/useTrading";
 import type { ApiPair } from "@/lib/api/trading";
-import { LoadingState } from "@/components/state/LoadingState";
+import { SkeletonCard } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -629,7 +629,11 @@ function ModelsTab() {
       </div>
 
       {modelsQuery.isLoading ? (
-        <LoadingState message="Loading models…" />
+        <div className="flex flex-col gap-4">
+          {[0, 1, 2].map((i) => (
+            <SkeletonCard key={i} height={124} />
+          ))}
+        </div>
       ) : modelsQuery.isError ? (
         <ErrorState error={modelsQuery.error} onRetry={() => modelsQuery.refetch()} title="Couldn't load models" />
       ) : (
@@ -812,7 +816,11 @@ function PairsTab() {
       </div>
 
       {pairsQuery.isLoading ? (
-        <LoadingState message="Loading pairs…" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonCard key={i} height={156} />
+          ))}
+        </div>
       ) : pairsQuery.isError ? (
         <ErrorState error={pairsQuery.error} onRetry={() => pairsQuery.refetch()} title="Couldn't load pairs" />
       ) : (

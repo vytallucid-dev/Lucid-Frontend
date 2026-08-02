@@ -120,12 +120,6 @@ export function biasVisual(bias: AssetBias | null): { color: string; bg: string;
   }
 }
 
-export interface PairBias {
-  bias: AssetBias | null;
-  score: number | null;
-  history: number[] | null;
-}
-
 // ─── Status line (Dashboard's own duplicated stat logic — known duplicate of
 // logic elsewhere, out of scope for this step; formula moved verbatim, only
 // pulled out of its useMemo into a plain function so it can live outside

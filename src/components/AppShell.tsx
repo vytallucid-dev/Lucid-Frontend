@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Dock } from "./Dock";
 import { TopBar } from "./TopBar";
 import { MainContent } from "./MainContent";
+import { GlobalShortcuts } from "./GlobalShortcuts";
 
 /**
  * Renders the app chrome (dock + top bar) for normal routes, or just the
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1">{children}</main>
       </MainContent>
       <Dock />
+      <GlobalShortcuts />
     </>
   );
 }

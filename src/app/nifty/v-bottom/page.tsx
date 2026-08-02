@@ -10,7 +10,7 @@ import type {
   PublicVBottomResponse,
   VBottomClassification,
 } from "@/lib/api/nifty";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PanelSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { formatDate } from "../nifty-utils";
@@ -275,7 +275,7 @@ function ResultArea({
   refetch: () => void;
 }) {
   if (isLoading) {
-    return <LoadingState stages={["Running diagnostic…", "Checking trough signature…", "Classifying the bounce…"]} />;
+    return <PanelSkeleton height={260} />;
   }
   if (error) {
     if (is404(error)) {

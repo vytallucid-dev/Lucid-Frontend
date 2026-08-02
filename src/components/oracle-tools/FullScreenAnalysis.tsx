@@ -321,7 +321,10 @@ export function FullScreenAnalysis({ config, initialSubjectId, initialCompareId,
     // Fixed to the VIEWPORT (not absolute to the page) — anchoring to the page
     // made the panel as tall as the page content, blowing the chart up to
     // thousands of pixels. Matches PairCorrelationView's proven shell.
-    <div className="lt-fade-in fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
+    // data-lucid-overlay: tells the global shortcut guard this is an overlay.
+    // It has no scrim and no aria-modal to detect it by, and a plain `n` while
+    // the trader is reading a full-screen analysis should do nothing.
+    <div data-lucid-overlay className="lt-fade-in fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
       {/* ── HEADER (Bloomberg-style panel header) ── */}
       <div className="shrink-0 flex flex-col" style={{ borderBottom: "1px solid var(--lucid-line)" }}>
         {/* Row 1: identity + headline value + delta + close */}

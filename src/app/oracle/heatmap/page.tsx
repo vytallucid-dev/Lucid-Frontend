@@ -8,7 +8,7 @@ import type {
   OracleEconomy,
   PublicHeatmapIndicator,
 } from "@/lib/api/oracle";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { AnimatedNumber } from "@/components/motion";
@@ -20,10 +20,23 @@ const CATEGORIES = ["ECONOMIC GROWTH", "INFLATION", "JOBS MARKET"] as const;
  * IndicatorTrend tool. The heatmap payload carries only `name`, not a `code`,
  * so this maps the common scored indicators; names it can't resolve return null
  * and the row is rendered without a (broken) click — never faked.
+ *
+ * Issue 2: AU's PPI and Unemployment codes don't follow the {economy}_{SUFFIX}
+ * pattern the other four economies share (AU_PPI_YOY not AU_PPI_MOM;
+ * AU_UNEMPLOYMENT not AU_UNEMP) — verified directly against the seed. Special-
+ * cased here rather than guessed, so the newly-visible AU economy never
+ * produces a wrong-but-non-null code (a broken click, worse than no click).
  */
 function deriveIndicatorCode(economy: OracleEconomy, name: string): string | null {
   const n = name.toLowerCase();
-  const p = economy; // US | EU | UK | JP
+  const p = economy; // US | EU | UK | JP | AU
+  if (p === "AU" && n.includes("ppi")) return "AU_PPI_YOY";
+  if (p === "AU" && n.includes("unemploy")) return "AU_UNEMPLOYMENT";
+  // Issue 5: "JP Tokyo Core CPI YoY" also contains "cpi" — checked first so
+  // it resolves to its own real code rather than colliding with plain CPI's
+  // (the same collision that produced a duplicate React key in the tools
+  // drawer's Indicator Trend picker, via adapters.ts's sibling function).
+  if (n.includes("tokyo")) return "JP_TOKYO_CPI_YOY";
   if (n.includes("cpi")) return `${p}_CPI_YOY`;
   if (n.includes("ppi")) return `${p}_PPI_MOM`;
   if (n.includes("gdp")) return `${p}_GDP_QOQ`;
@@ -134,7 +147,7 @@ export default function HeatmapPage() {
     return map;
   }, [indicators]);
 
-  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState stages={["Loading heatmap…", "Mapping releases…", "Scoring surprises…"]} /></div>;
+  if (isLoading) return <PageSkeleton cards={0} blocks={1} rows={12} />;
   if (error) return <div className="p-4 sm:p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
   if (!heatmap) return <div className="p-4 sm:p-6"><EmptyState title="No heatmap data available" /></div>;
 

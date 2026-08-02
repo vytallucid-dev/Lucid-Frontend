@@ -15,7 +15,7 @@ import {
 import { useVelocity } from "@/hooks/useVelocity";
 import { ApiError } from "@/lib/api/client";
 import type { PublicVelocityResponse, VelocityLabel } from "@/lib/api/nifty";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PanelSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { AnimatedNumber } from "@/components/motion";
@@ -292,7 +292,7 @@ function ResultArea({
   refetch: () => void;
 }) {
   if (isLoading) {
-    return <LoadingState stages={["Loading velocity…", "Measuring momentum…"]} />;
+    return <PanelSkeleton height={240} />;
   }
   if (error) {
     if (is404(error)) {

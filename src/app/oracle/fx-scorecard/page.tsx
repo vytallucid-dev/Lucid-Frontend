@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, Suspense } from "react";
 import {
   getScoreColor,
   getBiasPillClass,
@@ -8,6 +8,8 @@ import {
   type BiasType,
 } from "@/data/assets";
 import { useFxPair } from "@/hooks/useFxPair";
+import { useAssets } from "@/hooks/useAssets";
+import { useUrlSelectedKey } from "@/hooks/useUrlSelectedKey";
 import { formatUpdated } from "@/lib/format-date";
 import {
   type PublicFxPairData,
@@ -15,24 +17,29 @@ import {
   type PublicFxCategory,
   type FxResult,
 } from "@/lib/api/oracle";
-import { ScoreHistoryChart } from "@/components/ScoreHistoryChart";
-import { ScoreGauge } from "@/components/ScoreGauge";
-import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { ContentSwap } from "@/components/state/Skeleton";
+import { type PickerOption } from "@/components/shared/ScorecardPicker";
+import { ScorecardIdentityCard } from "@/components/shared/ScorecardIdentityCard";
+import { ScoreHistoryTrigger } from "@/components/shared/ScoreHistoryTrigger";
+import { ScorecardSkeleton } from "@/components/shared/ScorecardSkeleton";
 import { Info } from "lucide-react";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 
-const PAIR_KEYS = ["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY"] as const;
-type PairKey = (typeof PAIR_KEYS)[number];
+type PairKey = string;
 
-const pairOptions: { key: PairKey; label: string }[] = [
-  { key: "EURUSD", label: "EUR/USD" },
-  { key: "GBPUSD", label: "GBP/USD" },
-  { key: "USDJPY", label: "USD/JPY" },
-  { key: "EURJPY", label: "EUR/JPY" },
-  { key: "GBPJPY", label: "GBP/JPY" },
-];
+// Phase 7: pair label is derived from the code itself (every pair is a
+// 3-letter base + 3-letter quote), not a hardcoded name lookup — a new pair
+// needs no edit here. Membership comes from useAssets() (type === "Forex")
+// in FxScorecardPageInner below.
+function pairLabel(code: string): string {
+  return code.length === 6 ? `${code.slice(0, 3)}/${code.slice(3)}` : code;
+}
+
+function isPairKey(value: string): value is PairKey {
+  return value.length > 0;
+}
 
 /* ─── Shared pills ─── */
 
@@ -257,7 +264,10 @@ function CategoryCard({
             <tr
               key={ind.name}
               className="relative transition-colors hover:bg-white/2"
-              style={{ borderBottom: "1px solid var(--lucid-line)" }}
+              style={{
+                borderBottom: "1px solid var(--lucid-line)",
+                opacity: ind.inapplicable ? 0.55 : 1,
+              }}
             >
               <td className="py-2.5 px-3">
                 <div className="flex items-center gap-1.5">
@@ -274,7 +284,22 @@ function CategoryCard({
                 <SideCell side={ind.currB} />
               </td>
               <td className="py-2.5 px-3 text-center">
-                {ind.pairScore !== null ? (
+                {/* Three states, rendered distinctly: hard-excluded rows never
+                    reach this array at all (nothing to render); inapplicable
+                    (present, scoring 0 because neither side has an
+                    equivalent indicator here) shows a muted label, never a
+                    ScorePill — a 0 pill reads as "neutral," which this isn't;
+                    genuinely neutral (present, applicable, scored 0) still
+                    gets the normal pill. */}
+                {ind.inapplicable ? (
+                  <span
+                    className="text-[10px] font-medium tracking-wide"
+                    style={{ color: "var(--lucid-ink-3)" }}
+                    title="Not applicable to this pair — neither side has an equivalent indicator"
+                  >
+                    N/A
+                  </span>
+                ) : ind.pairScore !== null ? (
                   <ScorePill score={ind.pairScore} />
                 ) : (
                   <span className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>—</span>
@@ -471,44 +496,115 @@ function CotCard({ pair }: { pair: PublicFxPairData }) {
 /* ─── Main page ─── */
 
 export default function FxScorecardPage() {
-  const [selectedKey, setSelectedKey] = useState<PairKey>("EURUSD");
+  // Suspense-wrap because the inner uses useSearchParams (to preselect from
+  // ?asset=), which forces a bailout from static prerendering unless
+  // boundaries are explicit — same pattern the NIFTY scorecard page uses.
+  return (
+    <Suspense fallback={<ScorecardSkeleton sections={4} />}>
+      <FxScorecardPageInner />
+    </Suspense>
+  );
+}
+
+function FxScorecardPageInner() {
+  // Missing ?asset= → today's default (EUR/USD), unchanged. Present but
+  // invalid for this page → same default, silently — no error, no empty page.
+  const [selectedKey, setSelectedKey] = useUrlSelectedKey<PairKey>("asset", isPairKey, "EURUSD");
   const { data: pair, isLoading, error, refetch } = useFxPair(selectedKey);
   const { openScoreTrend } = useOracleTools();
 
+  // Every pair's current score in one call — the same hook, the same
+  // ['oracle','assets'] key the Top Setups page uses, so this shares that
+  // cache entry rather than opening a second front on the same data. The
+  // /assets payload covers all five FX pairs (type 'Forex') alongside the
+  // commodities and indices, keyed by the same codes PairKey uses.
+  //
+  // Deliberately unguarded: the scorecard below neither waits for it nor
+  // reads it. While it is in flight the picker shows names; if it fails, the
+  // picker keeps showing names. Nothing here can block or break the page.
+  const { data: allAssets } = useAssets();
+
+  const pickerOptions = useMemo<PickerOption[]>(
+    () =>
+      (allAssets ?? [])
+        .filter((a) => a.type === "Forex")
+        .map((live) => ({
+          key: live.asset,
+          label: pairLabel(live.asset),
+          glyph: live.flag,
+          score: live.score,
+          bias: live.bias,
+        })),
+    [allAssets],
+  );
+
+  // The error branch has no `pair` (the fetch that would have supplied
+  // currAFlag/currAName/etc. failed) but still needs an identity to show
+  // next to the picker. selectedKey is one of the live picker options' keys
+  // once useAssets resolves, so this reliably finds a match.
+  const selectedOption = pickerOptions.find((o) => o.key === selectedKey);
+
   return (
     <div className="p-4 sm:p-6">
-      {/* Pair selector */}
-      <div className="lt-rise lt-stagger-1 flex items-center gap-2 mb-6 flex-wrap">
-        {pairOptions.map((opt) => {
-          const active = selectedKey === opt.key;
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setSelectedKey(opt.key)}
-              className="lt-serif flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-              style={{
-                background: active ? "var(--lucid-accent-bg)" : "var(--lucid-surface-3)",
-                color: active ? "var(--lucid-accent)" : "var(--lucid-ink-3)",
-                border: active ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
-                boxShadow: active ? "0 0 18px rgba(205, 167, 79, 0.16)" : "none",
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* No standalone selector row — the score card's identity IS the picker. */}
 
       {/* Content area */}
-      {isLoading ? (
-        <LoadingState stages={["Loading FX scorecard…", "Comparing economies…", "Drawing gauge…"]} />
-      ) : error ? (
-        <ErrorState error={error} onRetry={() => refetch()} />
-      ) : !pair ? (
-        <EmptyState title="No FX scorecard available" />
-      ) : pair.outcome === "deferred" ? (
+      {error && !isLoading ? (
+        /* ── Error state ─────────────────────────────────────────────── */
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              failed fetch with no selector anywhere on the page is a dead
+              end — you could select a pair, get an error, and have no way
+              back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={<>{selectedOption?.glyph} {selectedOption?.label ?? selectedKey}</>}
+              identityName={selectedOption?.label ?? selectedKey}
+              pickerLabel="Pair"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as PairKey)}
+              recentStorageKey="lucid.recent.fx-scorecard"
+            />
+          </div>
+          <ErrorState error={error} onRetry={() => refetch()} />
+        </div>
+      ) : (
+      <ContentSwap
+        data={pair}
+        busy={isLoading}
+        skeleton={<ScorecardSkeleton sections={4} />}
+        empty={<EmptyState title="No FX scorecard available" />}
+      >
+      {(pair, pending) => (
+        pair.outcome === "deferred" ? (
         /* ── Deferred state ─────────────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              deferred pair with no selector anywhere on the page is a dead
+              end — you could select it and have no way back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={
+                <>
+                  {pair.currAFlag} {pair.currAName} / {pair.currBName} {pair.currBFlag}
+                </>
+              }
+              identityName={`${pair.currAName} / ${pair.currBName}`}
+              pending={pending}
+              pickerLabel="Pair"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as PairKey)}
+              recentStorageKey="lucid.recent.fx-scorecard"
+            />
+          </div>
           <div
             className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
             style={{ borderColor: "var(--lucid-line-2)" }}
@@ -541,6 +637,28 @@ export default function FxScorecardPage() {
       ) : pair.outcome === "insufficient_data" ? (
         /* ── Insufficient data state ─────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              deferred pair with no selector anywhere on the page is a dead
+              end — you could select it and have no way back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={
+                <>
+                  {pair.currAFlag} {pair.currAName} / {pair.currBName} {pair.currBFlag}
+                </>
+              }
+              identityName={`${pair.currAName} / ${pair.currBName}`}
+              pending={pending}
+              pickerLabel="Pair"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as PairKey)}
+              recentStorageKey="lucid.recent.fx-scorecard"
+            />
+          </div>
           <div
             className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
             style={{
@@ -578,37 +696,29 @@ export default function FxScorecardPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* LEFT PANEL */}
           <div className="lt-rise lt-stagger-2 w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
-            {/* Score & Bias */}
-            <button
-              onClick={() => openScoreTrend(pair.key)}
-              className="lt-card p-5 text-center w-full transition-opacity hover:opacity-90 cursor-pointer"
-              title="Open Score Trend"
-              style={{
-                background: `radial-gradient(120% 90% at 50% 0%, ${
-                  pair.totalScore !== null && pair.totalScore >= 3
-                    ? "rgba(72, 186, 124, 0.10)"
-                    : pair.totalScore !== null && pair.totalScore <= -3
-                      ? "rgba(226, 88, 77, 0.10)"
-                      : "rgba(205, 167, 79, 0.10)"
-                }, transparent 65%), var(--lucid-grad-surface)`,
-                boxShadow: "var(--lucid-elev-1)",
-              }}
-            >
-              {pair.totalScore !== null && <ScoreGauge score={pair.totalScore} />}
-              <div className="mb-2 -mt-1">
-                {pair.bias && (
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getBiasPillClass(pair.bias as BiasType)}`}
-                  >
-                    {pair.bias}
-                  </span>
-                )}
-              </div>
-              <p className="lt-serif text-sm font-medium" style={{ color: "var(--lucid-ink-2)" }}>
-                {pair.currAFlag} {pair.currAName} / {pair.currBName} {pair.currBFlag}
-              </p>
-            </button>
+            {/* Score & Bias — and the pair picker. Same gauge, same bias pill,
+                same currency identity line; the identity block is the trigger. */}
+            <ScorecardIdentityCard
+              score={pair.totalScore}
+              bias={pair.bias}
+              biasClass={pair.bias ? getBiasPillClass(pair.bias as BiasType) : ""}
+              identity={
+                <>
+                  {pair.currAFlag} {pair.currAName} / {pair.currBName} {pair.currBFlag}
+                </>
+              }
+              identityName={`${pair.currAName} / ${pair.currBName}`}
+              pending={pending}
+              pickerLabel="Pair"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as PairKey)}
+              recentStorageKey="lucid.recent.fx-scorecard"
+            />
 
+            {/* Everything below the identity is a value being replaced during a
+                switch, so it ghosts as one block. */}
+            <div className={`lx-swap flex flex-col gap-4 ${pending ? "lx-swap-busy" : ""}`}>
             {/* Score breakdown */}
             <div className="lt-card p-4">
               <div className="flex items-center justify-between py-1.5">
@@ -714,22 +824,26 @@ export default function FxScorecardPage() {
               )}
             </div>
 
-            {/* Score History */}
+            {/* Score History — opens the trajectory view */}
             {pair.scoreHistory !== null && pair.scoreHistory.length > 0 && (
-              <div className="lt-card p-4">
-                <p className="lt-eyebrow mb-3" style={{ color: "var(--lucid-ink-3)" }}>SCORE HISTORY (12 WEEKS)</p>
-                <ScoreHistoryChart data={pair.scoreHistory} />
-              </div>
+              <ScoreHistoryTrigger
+                data={pair.scoreHistory}
+                onOpen={() => openScoreTrend(pair.key)}
+                subjectName={`${pair.currAName} / ${pair.currBName}`}
+              />
             )}
 
             {/* Last updated */}
             <p className="text-[10px] text-center" style={{ color: "var(--lucid-ink-3)" }}>
               Last updated: {formatUpdated(pair.lastUpdated)}
             </p>
+            </div>
           </div>
 
-          {/* RIGHT PANEL */}
-          <div className="lt-rise lt-stagger-3 flex-1 flex flex-col gap-4 min-w-0">
+          {/* RIGHT PANEL — indicator tables ghost during a switch too. */}
+          <div
+            className={`lt-rise lt-stagger-3 lx-swap flex-1 flex flex-col gap-4 min-w-0 ${pending ? "lx-swap-busy" : ""}`}
+          >
             {/* COT card first */}
             <CotCard pair={pair} />
 
@@ -781,6 +895,9 @@ export default function FxScorecardPage() {
             </div>
           </div>
         </div>
+      )
+      )}
+      </ContentSwap>
       )}
     </div>
   );

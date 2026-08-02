@@ -101,7 +101,8 @@ export function FlowTrackerView({ onClose }: FlowTrackerViewProps) {
     // Fixed to the VIEWPORT — anchoring `absolute bottom-0` to the provider's
     // page-height wrapper stretched this panel (and its charts) to the full
     // page height. Same fix as Oracle's FullScreenAnalysis.
-    <div className="lt-fade-in fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
+    // data-lucid-overlay marks this as an overlay for the global shortcut guard.
+    <div data-lucid-overlay className="lt-fade-in fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 sm:px-6 h-14 shrink-0"

@@ -25,6 +25,13 @@ export interface AdminIndicator {
   code: string;
   name: string;
   country: string | null;
+  /**
+   * Phase 6: the currency asset this indicator belongs to, derived from
+   * asset_indicator_map (not the raw `country` field — an indicator's country
+   * does not always match its owning asset, e.g. China PMI is country='CN'
+   * but belongs to AUD). Null for indicators with no currency owner.
+   */
+  primaryAsset: string | null;
   uiGroup: string | null;
   compositeGroup: "domestic" | "external" | null;
   displayOrder: number | null;

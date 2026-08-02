@@ -2,10 +2,20 @@ import { apiFetch } from './client';
 
 // ─── Scalar types ─────────────────────────────────────────────────────────────
 
-export type OracleEconomy = 'US' | 'EU' | 'UK' | 'JP';
+// Issue 2: widened to include "AU" (the AUD economy — grouped by owning
+// asset, not raw country; see the backend's heatmapEconomyKeyForAsset).
+export type OracleEconomy = 'US' | 'EU' | 'UK' | 'JP' | 'AU';
 export type OracleOutcome = 'scored' | 'carry_forward' | 'insufficient_data';
-export type ScorecardAssetKey = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'Gold' | 'SPY' | 'NAS100';
-export type FxPairKey = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'EURJPY' | 'GBPJPY';
+// Phase 7: widened to the full current registry (AUD, US30) so the picker
+// types cover every instrument /api/oracle/assets can return. The picker
+// UIs themselves derive their option lists from that response at runtime
+// (see ASSET_TYPE_ORDER in scorecard/page.tsx and fx-scorecard/page.tsx) —
+// these unions exist for call sites that need a concrete key type, not as
+// the source of which instruments exist.
+export type ScorecardAssetKey = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'Gold' | 'SPY' | 'NAS100' | 'US30';
+export type FxPairKey =
+  | 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'EURJPY' | 'GBPJPY'
+  | 'AUDUSD' | 'AUDJPY' | 'EURAUD' | 'GBPAUD';
 
 // ─── Heatmap types ────────────────────────────────────────────────────────────
 
@@ -91,6 +101,15 @@ export interface PublicFxIndicatorRow {
   currA: PublicFxIndicatorSide;
   currB: PublicFxIndicatorSide;
   pairScore: number | null;
+  /**
+   * Phase 3 (backend) / Phase 7 (typed here): the row is present in the
+   * template but neither side supplies an indicator for this pair (e.g. the
+   * five USD-only rows in a pair with no USD) — pairScore is 0 because
+   * there's nothing to score, not because the data came in neutral. A
+   * hard-excluded row (neither side applicable) never reaches the frontend
+   * at all; this flag only ever appears on rows that DO reach it.
+   */
+  inapplicable?: boolean;
 }
 
 export interface PublicFxCategory {
@@ -140,11 +159,6 @@ interface ScorecardAssetEnvelope {
   data: PublicScorecardAsset;
 }
 
-interface ScorecardAssetsEnvelope {
-  success: boolean;
-  data: PublicScorecardAsset[];
-}
-
 interface FxPairEnvelope {
   success: boolean;
   data: PublicFxPairData;
@@ -167,10 +181,12 @@ export async function getScorecardAsset(key: ScorecardAssetKey): Promise<PublicS
   return res.data;
 }
 
-export async function getAllScorecardAssets(): Promise<PublicScorecardAsset[]> {
-  const res = await apiFetch<ScorecardAssetsEnvelope>('/api/oracle/scorecard');
-  return res.data;
-}
+// Bug 2: there is deliberately no getAllScorecardAssets(). The backend's
+// GET /api/oracle/scorecard requires ?asset= (no list-all branch) — a
+// no-param call to it always 400s. Both former callers here (Score Trend's
+// subject list, Pair Correlation's Gold lookup) now use the endpoint that
+// actually matches what each one needs: getScorecardSubjects() for a lightweight
+// list, getScorecardAsset() for one asset's live score.
 
 export async function getFxPair(pair: string): Promise<PublicFxPairData> {
   const res = await apiFetch<FxPairEnvelope>(`/api/oracle/fx-scorecard?pair=${pair}`);
@@ -219,9 +235,25 @@ export interface PublicAssetData {
   claims: number | null;
   adp: number | null;
   jolts: number | null;
+  // Phase 3 (backend) / Phase 7 (typed here): four slots that were computed
+  // and stored but never rendered — see PAIR_ROW_TO_SLOT in the backend's
+  // oracle-mappers.ts for the row-name → slot mapping this mirrors.
+  cashEarnings: number | null;
+  auEmpl: number | null;
+  tokyoCpi: number | null;
+  caixinPmi: number | null;
   outcome: AssetOutcome;
   reason: string | null;
   lastUpdated: string | null;
+  /**
+   * Phase 3 (backend) / Phase 7 (typed here): slot keys that are present but
+   * inapplicable for this instrument (neither side of the underlying pair
+   * row supplies an indicator — the five USD-only rows for a non-USD pair).
+   * Distinct from null-because-hard-excluded (which the slot itself already
+   * represents as `null`): a slot can be `null` because it's inapplicable,
+   * OR because outcome is insufficient_data — this array disambiguates.
+   */
+  inapplicableSlots: string[];
 }
 
 interface AssetsEnvelope {
@@ -231,6 +263,29 @@ interface AssetsEnvelope {
 
 export async function getAssets(): Promise<PublicAssetData[]> {
   const res = await apiFetch<AssetsEnvelope>('/api/oracle/assets');
+  return res.data;
+}
+
+// ─── Scorecard subjects (Issue 1) ──────────────────────────────────────────────
+// The Asset Scorecard picker's valid subject set — currencies + Gold, the same
+// set the /scorecard endpoint itself validates against (registry.scorecardByKey
+// backend-side). Distinct from /api/oracle/assets (the screener projection),
+// which has never contained standalone currencies.
+
+export interface PublicScorecardSubject {
+  key: string;
+  name: string;
+  flag: string;
+  type: AssetType;
+}
+
+interface ScorecardSubjectsEnvelope {
+  success: boolean;
+  data: PublicScorecardSubject[];
+}
+
+export async function getScorecardSubjects(): Promise<PublicScorecardSubject[]> {
+  const res = await apiFetch<ScorecardSubjectsEnvelope>('/api/oracle/scorecard-subjects');
   return res.data;
 }
 
@@ -491,6 +546,33 @@ export interface CycleStancesResponse {
 // Idempotent: "Gold" is untouched, so callers that already pass "Gold" are safe.
 export function toScoreHistorySubject(subject: string): string {
   return subject === "XAUUSD" ? "Gold" : subject;
+}
+
+// ─── Scorecard routing (single source of truth) ────────────────────────────
+//
+// The one place in the frontend deciding where an instrument's scorecard
+// lives. Branches on the instrument's own `type` as the API reports it —
+// never on the code's length, characters, or membership in a hardcoded list.
+// A prior version of this logic (duplicated per call site) checked "is it
+// XAUUSD → asset scorecard, else → FX scorecard" and "always → asset
+// scorecard" at two different call sites — the indices (Index type, added
+// Phase 4) matched neither author's assumption correctly, routing them to a
+// page that can't render them. Any current or future instrument type not
+// handled below falls through to Top Setups rather than a scorecard that
+// doesn't know it — never a page that can't render the selection.
+//
+// `type` is typed as `string`, not `AssetType`, deliberately: this is read
+// from an HTTP response, and the fallback branch must be reachable at
+// runtime for a type the frontend's own union doesn't yet know about, not
+// dead code a stricter type would make unreachable.
+export function scorecardHrefFor(instrument: { asset: string; type: string }): string {
+  if (instrument.type === "Forex") {
+    return `/oracle/fx-scorecard?asset=${encodeURIComponent(instrument.asset)}`;
+  }
+  if (instrument.type === "Currency" || instrument.type === "Commodity" || instrument.type === "Index") {
+    return `/oracle/scorecard?asset=${encodeURIComponent(toScoreHistorySubject(instrument.asset))}`;
+  }
+  return "/oracle";
 }
 
 /** Dated total-score series for an asset (USD/EUR/GBP/JPY/Gold) or FX pair. */

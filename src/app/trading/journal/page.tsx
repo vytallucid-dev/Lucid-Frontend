@@ -8,8 +8,8 @@ import {
 } from "@/lib/demo-data";
 import { useTrades, useAccounts, useTradingModels, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { AnimatedNumber } from "@/components/motion";
-import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
+import { SkeletonTable, SkeletonCard } from "@/components/state/Skeleton";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/toast";
@@ -289,7 +289,21 @@ export default function JournalPage() {
       {/* Content */}
       <div className="lt-rise lt-stagger-3 flex-1 px-4 sm:px-6 py-4">
         {tradesQuery.isLoading ? (
-          <LoadingState stages={["Loading trades…", "Assembling your journal…", "Totalling P&L…"]} />
+          // Column widths are the JournalTable colgroup, verbatim, so the real
+          // rows land on exactly the grid the skeleton drew.
+          view === "table" ? (
+            <SkeletonTable
+              columns={[4, 100, 110, 120, 80, 90, 90, 80, 60, 70, 110, 120, 95]}
+              rows={9}
+              minWidth={1020}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} height={228} />
+              ))}
+            </div>
+          )
         ) : tradesQuery.isError ? (
           <ErrorState error={tradesQuery.error} onRetry={() => tradesQuery.refetch()} title="Couldn't load trades" />
         ) : filteredTrades.length === 0 ? (

@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, Settings, Database, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { usePrefersReducedMotion } from "./motion";
-import { requestTools } from "@/lib/tools-store";
+import { requestTools, TOOLS_SECTIONS } from "@/lib/tools-store";
+import { pendingStore, toggleHelp } from "@/lib/shortcuts-store";
 import { SECTIONS, isSectionActive, isSubtabActive } from "@/lib/nav";
-
-// Sections whose sub-tab group gets a Tools entry, and which store key it
-// requests (see src/lib/tools-store.ts).
-const TOOLS_SECTION: Record<string, "nifty" | "oracle"> = {
-  nifty: "nifty",
-  oracle: "oracle",
-};
 
 // Leaving the wrapper doesn't close the group immediately — it starts this
 // timer, so a diagonal pointer path that briefly reads as "outside" (e.g. the
@@ -137,6 +131,10 @@ export function Dock() {
 
   const openSection = SECTIONS.find((s) => s.key === openKey) ?? null;
 
+  // Armed `g` prefix. The whole indicator is one chip swapping its glyph, so
+  // it costs no layout and reads as a state change rather than an event.
+  const gPending = useSyncExternalStore(pendingStore.subscribe, pendingStore.get, () => false);
+
   return (
     // Single wrapper enclosing both the raised group and the dock bar. The
     // group is stacked in NORMAL FLOW above the bar (markup order: group,
@@ -186,13 +184,13 @@ export function Dock() {
             );
           })}
 
-          {TOOLS_SECTION[openSection.key] && (
+          {TOOLS_SECTIONS[openSection.key] && (
             <>
               <div aria-hidden="true" className="lucid-dock-divider" />
               <button
                 type="button"
                 onClick={() => {
-                  requestTools(TOOLS_SECTION[openSection.key]);
+                  requestTools(TOOLS_SECTIONS[openSection.key]);
                   setOpenKey(null);
                 }}
                 className="lucid-dock-subpill is-tools shrink-0"
@@ -238,6 +236,20 @@ export function Dock() {
         })}
 
         <div aria-hidden="true" className="lucid-dock-divider" />
+
+        {/* Shortcut hint. Deliberately the quietest thing in the bar — it is a
+            footnote for the one moment someone wonders whether there are any,
+            not a call to action. Doubles as the click-path to the panel, and
+            as the pending-`g` indicator. */}
+        <button
+          type="button"
+          onClick={toggleHelp}
+          className={`lucid-dock-hint ${gPending ? "is-pending" : ""}`}
+          title={gPending ? "Waiting for the second key…" : "Keyboard shortcuts"}
+          aria-label="Keyboard shortcuts"
+        >
+          <kbd className="lx-kbd">{gPending ? "g" : "?"}</kbd>
+        </button>
 
         <Link
           href="/lucid"

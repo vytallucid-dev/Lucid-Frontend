@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { AnimatedNumber } from "@/components/motion";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import {
@@ -59,7 +59,7 @@ export default function ScorecardPage() {
   // Suspense-wrap because the inner uses useSearchParams, which forces a
   // bailout from static prerendering unless boundaries are explicit.
   return (
-    <Suspense fallback={<div className="p-4 sm:p-6"><LoadingState message="Loading scorecards..." /></div>}>
+    <Suspense fallback={<PageSkeleton cards={4} blocks={1} rows={13} />}>
       <ScorecardPageInner />
     </Suspense>
   );
@@ -124,9 +124,7 @@ function ScorecardPageInner() {
 
   if (historyLoading || (!!selectedDate && scLoading && !sc)) {
     return (
-      <div className="p-4 sm:p-6">
-        <LoadingState stages={["Loading scorecards…", "Scoring 13 indicators…", "Building composites…"]} />
-      </div>
+      <PageSkeleton cards={4} blocks={1} rows={13} />
     );
   }
 
@@ -148,9 +146,7 @@ function ScorecardPageInner() {
 
   if (!sc) {
     return (
-      <div className="p-4 sm:p-6">
-        <LoadingState message="Loading scorecard..." />
-      </div>
+      <PageSkeleton cards={4} blocks={1} rows={13} />
     );
   }
 

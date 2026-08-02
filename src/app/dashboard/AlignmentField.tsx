@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApiPair } from "@/lib/api/trading";
-import type { PairBias } from "./dashboard-helpers";
+import { scorecardHrefFor, type PublicAssetData } from "@/lib/api/oracle";
+import {
+  layoutOrbs,
+  stableUnit2,
+  type OrbInput,
+  type Placement,
+} from "./alignment-layout";
 
 // ─── The alignment field ──────────────────────────────────────────────────────
 // A floating composition of orbs suspended in dark space — NOT a chart. There
@@ -11,52 +17,24 @@ import type { PairBias } from "./dashboard-helpers";
 // analysis tool, and the scorecard pages are where analysis lives. This is the
 // dashboard's centrepiece, so it trades precision for atmosphere.
 //
-// Every orb is still the same pair, the same score, the same bias, and the same
-// click-through target it has always been. Built from DOM elements + CSS only —
-// no canvas, no animation library.
+// The field is a picture of what Oracle currently scores, not of what the user
+// has configured for logging — its instrument list comes from useAssets(),
+// filtered to outcome === "scored". `pairsConfig` (the user's own trading
+// pairs) supplies display labels only, as a cosmetic fallback lookup; it never
+// decides which orbs exist.
+//
+// Every orb is still the same instrument, the same score, the same bias, and
+// links to the correct one on its destination scorecard. Built from DOM
+// elements + CSS only — no canvas, no animation library.
+//
+// All geometry (the size curve, label-box metrics, collision relaxation) lives
+// in ./alignment-layout — this file is rendering only.
 
-// Working range for horizontal placement. Deliberately NOT the theoretical
-// maximum (±16 / ±17): real scores cluster in the middle, so scaling against
-// the theoretical max leaves both ends permanently empty and squeezes every orb
-// into the centre. ±8 is the range scores actually occupy; anything beyond it
-// clamps to the edge, so an outlier sits at the far edge without compressing
-// everyone else inward.
-const WORKING_RANGE = 8;
-
-// Horizontal span, as a percentage of the container. The composition uses its
-// full width rather than hugging the middle.
-const X_MIN = 8;
-const X_MAX = 92;
-
-// Vertical band. Position here carries NO meaning — it exists to scatter the
-// composition, and is therefore free to move during collision relaxation.
-// Sits high in its box on purpose: the hero is `justify-between` over 100vh,
-// so the field's box already starts below a tall top block, and the dock is
-// fixed at the viewport bottom. Scattering to 78% put the lowest orbs (plus
-// their labels and halos) uncomfortably close to the dock.
-const Y_MIN = 12;
-const Y_MAX = 64;
-
-// Orb geometry. Size is a secondary cue only; glow carries the weight.
-const SIZE_BASE = 46;
-const SIZE_MIN = 38;
-const SIZE_MAX = 60;
-
-// Label box, in percent of the container, used for collision relaxation only.
-const LABEL_W_PCT = 11;
-const LABEL_H_PCT = 15;
-
-interface FieldOrb {
-  key: string;
-  label: string;
-  score: number | null;
-  isNifty: boolean;
+interface FieldOrb extends OrbInput {
   hasOpenPosition: boolean;
   href: string;
   ariaLabel: string;
 }
-
-type PlacedOrb = FieldOrb & { x: number; y: number };
 
 function biasDirectionLabel(score: number | null): string {
   if (score === null) return "no data";
@@ -70,141 +48,32 @@ function orbColor(score: number | null): string {
   return score > 0 ? "var(--lucid-pos)" : "var(--lucid-neg)";
 }
 
-/** Deterministic 0..1 from a stable string (the pair symbol). Used for vertical
- *  placement and motion phase so the composition looks scattered but never
- *  jumps between renders — the same symbol always lands in the same place. */
-function stableUnit(key: string): number {
-  let h = 0;
-  for (let i = 0; i < key.length; i++) {
-    h = (h * 31 + key.charCodeAt(i)) >>> 0;
-  }
-  return (h % 1000) / 1000;
-}
+/** The container box, in px. Label widths come from character counts and known
+ *  font metrics, so collision has to know how many pixels a percent is worth —
+ *  11% of a 1360px hero and 11% of a 343px phone are not the same label. */
+function useBoxSize(ref: React.RefObject<HTMLDivElement | null>) {
+  // A sensible desktop default for SSR and the first paint; the observer
+  // corrects it on mount. Orbs are absolutely positioned, so a correction
+  // moves orbs — it never reflows anything around them.
+  const [size, setSize] = useState({ w: 1200, h: 380 });
 
-/** A second, decorrelated hash from the same string, so an orb's vertical
- *  position and its motion phase don't move together. */
-function stableUnit2(key: string): number {
-  let h = 7;
-  for (let i = key.length - 1; i >= 0; i--) {
-    h = (h * 131 + key.charCodeAt(i) * 17) >>> 0;
-  }
-  return (h % 997) / 997;
-}
-
-function clampX(x: number): number {
-  return Math.max(X_MIN, Math.min(X_MAX, x));
-}
-
-/** Score → horizontal percent, against the WORKING range, clamped to the span.
- *  Missing/zero sits at centre. */
-function scoreToX(score: number | null): number {
-  const mid = (X_MIN + X_MAX) / 2;
-  if (score === null || score === 0) return mid;
-  const t = Math.max(-1, Math.min(1, score / WORKING_RANGE));
-  return mid + t * ((X_MAX - X_MIN) / 2);
-}
-
-/**
- * Places every orb, then relaxes label collisions in two dimensions.
- *
- * Halos overlapping is the point of the design and is left alone; only LABEL
- * boxes are separated. Vertical position carries no meaning, so it absorbs
- * nearly all of the correction — horizontal is nudged only as a last resort,
- * because horizontal is the axis that actually encodes bias.
- */
-function layoutOrbs(orbs: FieldOrb[]): PlacedOrb[] {
-  const placed: PlacedOrb[] = orbs.map((o) => ({
-    ...o,
-    x: scoreToX(o.score),
-    // Scatter across the vertical band deterministically.
-    y: Y_MIN + stableUnit(o.key) * (Y_MAX - Y_MIN),
-  }));
-
-  // Pre-spread exact ties. Orbs sharing a score sit at the identical x — very
-  // common at zero, and universal before the first scores land — and pairwise
-  // relaxation cannot separate a fully-stacked column: every nudge re-collides
-  // with the next neighbour, so the passes expire still overlapping. Dealing
-  // each tied group its own vertical slot up front solves it structurally,
-  // costs no horizontal drift, and keeps the whole layout deterministic.
-  const byX = new Map<number, PlacedOrb[]>();
-  for (const o of placed) {
-    const group = byX.get(o.x);
-    if (group) group.push(o);
-    else byX.set(o.x, [o]);
-  }
-  for (const group of byX.values()) {
-    if (group.length < 2) continue;
-    // Stable order (by key) so the same set always deals the same way.
-    group.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-
-    // The band fits floor(height / label height) orbs in a single column. Past
-    // that, a tied group physically cannot stack — nine 15%-tall labels need
-    // 135% of a 52% band — so it wraps into as many columns as it needs and
-    // fans them symmetrically around the score's own x. Ties carry no bias
-    // information to lose (they all scored the same), so spending horizontal
-    // room here costs nothing; only tied orbs are ever moved sideways.
-    const perColumn = Math.max(1, Math.floor((Y_MAX - Y_MIN) / LABEL_H_PCT));
-    const columns = Math.ceil(group.length / perColumn);
-    const spread = (columns - 1) * LABEL_W_PCT;
-    // Anchor the fan so it stays inside the span. Clamping each column
-    // independently would collapse several of them onto the same edge x when
-    // the tie sits at ±max (every orb scoring +12, say) — which is exactly a
-    // case that needs the columns to stay distinct.
-    const leftX = Math.max(X_MIN, Math.min(X_MAX - spread, group[0].x - spread / 2));
-
-    group.forEach((o, idx) => {
-      const col = Math.floor(idx / perColumn);
-      const rowsHere = Math.min(perColumn, group.length - col * perColumn);
-      const row = idx % perColumn;
-      const step = (Y_MAX - Y_MIN) / rowsHere;
-      o.y = Y_MIN + step * (row + 0.5);
-      o.x = clampX(leftX + col * LABEL_W_PCT);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (!r) return;
+      setSize((prev) =>
+        Math.abs(prev.w - r.width) < 1 && Math.abs(prev.h - r.height) < 1
+          ? prev
+          : { w: r.width, h: r.height },
+      );
     });
-  }
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
 
-  const PASSES = 24;
-  for (let pass = 0; pass < PASSES; pass++) {
-    let moved = false;
-    for (let i = 0; i < placed.length; i++) {
-      for (let j = i + 1; j < placed.length; j++) {
-        const a = placed[i];
-        const b = placed[j];
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const overlapX = LABEL_W_PCT - Math.abs(dx);
-        const overlapY = LABEL_H_PCT - Math.abs(dy);
-        // Label boxes only collide when they overlap on BOTH axes.
-        if (overlapX <= 0 || overlapY <= 0) continue;
-        moved = true;
-
-        // Push apart vertically first — free axis, no meaning attached.
-        const signY = dy === 0 ? (i % 2 === 0 ? 1 : -1) : Math.sign(dy);
-        const shiftY = (overlapY / 2 + 0.5) * signY;
-        const beforeY = { a: a.y, b: b.y };
-        a.y = Math.max(Y_MIN, Math.min(Y_MAX, a.y - shiftY));
-        b.y = Math.max(Y_MIN, Math.min(Y_MAX, b.y + shiftY));
-
-        // Fall back to a horizontal nudge only when the vertical push actually
-        // failed to buy separation — i.e. the clamp above ate most of it. Test
-        // the movement we GOT, not whether an orb happens to sit on the band
-        // edge: two orbs colliding mid-band with the same x (a score tie at
-        // centre) are never "pinned", so an edge test lets them shove each
-        // other vertically forever and the passes expire still overlapping.
-        const gainedY = Math.abs(a.y - beforeY.a) + Math.abs(b.y - beforeY.b);
-        if (gainedY < Math.abs(shiftY)) {
-          const signX = dx === 0 ? (i % 2 === 0 ? 1 : -1) : Math.sign(dx);
-          // Enough to actually clear the label box, capped so a crowded field
-          // can't drag an orb far from the position its score earned.
-          const shiftX = Math.min(overlapX / 2 + 0.5, 3) * signX;
-          a.x = clampX(a.x - shiftX);
-          b.x = clampX(b.x + shiftX);
-        }
-      }
-    }
-    if (!moved) break;
-  }
-
-  return placed;
+  return size;
 }
 
 /** One orb: halo, glass body, specular highlight, optional position ring, and
@@ -214,27 +83,19 @@ function Orb({
   onNavigate,
   reducedMotion,
 }: {
-  orb: PlacedOrb;
+  orb: FieldOrb & Placement;
   onNavigate: (href: string) => void;
   reducedMotion: boolean;
 }) {
   const color = orbColor(orb.score);
-  const missing = orb.score === null || orb.score === 0;
+  const { size, unit, haloSize, haloOpacity, mode, labelFs } = orb.metrics;
+  const idle = mode === "idle";
 
-  // Signal strength 0..1 against the same working range the x-position uses.
-  const strength = orb.score === null ? 0 : Math.min(1, Math.abs(orb.score) / WORKING_RANGE);
-
-  // Size: subtle variance around the base. Weakest ≈38px, strongest ≈60px.
-  const size = missing
-    ? SIZE_MIN + 4
-    : strength < 0.5
-      ? SIZE_MIN + (SIZE_BASE - SIZE_MIN) * (strength / 0.5)
-      : SIZE_BASE + (SIZE_MAX - SIZE_BASE) * ((strength - 0.5) / 0.5);
-
-  // Halo: 3.2× the body, opacity 0.12 (weakest) → 0.30 (strongest). Missing
-  // data reads noticeably dimmer than any live orb.
-  const haloSize = size * 3.2;
-  const haloOpacity = missing ? 0.08 : 0.12 + strength * 0.18;
+  // Body fill and rim track the same strength the size curve uses, so a weak
+  // orb is dim as well as small and reads as present but quiet.
+  const coreMix = idle ? 40 : 52 + Math.round(unit * 26);
+  const midMix = idle ? 15 : 20 + Math.round(unit * 12);
+  const rimMix = idle ? 22 : 30 + Math.round(unit * 20);
 
   // Deterministic motion phase — stable per symbol, decorrelated from position.
   const phase = stableUnit2(orb.key);
@@ -310,8 +171,8 @@ function Orb({
             style={{
               width: size,
               height: size,
-              background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${color} ${missing ? 42 : 72}%, transparent) 0%, color-mix(in srgb, ${color} ${missing ? 16 : 28}%, transparent) 45%, color-mix(in srgb, ${color} 6%, transparent) 100%)`,
-              border: `1px solid color-mix(in srgb, ${color} ${missing ? 24 : 45}%, transparent)`,
+              background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${color} ${coreMix}%, transparent) 0%, color-mix(in srgb, ${color} ${midMix}%, transparent) 45%, color-mix(in srgb, ${color} 6%, transparent) 100%)`,
+              border: `1px solid color-mix(in srgb, ${color} ${rimMix}%, transparent)`,
             }}
           >
             {/* Specular highlight — the detail that makes it a sphere. */}
@@ -324,40 +185,54 @@ function Orb({
                 left: "26%",
                 top: "22%",
                 background: `radial-gradient(circle, var(--lucid-orb-specular) 0%, transparent 70%)`,
-                opacity: missing ? 0.4 : 0.85,
+                opacity: idle ? 0.35 : 0.55 + unit * 0.3,
               }}
             />
           </span>
 
-          {/* Label — symbol, then score on the line below. 12px clear of body. */}
+          {/* Label. Moderate and strong orbs get symbol + score on two lines.
+              Weak and no-signal orbs get the symbol only, smaller and more
+              muted — a score of 1 is not worth a second line, and halving the
+              label height is what un-crowds the centre of the field, which is
+              exactly where the weak orbs sit. The score stays in the orb's
+              accessible name in every mode. */}
           <span
             className="flex flex-col items-center pointer-events-none"
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 10 }}
           >
             <span
               className="lucid-orb-label"
               style={{
                 fontFamily: "var(--lucid-font-mono)",
-                fontSize: 10,
-                fontWeight: 500,
+                fontSize: labelFs,
+                fontWeight: mode === "full" ? 500 : 400,
                 letterSpacing: "0.08em",
-                color: "var(--lucid-ink)",
+                lineHeight: 1.3,
+                color:
+                  mode === "full"
+                    ? "var(--lucid-ink)"
+                    : mode === "weak"
+                      ? "var(--lucid-ink-2)"
+                      : "var(--lucid-ink-3)",
                 whiteSpace: "nowrap",
               }}
             >
               {orb.label}
             </span>
-            <span
-              style={{
-                fontFamily: "var(--lucid-font-mono)",
-                fontSize: 9.5,
-                fontVariantNumeric: "tabular-nums",
-                color,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {orb.score !== null ? `${orb.score > 0 ? "+" : ""}${orb.score}` : "—"}
-            </span>
+            {mode === "full" && (
+              <span
+                style={{
+                  fontFamily: "var(--lucid-font-mono)",
+                  fontSize: 9.5,
+                  lineHeight: 1.3,
+                  fontVariantNumeric: "tabular-nums",
+                  color,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {orb.score !== null ? `${orb.score > 0 ? "+" : ""}${orb.score}` : "—"}
+              </span>
+            )}
           </span>
         </Link>
       </div>
@@ -366,41 +241,56 @@ function Orb({
 }
 
 export function AlignmentField({
+  oracleAssets,
   pairsConfig,
-  biasByPair,
   niftyNetScore,
   livePairSymbols,
   onNavigate,
   reducedMotion,
 }: {
+  /** From useAssets() — undefined while loading, [] on error or once resolved
+   *  with nothing scored. Either way the field degrades to "no Oracle orbs,
+   *  NIFTY still present" rather than blocking anything. */
+  oracleAssets: PublicAssetData[] | undefined;
+  /** The user's own configured pairs — used only to look up a display label
+   *  for an Oracle-scored code (e.g. "EUR/USD" for "EURUSD"). Never decides
+   *  which orbs exist; a fallback to the raw code covers any Oracle instrument
+   *  the user hasn't configured for logging. */
   pairsConfig: ApiPair[];
-  biasByPair: Map<string, PairBias>;
   niftyNetScore: number | null;
   livePairSymbols: Set<string>;
   onNavigate: (href: string) => void;
   reducedMotion: boolean;
 }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const box = useBoxSize(boxRef);
+
   const orbs = useMemo<FieldOrb[]>(() => {
-    const fx: FieldOrb[] = pairsConfig.map((pair) => {
-      const data = biasByPair.get(pair.symbol);
-      const score = data?.score ?? null;
-      const target =
-        pair.symbol === "XAUUSD"
-          ? "/oracle/scorecard"
-          : biasByPair.has(pair.symbol)
-          ? "/oracle/fx-scorecard"
-          : "/oracle";
+    // Only what Oracle actually scores — "deferred" (no ingestion pipeline
+    // for this instrument at all) and "insufficient_data" are excluded: an
+    // orb for an instrument with nothing behind it is noise, not signal.
+    // This was never gated by a hardcoded instrument list — every
+    // Oracle-scored instrument gets an orb, currency or pair or index alike,
+    // so AUD, the four AUD pairs and all three equity indices (SPY, NAS100,
+    // US30 — active since Phase 4) already appear here with no edit.
+    const scored = (oracleAssets ?? []).filter((a) => a.outcome === "scored");
+
+    const oracle: FieldOrb[] = scored.map((a) => {
+      const label = pairsConfig.find((p) => p.symbol === a.asset)?.display_name ?? a.asset;
       return {
-        key: pair.symbol,
-        label: pair.display_name,
-        score,
+        key: a.asset,
+        label,
+        score: a.score,
         isNifty: false,
-        hasOpenPosition: livePairSymbols.has(pair.symbol),
-        href: target,
-        ariaLabel: `${pair.display_name}, score ${score !== null ? score : "unavailable"}, ${biasDirectionLabel(score)}`,
+        hasOpenPosition: livePairSymbols.has(a.asset),
+        href: scorecardHrefFor(a),
+        ariaLabel: `${label}, score ${a.score !== null ? a.score : "unavailable"}, ${biasDirectionLabel(a.score)}`,
       };
     });
 
+    // NIFTY is sourced independently of the Oracle assets query, exactly as
+    // before, and always present regardless of whether that query is loading,
+    // empty, or failed.
     const nifty: FieldOrb = {
       key: "NIFTY",
       label: "NIFTY",
@@ -411,15 +301,16 @@ export function AlignmentField({
       ariaLabel: `NIFTY 50 macro, net score ${niftyNetScore !== null ? niftyNetScore : "unavailable"}, ${biasDirectionLabel(niftyNetScore)}`,
     };
 
-    return [...fx, nifty];
-  }, [pairsConfig, biasByPair, niftyNetScore, livePairSymbols]);
+    return [...oracle, nifty];
+  }, [oracleAssets, pairsConfig, niftyNetScore, livePairSymbols]);
 
-  const positioned = useMemo(() => layoutOrbs(orbs), [orbs]);
+  const positioned = useMemo(() => layoutOrbs(orbs, box.w, box.h), [orbs, box.w, box.h]);
 
   return (
     // `overflow-visible` is load-bearing: halos extend well past each orb and
     // clipping them would flatten the composition back into circles on a page.
     <div
+      ref={boxRef}
       className="relative w-full h-full min-h-[340px] overflow-visible"
       role="group"
       aria-label="Fundamental bias alignment field"

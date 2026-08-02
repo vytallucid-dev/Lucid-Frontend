@@ -10,10 +10,10 @@ import {
 import { useAssets } from "@/hooks/useAssets";
 import { useCompass } from "@/hooks/useCompass";
 import { useQueries } from "@tanstack/react-query";
-import { getScoreHistory, toScoreHistorySubject, type PublicAssetData } from "@/lib/api/oracle";
+import { getScoreHistory, scorecardHrefFor, type PublicAssetData } from "@/lib/api/oracle";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 import { AnimatedNumber } from "@/components/motion";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { formatUpdated } from "@/lib/format-date";
@@ -22,54 +22,65 @@ type BiasFilter = "All" | "Bullish" | "Bearish" | "Neutral";
 type SortOption = "score-desc" | "score-asc" | "change-desc" | "alpha";
 
 type IndicatorKey =
-  | "gdp" | "pmiM" | "pmiS" | "retail" | "consConf"
-  | "cpi" | "ppi" | "pce" | "yield"
-  | "nfp" | "unemp" | "claims" | "adp" | "jolts";
+  | "gdp" | "pmiM" | "pmiS" | "retail" | "consConf" | "caixinPmi"
+  | "cpi" | "ppi" | "pce" | "yield" | "tokyoCpi"
+  | "nfp" | "unemp" | "claims" | "adp" | "jolts" | "cashEarnings" | "auEmpl";
 
+// Phase 3 added four slots to the API (cashEarnings, auEmpl, tokyoCpi,
+// caixinPmi) that no column rendered. Membership/values come from the API
+// (PublicAssetData); the group each belongs to and its label are kept local
+// here, matching the same convention every existing column already follows
+// (this table has never derived its column set or grouping from the API) —
+// mirrors the backend's own PAIR_ROW_TO_SLOT / SLOT_UI_GROUP mapping in
+// oracle-mappers.ts, which groups them identically but isn't itself
+// serialized into any response today. caixinPmi's label is the indicator's
+// current name (RatingDog, not Caixin — verified against the backend after
+// Phase 6's rename; the pair-template row's own display name is unrenamed
+// but that's a different field, not used here).
 const indicatorColumns: { key: IndicatorKey; label: string }[] = [
   { key: "gdp", label: "GDP" },
   { key: "pmiM", label: "PMI(M)" },
   { key: "pmiS", label: "PMI(S)" },
   { key: "retail", label: "RETAIL" },
   { key: "consConf", label: "CONS CONF" },
+  { key: "caixinPmi", label: "CN PMI" },
   { key: "cpi", label: "CPI" },
   { key: "ppi", label: "PPI" },
   { key: "pce", label: "PCE" },
   { key: "yield", label: "YIELD" },
+  { key: "tokyoCpi", label: "TOKYO CPI" },
   { key: "nfp", label: "NFP" },
   { key: "unemp", label: "UNEMP" },
   { key: "claims", label: "CLAIMS" },
   { key: "adp", label: "ADP" },
   { key: "jolts", label: "JOLTS" },
+  { key: "cashEarnings", label: "CASH EARN" },
+  { key: "auEmpl", label: "AU EMPL" },
 ];
 
 const columnGroups = [
-  { label: "ECONOMIC GROWTH", span: 5 },
-  { label: "INFLATION", span: 4 },
-  { label: "JOBS MARKET", span: 5 },
+  { label: "ECONOMIC GROWTH", span: 6 },
+  { label: "INFLATION", span: 5 },
+  { label: "JOBS MARKET", span: 7 },
 ];
 
 // Indicator → group mapping for drawer subtotals. Mirrors columnGroups spans.
 const INDICATOR_GROUPS: { label: string; keys: IndicatorKey[] }[] = [
-  { label: "Economic Growth", keys: ["gdp", "pmiM", "pmiS", "retail", "consConf"] },
-  { label: "Inflation", keys: ["cpi", "ppi", "pce", "yield"] },
-  { label: "Jobs Market", keys: ["nfp", "unemp", "claims", "adp", "jolts"] },
+  { label: "Economic Growth", keys: ["gdp", "pmiM", "pmiS", "retail", "consConf", "caixinPmi"] },
+  { label: "Inflation", keys: ["cpi", "ppi", "pce", "yield", "tokyoCpi"] },
+  { label: "Jobs Market", keys: ["nfp", "unemp", "claims", "adp", "jolts", "cashEarnings", "auEmpl"] },
 ];
 
 const INDICATOR_LABELS: Record<IndicatorKey, string> = {
   gdp: "GDP", pmiM: "Manufacturing PMI", pmiS: "Services PMI",
   retail: "Retail Sales", consConf: "Consumer Confidence",
+  caixinPmi: "RatingDog China Manufacturing PMI",
   cpi: "CPI", ppi: "PPI", pce: "PCE", yield: "Yield",
+  tokyoCpi: "Tokyo Core CPI",
   nfp: "NFP", unemp: "Unemployment", claims: "Jobless Claims",
   adp: "ADP", jolts: "JOLTS",
+  cashEarnings: "Labor Cash Earnings", auEmpl: "AU Employment Change",
 };
-
-// Subjects the score-history endpoint serves (assets USD/EUR/GBP/JPY/Gold +
-// the 5 FX pairs). Others (SPY/NAS100) have no dated history → no sparkline/delta.
-const HISTORY_SUBJECTS = new Set([
-  "USD", "EUR", "GBP", "JPY", "Gold",
-  "EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY",
-]);
 
 function scoreColorVar(score: number | null): string {
   if (score === null) return "var(--lucid-ink-3)";
@@ -146,7 +157,24 @@ function DeltaArrow({ delta }: { delta: number | null }) {
   );
 }
 
-function IndicatorCell({ value }: { value: number | null }) {
+function IndicatorCell({ value, inapplicable }: { value: number | null; inapplicable?: boolean }) {
+  // Three states: hard-excluded rows never reach the assets payload as a
+  // distinct cell (there's no per-cell omission on this grid — the column
+  // itself just carries null), so on the screener the meaningful distinction
+  // is: inapplicable (present in inapplicableSlots — neither side of the
+  // underlying pair row has an equivalent indicator) vs genuinely no value
+  // yet (insufficient_data, not flagged) vs a real, possibly-neutral score.
+  if (inapplicable) {
+    return (
+      <td
+        className="px-2 py-2.5 text-center text-xs"
+        style={{ color: "var(--lucid-ink-3)", opacity: 0.6 }}
+        title="Not applicable to this instrument — neither side has an equivalent indicator"
+      >
+        N/A
+      </td>
+    );
+  }
   if (value === null) {
     return <td className="px-2 py-2.5 text-center text-xs" style={{ color: "var(--lucid-ink-3)" }}>—</td>;
   }
@@ -217,14 +245,16 @@ export default function TopSetupsPage() {
   const { data: compass } = useCompass();
   const { openScoreTrend } = useOracleTools();
 
-  // Enrich with real dated score history (sparkline + delta + movers) for the
-  // subjects the score-history endpoint serves. No prior-score field exists on
-  // the assets payload, so this is the honest source — assets without history
-  // (SPY/NAS100) simply render without a sparkline/delta.
-  const historySubjects = useMemo(
-    () => (assets ?? []).map((a) => a.asset).filter((s) => HISTORY_SUBJECTS.has(toScoreHistorySubject(s))),
-    [assets],
-  );
+  // Enrich with real dated score history (sparkline + delta + movers). No
+  // prior-score field exists on the assets payload, so this is the honest
+  // source. Every asset the API returns gets a history request — no
+  // hardcoded subject list, and no client-side guess at which types have
+  // history (that used to exclude the indices on the assumption they had
+  // none; they now accumulate history exactly like every other instrument).
+  // An instrument truly without history yet renders without a
+  // sparkline/delta via the existing seriesAvailable/emptyNote handling
+  // below, the same graceful path this always had for a thin data window.
+  const historySubjects = useMemo(() => (assets ?? []).map((a) => a.asset), [assets]);
 
   const historyQueries = useQueries({
     queries: historySubjects.map((subject) => ({
@@ -327,7 +357,7 @@ export default function TopSetupsPage() {
     return { total: list.length, bullish, bearish, neutral };
   }, [assets]);
 
-  if (isLoading) return <LoadingState stages={["Scanning markets…", "Ranking setups…", "Surfacing movers…"]} />;
+  if (isLoading) return <PageSkeleton cards={4} blocks={2} blockHeight={260} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!assets || assets.length === 0) return <EmptyState title="No assets available" />;
 
@@ -610,7 +640,11 @@ export default function TopSetupsPage() {
                       <>
                         <CotCell value={row.cot} />
                         {indicatorColumns.map((col) => (
-                          <IndicatorCell key={col.key} value={row[col.key]} />
+                          <IndicatorCell
+                            key={col.key}
+                            value={row[col.key]}
+                            inapplicable={row.inapplicableSlots.includes(col.key)}
+                          />
                         ))}
                       </>
                     ) : (
@@ -792,7 +826,7 @@ function DrawerBody({ asset, onOpenTrend }: { asset: PublicAssetData; onOpenTren
         Open Score Trend →
       </button>
       <Link
-        href={`/oracle/scorecard?asset=${encodeURIComponent(asset.asset)}`}
+        href={scorecardHrefFor(asset)}
         className="text-xs font-medium self-end flex items-center gap-1"
         style={{ color: "var(--lucid-ink-2)" }}
       >

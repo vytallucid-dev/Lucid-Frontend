@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient, notifyManager } from "@tanstack/react-query";
 import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { findActiveSection, findActiveSubtab } from "@/lib/nav";
@@ -94,13 +94,23 @@ export function TopBar() {
   const queryClient = useQueryClient();
 
   // Number of errored queries, read via useSyncExternalStore so the cache
-  // subscription is render-safe: React schedules the update instead of us
-  // calling setState synchronously inside the cache's notify callback (which,
-  // when another component's render triggers a cache change, produced the
-  // "Cannot update TopBar while rendering …" warning under React 19).
+  // subscription is render-safe. useSyncExternalStore alone makes the READ
+  // side safe (no tearing), but it does not control WHEN onStoreChange gets
+  // invoked — that's decided entirely by the store (the query cache), and a
+  // subscriber can't control when the cache calls it. QueryCache.notify()
+  // runs listeners through notifyManager.batch(), which is synchronous
+  // (verified in the installed @tanstack/query-core source) — so an
+  // unwrapped onStoreChange can still fire mid-render of whatever component
+  // just triggered a cache event (e.g. a brand-new query key being added),
+  // producing "Cannot update TopBar while rendering …". Wrapping in
+  // notifyManager.batchCalls defers the actual onStoreChange call (it
+  // schedules via setTimeout(0) internally) — the exact mechanism
+  // react-query's own useIsFetching uses for this identical subscription
+  // shape. This fixes it for every query key, not just one pre-warmed one.
   const errorCount = useSyncExternalStore(
     useCallback(
-      (onStoreChange) => queryClient.getQueryCache().subscribe(onStoreChange),
+      (onStoreChange) =>
+        queryClient.getQueryCache().subscribe(notifyManager.batchCalls(onStoreChange)),
       [queryClient],
     ),
     () =>

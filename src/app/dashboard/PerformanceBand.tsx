@@ -40,9 +40,39 @@ function PnlTooltip({ active, payload }: { active?: boolean; payload?: Array<{ p
   );
 }
 
-// ─── Band 2 — Performance ─────────────────────────────────────────────────────
-// Same P&L curve, 30d/90d/All-time toggle, drawdown shading, and every hover
-// behaviour as before — just full width and taller (320 vs the old 240).
+// ─── Band 4 — Performance ─────────────────────────────────────────────────────
+// The chart absorbs a stat rail down its left side and grows to 380px.
+//
+// The rail reports the SELECTED RANGE, read straight off the two arrays the
+// page already computes for the chart — the series' terminal value, its point
+// count, and the number of drawdown windows already being shaded. No trade
+// statistic is computed here. Win rate, average R:R and expectancy are
+// deliberately absent: win rate already lives in the hero (which is off limits,
+// so it cannot move here, and duplicating it was explicitly ruled out), and
+// R:R and expectancy do not exist anywhere in the app today — adding either
+// would mean adding a calculation, which this pass is not allowed to do.
+
+function RailStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: "1px solid var(--lucid-line)" }}>
+      <div className="lx-eyebrow">{label}</div>
+      <div
+        className="lx-tnum"
+        style={{
+          fontFamily: "var(--lucid-font-mono)",
+          fontSize: 30,
+          fontWeight: 300,
+          letterSpacing: "-0.02em",
+          lineHeight: 1.1,
+          marginTop: 8,
+          color: color ?? "var(--lucid-ink)",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
 
 export function PerformanceBand({
   curveData,
@@ -59,15 +89,21 @@ export function PerformanceBand({
 }) {
   const { ref, revealed } = useRevealOnScroll<HTMLDivElement>();
 
+  // Read, not computed: the last plotted point is the range's cumulative P&L,
+  // which the chart is already drawing.
+  const last = curveData.length > 0 ? curveData[curveData.length - 1].cumPnl : 0;
+  const netColor =
+    last > 0 ? "var(--lucid-pos)" : last < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+
   return (
     <section
       ref={ref}
       className={`${revealed && !reducedMotion ? "lt-rise" : revealed ? "" : "opacity-0"}`}
     >
-      <div className="lx-band-head flex items-end justify-between gap-6">
+      <div className="dash-head">
         <div>
           <div className="lx-eyebrow">Performance</div>
-          <h2 className="lx-heading">Cumulative P&amp;L</h2>
+          <h2 className="dash-title">Cumulative P&amp;L</h2>
         </div>
 
         {/* Date range — segmented control */}
@@ -84,9 +120,30 @@ export function PerformanceBand({
         </div>
       </div>
 
-      <div className="lx-card">
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
+        {/* Stat rail — scoped to the selected range, so it moves with the toggle */}
+        <div>
+          <RailStat label="Net P&L · range" value={formatCurrency(last)} color={netColor} />
+          <RailStat label="Points plotted" value={`${curveData.length}`} />
+          <RailStat label="Drawdowns shaded" value={`${drawdownWindows.length}`} />
+          <div>
+            <div className="lx-eyebrow">Range</div>
+            <div
+              style={{
+                fontFamily: "var(--lucid-font-mono)",
+                fontSize: 15,
+                marginTop: 8,
+                color: "var(--lucid-accent)",
+              }}
+            >
+              {dateRange}
+            </div>
+          </div>
+        </div>
 
-      <ResponsiveContainer width="100%" height={320}>
+        <div className="lx-card">
+
+      <ResponsiveContainer width="100%" height={380}>
         <AreaChart data={curveData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
           <defs>
             <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
@@ -139,6 +196,7 @@ export function PerformanceBand({
           />
         </AreaChart>
       </ResponsiveContainer>
+        </div>
       </div>
     </section>
   );

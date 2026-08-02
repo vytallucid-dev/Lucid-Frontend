@@ -16,6 +16,7 @@ const CURRENCY_FLAG: Record<string, string> = {
   EUR: "🇪🇺",
   GBP: "🇬🇧",
   JPY: "🇯🇵",
+  AUD: "🇦🇺",
 };
 
 function stanceStyle(stance: CycleStanceEntry["stance"]): { color: string; bg: string; bd: string } {

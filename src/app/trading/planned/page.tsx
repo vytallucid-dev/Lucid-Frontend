@@ -10,7 +10,7 @@ import {
   getDistanceToEntry,
 } from "@/lib/demo-data";
 import { usePlanned, useUpdatePlanned, useDeletePlanned } from "@/hooks/useTrading";
-import { LoadingState } from "@/components/state/LoadingState";
+import { Skeleton } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -509,7 +509,38 @@ export default function PlannedPage() {
       </div>
 
       {/* Loading / error */}
-      {plannedQuery.isLoading && <LoadingState message="Loading planned trades…" />}
+      {/* Status sections keep their shape: a header strip and a few rows each. */}
+      {plannedQuery.isLoading && (
+        <div className="flex flex-col gap-2" aria-hidden="true">
+          {[0, 1, 2].map((s) => (
+            <div
+              key={s}
+              className="rounded-xl overflow-hidden"
+              style={{ border: "1px solid var(--lucid-line)", background: "var(--lucid-surface)" }}
+            >
+              <div
+                className="flex items-center gap-3 px-4"
+                style={{ height: 46, borderBottom: "1px solid var(--lucid-line)" }}
+              >
+                <Skeleton bare height={10} width={104} />
+                <Skeleton bare height={16} width={28} radius={999} style={{ marginLeft: 4 }} />
+              </div>
+              {Array.from({ length: 3 - s }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 px-4"
+                  style={{ height: 52, borderBottom: "1px solid var(--lucid-line)" }}
+                >
+                  <Skeleton bare height={11} width={128} />
+                  <Skeleton bare height={11} width={92} />
+                  <Skeleton bare height={11} width={72} style={{ marginLeft: "auto" }} />
+                  <Skeleton bare height={18} width={64} radius={999} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
       {plannedQuery.isError && (
         <ErrorState error={plannedQuery.error} onRetry={() => plannedQuery.refetch()} title="Couldn't load planned trades" />
       )}

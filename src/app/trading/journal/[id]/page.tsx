@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from "@/lib/demo-data";
 import { useTrades, useAccounts, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import { LoadingState } from "@/components/state/LoadingState";
+import { ScreenshotImage } from "@/components/ScreenshotUploader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/toast";
 import { TradeDrawerContent } from "../TradeDrawerContent";
@@ -172,13 +173,17 @@ export default function TradeDetailPage() {
                 {trade.screenshots.map((src, i) => (
                   <div
                     key={i}
-                    className="rounded-xl w-full"
+                    className="rounded-xl w-full overflow-hidden"
                     style={{
-                      height: 200,
-                      background: `url(${src}) center/cover, var(--lucid-surface)`,
+                      background: "var(--lucid-surface)",
                       border: "1px solid var(--lucid-line)",
                     }}
-                  />
+                  >
+                    {/* A stored value may be an uploaded image, a direct image
+                        URL, or a page link — ScreenshotImage falls back to a
+                        link rather than showing a broken image. */}
+                    <ScreenshotImage url={src} height={200} />
+                  </div>
                 ))}
               </div>
             )}

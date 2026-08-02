@@ -3,11 +3,11 @@
 import { ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/lib/demo-data";
 import type { ApiPair } from "@/lib/api/trading";
+import type { PublicAssetData } from "@/lib/api/oracle";
 import { AnimatedNumber, AnimatedGreeting, usePrefersReducedMotion } from "@/components/motion";
 import { AlignmentField } from "./AlignmentField";
 import { HeroAmbience, useRegimeLabel } from "./HeroAmbience";
 import type { DashboardMetrics } from "./OverviewStack";
-import type { PairBias } from "./dashboard-helpers";
 
 // ─── Band 1 — Hero (Step 6: full viewport) ────────────────────────────────────
 // Replaces the Step 5 three-column hero. Layout, wide screens, per B2:
@@ -67,10 +67,10 @@ export function HeroBand({
   wrFlash,
   allAccountsCount,
   pairsConfig,
-  biasByPair,
+  oracleAssets,
   niftyNetScore,
   livePairSymbols,
-  biasLoading,
+  assetsLoading,
   onNavigate,
 }: {
   greeting: string;
@@ -81,10 +81,10 @@ export function HeroBand({
   wrFlash: string;
   allAccountsCount: number;
   pairsConfig: ApiPair[];
-  biasByPair: Map<string, PairBias>;
+  oracleAssets: PublicAssetData[] | undefined;
   niftyNetScore: number | null;
   livePairSymbols: Set<string>;
-  biasLoading: boolean;
+  assetsLoading: boolean;
   onNavigate: (href: string) => void;
 }) {
   const reducedMotion = usePrefersReducedMotion();
@@ -176,8 +176,8 @@ export function HeroBand({
       {/* Centre — the alignment field. The empty space around it is the point. */}
       <div className="relative flex-1 min-h-0 my-12">
         <AlignmentField
+          oracleAssets={oracleAssets}
           pairsConfig={pairsConfig}
-          biasByPair={biasByPair}
           niftyNetScore={niftyNetScore}
           livePairSymbols={livePairSymbols}
           onNavigate={onNavigate}
@@ -199,10 +199,10 @@ export function HeroBand({
             </span>
           </div>
           <p className="lx-body" style={{ maxWidth: 480, color: "var(--lucid-ink-3)" }}>
-            {biasLoading
+            {assetsLoading
               ? "Loading fundamental bias…"
               : "Each orb is a tracked pair — it drifts right as its fundamental score turns long, left as it turns short, and its glow is how strongly it leans."}
-            {!biasLoading && regimeLabel && (
+            {!assetsLoading && regimeLabel && (
               <span style={{ color: "var(--lucid-ink-2)" }}> Regime: {regimeLabel}.</span>
             )}
           </p>

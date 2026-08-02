@@ -16,7 +16,7 @@ import { useLatestScorecard } from "@/hooks/useLatestScorecard";
 import { usePulseHistory } from "@/hooks/usePulseHistory";
 import { AnimatedNumber } from "@/components/motion";
 import { DetailDrawer } from "@/components/DetailDrawer";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import {
@@ -42,9 +42,7 @@ export default function PulsePage() {
 
   if (latestQuery.isLoading || historyQuery.isLoading) {
     return (
-      <div className="p-4 sm:p-6">
-        <LoadingState stages={["Reading the pulse…", "Compositing 13 indicators…", "Setting the band…"]} />
-      </div>
+      <PageSkeleton cards={4} blocks={2} blockHeight={220} />
     );
   }
 

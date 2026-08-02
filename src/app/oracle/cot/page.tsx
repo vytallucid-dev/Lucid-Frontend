@@ -5,14 +5,11 @@ import { createPortal } from "react-dom";
 import { useCot } from "@/hooks/useCot";
 import { type PublicCotAsset } from "@/lib/api/oracle";
 import { Sparkline } from "@/components/Sparkline";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { formatUpdated } from "@/lib/format-date";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
-
-/** Assets valid for the COT Trajectory tool (currency/commodity codes). */
-const COT_TOOL_ASSETS = new Set(["USD", "EUR", "GBP", "JPY", "Gold"]);
 
 type SortKey =
   | "asset"
@@ -181,7 +178,7 @@ export default function CotPage() {
     return sortDir === "asc" ? " ↑" : " ↓";
   }
 
-  if (isLoading) return <LoadingState stages={["Loading COT report…", "Parsing CFTC positioning…", "Charting the field…"]} />;
+  if (isLoading) return <PageSkeleton cards={3} blocks={1} rows={9} />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!assets || assets.length === 0) return <EmptyState title="No COT data available" />;
 
@@ -486,7 +483,12 @@ export default function CotPage() {
               }
 
               const borderColor = rowBorderColor(a.cotScore);
-              const clickable = COT_TOOL_ASSETS.has(a.asset);
+              // Phase 7: derived from the row's own outcome rather than a
+              // hardcoded code list — "deferred" means no CFTC ingestion
+              // exists for this instrument at all (SPY/NAS100/US30 today);
+              // a newly onboarded COT-eligible asset becomes clickable with
+              // no edit here.
+              const clickable = a.outcome !== "deferred";
               return (
                 <tr
                   key={a.asset}

@@ -11,87 +11,77 @@ import {
   fetchCotSubject,
   listScoreTrendSubjectOptions,
   listIndicatorSubjectOptions,
-  COT_TRAJECTORY_ASSETS,
+  listCotTrajectorySubjectOptions,
 } from "./adapters";
 import type { AnalysisToolConfig, DeferredToolEntry, SubjectOption } from "./types";
 
-// Score Trend / Comparison — assets (score-history supports USD/EUR/GBP/JPY/Gold)
-// plus the five FX pairs. SPY/NAS100 are excluded (deferred scoring, no history).
-const SCORE_TREND_SUBJECTS: SubjectOption[] = [
-  { id: "USD", label: "USD", flag: "🇺🇸", group: "Assets" },
-  { id: "EUR", label: "EUR", flag: "🇪🇺", group: "Assets" },
-  { id: "GBP", label: "GBP", flag: "🇬🇧", group: "Assets" },
-  { id: "JPY", label: "JPY", flag: "🇯🇵", group: "Assets" },
-  { id: "Gold", label: "Gold", flag: "🥇", group: "Assets" },
-  { id: "EURUSD", label: "EUR/USD", group: "Pairs" },
-  { id: "GBPUSD", label: "GBP/USD", group: "Pairs" },
-  { id: "USDJPY", label: "USD/JPY", group: "Pairs" },
-  { id: "EURJPY", label: "EUR/JPY", group: "Pairs" },
-  { id: "GBPJPY", label: "GBP/JPY", group: "Pairs" },
-];
+// Score Trend / Comparison — subject list is asset+pair-backed (fetched
+// lazily via listScoreTrendSubjectOptions, same lazy-load pattern as
+// Indicator Trend below), so a newly registered asset or pair (AUD, the four
+// AUD pairs) appears with no edit here.
+export function buildScoreTrendConfig(subjectOptions: SubjectOption[]): AnalysisToolConfig {
+  return {
+    key: "score-trend",
+    title: "Score Trend",
+    description: "Total score over time for any asset or FX pair, with the indicator breakdown behind each date's score.",
+    subjectOptions,
+    defaultSubjectId: subjectOptions[0]?.id ?? "",
+    fetchSubject: fetchScoreTrendSubject,
+    queryKeyPrefix: ["oracle", "tools", "score-trend"],
+    compareEnabled: true,
+    valueUnit: "pts",
+    yDomain: [-8, 8],
+    chartKind: "score",
+    defaultChartType: "line",
+  };
+}
 
-export const scoreTrendConfig: AnalysisToolConfig = {
-  key: "score-trend",
-  title: "Score Trend",
-  description: "Total score over time for any asset or FX pair, with the indicator breakdown behind each date's score.",
-  subjectOptions: SCORE_TREND_SUBJECTS,
-  defaultSubjectId: "USD",
-  fetchSubject: fetchScoreTrendSubject,
-  queryKeyPrefix: ["oracle", "tools", "score-trend"],
-  compareEnabled: true,
-  valueUnit: "pts",
-  yDomain: [-8, 8],
-  chartKind: "score",
-  defaultChartType: "line",
-};
+export function buildScoreComparisonConfig(subjectOptions: SubjectOption[]): AnalysisToolConfig {
+  return {
+    ...buildScoreTrendConfig(subjectOptions),
+    key: "score-comparison",
+    title: "Score Comparison",
+    description: "Compare total score trends between two assets or FX pairs on the same chart.",
+    queryKeyPrefix: ["oracle", "tools", "score-comparison"],
+    compareEnabled: false,
+    chartKind: "comparison",
+    defaultChartType: "line",
+  };
+}
 
-export const scoreComparisonConfig: AnalysisToolConfig = {
-  ...scoreTrendConfig,
-  key: "score-comparison",
-  title: "Score Comparison",
-  description: "Compare total score trends between two assets or FX pairs on the same chart.",
-  queryKeyPrefix: ["oracle", "tools", "score-comparison"],
-  compareEnabled: false,
-  chartKind: "comparison",
-  defaultChartType: "line",
-};
-
-// COT Trajectory — asset-level only (USD/EUR/GBP/JPY/Gold), net positioning over
-// time from /api/oracle/cot-history.
-const COT_SUBJECTS: SubjectOption[] = COT_TRAJECTORY_ASSETS.map((a) => ({
-  id: a,
-  label: a,
-  flag: a === "USD" ? "🇺🇸" : a === "EUR" ? "🇪🇺" : a === "GBP" ? "🇬🇧" : a === "JPY" ? "🇯🇵" : "🥇",
-  group: "Assets",
-}));
-
-export const cotTrajectoryConfig: AnalysisToolConfig = {
-  key: "cot-trajectory",
-  title: "COT Trajectory",
-  description: "Institutional net positioning over time per asset, with extremes marked.",
-  subjectOptions: COT_SUBJECTS,
-  defaultSubjectId: "USD",
-  fetchSubject: fetchCotSubject,
-  queryKeyPrefix: ["oracle", "tools", "cot-trajectory"],
-  compareEnabled: true,
-  valueUnit: "",
-  yDomain: "auto",
-  chartKind: "cot",
-  defaultChartType: "line",
-};
+// COT Trajectory — subject list is COT-endpoint-backed (fetched lazily via
+// listCotTrajectorySubjectOptions), scoped to non-deferred assets.
+export function buildCotTrajectoryConfig(subjectOptions: SubjectOption[]): AnalysisToolConfig {
+  return {
+    key: "cot-trajectory",
+    title: "COT Trajectory",
+    description: "Institutional net positioning over time per asset, with extremes marked.",
+    subjectOptions,
+    defaultSubjectId: subjectOptions[0]?.id ?? "",
+    fetchSubject: fetchCotSubject,
+    queryKeyPrefix: ["oracle", "tools", "cot-trajectory"],
+    compareEnabled: true,
+    valueUnit: "",
+    yDomain: "auto",
+    chartKind: "cot",
+    defaultChartType: "line",
+  };
+}
 
 // COT Comparison — two assets' net-position series on one chart (the COT
 // Compare handoff lands here). Same net-position adapter; comparison chart kind.
-export const cotComparisonConfig: AnalysisToolConfig = {
-  ...cotTrajectoryConfig,
-  key: "cot-comparison",
-  title: "COT Comparison",
-  description: "Compare institutional net positioning between two assets on one chart.",
-  queryKeyPrefix: ["oracle", "tools", "cot-comparison"],
-  compareEnabled: false,
-  chartKind: "comparison",
-  defaultChartType: "line",
-};
+export function buildCotComparisonConfig(subjectOptions: SubjectOption[]): AnalysisToolConfig {
+  return {
+    ...buildCotTrajectoryConfig(subjectOptions),
+    key: "cot-comparison",
+    title: "COT Comparison",
+    description: "Compare institutional net positioning between two assets on one chart.",
+    queryKeyPrefix: ["oracle", "tools", "cot-comparison"],
+    compareEnabled: false,
+    chartKind: "comparison",
+    defaultChartType: "line",
+  };
+}
 
 // Indicator Trend — subject list is heatmap-backed (fetched lazily); the config
 // is built once the indicator options load. Now a real dated series.
@@ -112,7 +102,7 @@ export function buildIndicatorTrendConfig(subjectOptions: SubjectOption[]): Anal
   };
 }
 
-export { listScoreTrendSubjectOptions, listIndicatorSubjectOptions };
+export { listScoreTrendSubjectOptions, listIndicatorSubjectOptions, listCotTrajectorySubjectOptions };
 
 // Still deferred — backend not yet built. Engine hooks (config shape) remain
 // ready so these become one config object each when the endpoints ship.

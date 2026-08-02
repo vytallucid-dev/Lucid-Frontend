@@ -20,7 +20,7 @@ import type {
   UsdLabResponse,
   UsdLabSubIndicator,
 } from "@/lib/api/usd-lab";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton, PanelSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { DetailDrawer } from "@/components/DetailDrawer";
@@ -164,7 +164,7 @@ export default function USDLabPage() {
   const [filter, setFilter] = useState<FilterKey>("All");
   const [selected, setSelected] = useState<UsdLabSubIndicator | null>(null);
 
-  if (isLoading) return <div className="p-4 sm:p-6"><LoadingState stages={["Loading USD Lab…", "Decomposing Indicator 9…", "Mapping clusters…"]} /></div>;
+  if (isLoading) return <PageSkeleton cards={3} blocks={2} blockHeight={260} />;
   if (error) return <div className="p-4 sm:p-6"><ErrorState error={error} onRetry={() => refetch()} /></div>;
   if (!data) return <div className="p-4 sm:p-6"><EmptyState title="No Ind 9 data available" /></div>;
 
@@ -895,7 +895,7 @@ function SubIndicatorDrawer({ sub, rawComposite }: { sub: UsdLabSubIndicator; ra
       {/* C — Last 12 releases */}
       <Section title="Last 12 Releases">
         {isLoading ? (
-          <LoadingState message="Loading history..." />
+          <PanelSkeleton height={200} />
         ) : error ? (
           <ErrorState error={error} title="Couldn't load history" />
         ) : !detail || detail.releases.length === 0 ? (

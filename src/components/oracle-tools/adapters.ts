@@ -6,14 +6,14 @@
 // Pair Correlation uses the current-snapshot scorecard endpoints.
 
 import {
-  getAllScorecardAssets,
+  getScorecardSubjects,
+  getScorecardAsset,
   getAllFxPairs,
   getHeatmap,
   getScoreHistory,
   getIndicatorHistory,
   getCotHistory,
-  type PublicScorecardAsset,
-  type PublicFxPairData,
+  getCotAssets,
   type OracleEconomy,
   type ScoreHistoryBreakdownEntry,
   type HistoryRange,
@@ -74,8 +74,6 @@ function uiGroupLabel(uiGroup: string | null): string {
 
 // ─── Score Trend (asset + pair) → /api/oracle/score-history ────────────────────
 
-const FX_KEYS = new Set(["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY"]);
-
 /** Groups a date's indicatorBreakdown by uiGroup into rail groups. */
 function groupBreakdown(entries: ScoreHistoryBreakdownEntry[]): BreakdownGroup[] {
   const order = ["Growth", "Sentiment", "Inflation", "Rates", "Jobs"];
@@ -114,7 +112,7 @@ export async function fetchScoreTrendSubject(
   timeframe: TimeframeKey,
 ): Promise<AnalysisSubject> {
   const res = await getScoreHistory(id, toRange(timeframe));
-  const isPair = res.kind === "pair" || FX_KEYS.has(id);
+  const isPair = res.kind === "pair";
 
   const points: AnalysisPoint[] = res.points.map((p, i) => {
     const point: AnalysisPoint = {
@@ -169,14 +167,24 @@ export async function fetchScoreTrendSubject(
   };
 }
 
-/** Subject picker options for Score Trend / Comparison — assets + pairs. */
+/**
+ * Subject picker options for Score Trend / Comparison — assets + pairs.
+ * Every scorecard asset the backend returns is included (no hardcoded
+ * currency subset) — score-history is available for every registered
+ * asset/pair now, not just USD/EUR/GBP/JPY/Gold.
+ *
+ * Bug 2: previously called getAllScorecardAssets(), which hit
+ * GET /api/oracle/scorecard with no `asset` param — a required param the
+ * backend has no list-all fallback for, so that call always 400'd and this
+ * subject list was permanently empty (Score Trend and Score Comparison both
+ * read it, hence both failing). getScorecardSubjects() is the lightweight
+ * list endpoint built for exactly this — id/label/flag/group is all this
+ * picker needs, and it actually returns data.
+ */
 export async function listScoreTrendSubjectOptions() {
-  const [assets, pairs] = await Promise.all([getAllScorecardAssets(), getAllFxPairs()]);
-  const SCORE_HISTORY_ASSETS = new Set(["USD", "EUR", "GBP", "JPY", "Gold"]);
+  const [assets, pairs] = await Promise.all([getScorecardSubjects(), getAllFxPairs()]);
   return [
-    ...assets
-      .filter((a) => SCORE_HISTORY_ASSETS.has(a.key))
-      .map((a) => ({ id: a.key, label: a.name, flag: a.flag, group: "Assets" })),
+    ...assets.map((a) => ({ id: a.key, label: a.name, flag: a.flag, group: "Assets" })),
     ...pairs.map((p) => ({
       id: p.key,
       label: p.label,
@@ -303,13 +311,27 @@ export async function listIndicatorSubjectOptions() {
  */
 export function heatmapIndicatorCode(economy: OracleEconomy, name: string): string | null {
   const n = name.toLowerCase();
-  const prefix = economy; // "US" | "EU" | "UK" | "JP" — used ONLY on fixed suffixes
+  const prefix = economy; // "US" | "EU" | "UK" | "JP" | "AU" — used ONLY on fixed suffixes
   // US-only single-country indicators (no per-economy variant in the backend).
   if (n.includes("nfp") || n.includes("payroll") || n.includes("non-farm") || n.includes("nonfarm")) return "US_NFP";
   if (n.includes("jolts")) return "US_JOLTS";
   if (n.includes("adp")) return "US_ADP";
   if (n.includes("jobless") || n.includes("claims")) return "US_JOBLESS_CLAIMS";
   if (n.includes("pce")) return "US_PCE_YOY";
+  // Issue 2: AU's PPI and Unemployment codes don't follow the
+  // {economy}_{SUFFIX} pattern the other four economies share — verified
+  // directly against the seed (AU_PPI_YOY, AU_UNEMPLOYMENT). Now that AU is
+  // a real heatmap economy, this function reaches AU indicators too, so
+  // these are special-cased rather than guessed.
+  if (prefix === "AU" && n.includes("ppi")) return "AU_PPI_YOY";
+  if (prefix === "AU" && n.includes("unemploy")) return "AU_UNEMPLOYMENT";
+  // Issue 5: "JP Tokyo Core CPI YoY" also contains "cpi", so the generic CPI
+  // check below previously matched it too and derived the same id as the
+  // real "JP CPI YoY" indicator ("JP_CPI_YOY") — two different real
+  // indicators colliding on one derived id, which is what produced the
+  // duplicate React key. Checked first, and by name rather than economy
+  // (Tokyo CPI only exists for JP today, but the check doesn't assume that).
+  if (n.includes("tokyo")) return "JP_TOKYO_CPI_YOY";
   // Per-economy indicators — prefix applied to a KNOWN suffix only.
   if (n.includes("cpi")) return `${prefix}_CPI_YOY`;
   if (n.includes("ppi")) return `${prefix}_PPI_MOM`;
@@ -322,7 +344,20 @@ export function heatmapIndicatorCode(economy: OracleEconomy, name: string): stri
 
 // ─── COT Trajectory → /api/oracle/cot-history ──────────────────────────────────
 
-export const COT_TRAJECTORY_ASSETS = ["USD", "EUR", "GBP", "JPY", "Gold"] as const;
+/**
+ * Subject picker options for COT Trajectory / Comparison. Phase 7: derived
+ * from /api/oracle/cot (the same source the COT page itself renders), scoped
+ * to `outcome !== "deferred"` — no CFTC ingestion exists for that instrument
+ * at all (SPY/NAS100/US30 today) — rather than a hardcoded currency list, so
+ * a newly onboarded COT-eligible asset (AUD, once it has real CFTC data)
+ * appears with no edit here.
+ */
+export async function listCotTrajectorySubjectOptions() {
+  const assets = await getCotAssets();
+  return assets
+    .filter((a) => a.outcome !== "deferred")
+    .map((a) => ({ id: a.asset, label: a.asset, flag: a.flag, group: "Assets" }));
+}
 
 /** Net position in contracts = long − short (the primary COT signal). */
 function netPosition(p: { longContracts: number | null; shortContracts: number | null }): number | null {
@@ -415,17 +450,15 @@ function contracts(n: number | null): string {
 
 // ─── Pair Correlation (current-snapshot alignment) ─────────────────────────────
 // No true price-correlation source is wired into oracle.ts. This builds a
-// score-direction alignment view across the six tracked instruments, labeled as
+// score-direction alignment view across the tracked instruments, labeled as
 // such — it is NOT price correlation.
-
-export const CORRELATION_INSTRUMENTS = [
-  { id: "EURUSD", label: "EUR/USD", kind: "pair" as const },
-  { id: "GBPUSD", label: "GBP/USD", kind: "pair" as const },
-  { id: "USDJPY", label: "USD/JPY", kind: "pair" as const },
-  { id: "EURJPY", label: "EUR/JPY", kind: "pair" as const },
-  { id: "GBPJPY", label: "GBP/JPY", kind: "pair" as const },
-  { id: "Gold", label: "Gold", kind: "asset" as const },
-];
+//
+// Phase 7: pair membership is fully derived from getAllFxPairs() — every FX
+// pair the backend returns (including the four AUD pairs) is included, not a
+// fixed five. "Gold" is the one deliberately kept local addition: it's the
+// only standalone asset with a score directly comparable to a pair's (via
+// XAUUSD), which is why this view was framed around it in the first place —
+// not an instrument-list gap the way the fixed five pairs were.
 
 export interface CorrelationRow {
   id: string;
@@ -435,22 +468,35 @@ export interface CorrelationRow {
   direction: "up" | "down" | "flat";
 }
 
+// Bug 2: previously fetched all scorecard assets (getAllScorecardAssets(),
+// the same permanently-broken no-param call Score Trend relied on) just to
+// pick Gold's score/bias back out of the list. This view only ever needed
+// that one asset — getScorecardAsset("Gold") is the same endpoint used
+// everywhere else a single scorecard is read, and Gold not resolving no
+// longer takes the whole view down with it (caught below, degrades to a
+// "flat/no data" Gold row instead of failing the pairs data too).
 export async function fetchPairAlignmentSnapshot(): Promise<CorrelationRow[]> {
-  const [assets, pairs] = await Promise.all([getAllScorecardAssets(), getAllFxPairs()]);
-  const assetByKey = new Map<string, PublicScorecardAsset>(assets.map((a) => [a.key, a]));
-  const pairByKey = new Map<string, PublicFxPairData>(pairs.map((p) => [p.key, p]));
+  const [pairs, gold] = await Promise.all([
+    getAllFxPairs(),
+    getScorecardAsset("Gold").catch(() => null),
+  ]);
 
-  return CORRELATION_INSTRUMENTS.map((inst) => {
-    const score =
-      inst.kind === "pair" ? (pairByKey.get(inst.id)?.totalScore ?? null) : (assetByKey.get(inst.id)?.totalScore ?? null);
-    const bias =
-      inst.kind === "pair" ? (pairByKey.get(inst.id)?.bias ?? null) : (assetByKey.get(inst.id)?.bias ?? null);
-    return {
-      id: inst.id,
-      label: inst.label,
-      score,
-      bias,
-      direction: score === null || score === 0 ? "flat" : score > 0 ? "up" : "down",
-    };
+  const rows: CorrelationRow[] = pairs.map((p) => ({
+    id: p.key,
+    label: p.label,
+    score: p.totalScore,
+    bias: p.bias,
+    direction: p.totalScore === null || p.totalScore === 0 ? "flat" : p.totalScore > 0 ? "up" : "down",
+  }));
+
+  rows.push({
+    id: "Gold",
+    label: "Gold",
+    score: gold?.totalScore ?? null,
+    bias: gold?.bias ?? null,
+    direction:
+      !gold?.totalScore ? "flat" : gold.totalScore > 0 ? "up" : "down",
   });
+
+  return rows;
 }

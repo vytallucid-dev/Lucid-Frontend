@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PublicScorecard } from "@/lib/api/nifty";
 import { Sparkline } from "@/components/Sparkline";
 import { bandColor, bandBg, netDisplay } from "@/app/nifty/nifty-utils";
+import { NiftyPulseSkeleton } from "./DashboardSkeletons";
 
 // ─── NIFTY pulse helpers ──────────────────────────────────────────────────────
 // Moved verbatim from FundamentalBiasPanel.tsx (Step 5) — every field the
@@ -79,9 +80,9 @@ export function NiftyPulseBand({
       </div>
 
       {niftyLatestLoading ? (
-        <div className="lx-card">
-          <p className="lx-body">Loading NIFTY macro…</p>
-        </div>
+        // Same card, same height, same internal rhythm — so the real pulse card
+        // replaces it without moving the band below.
+        <NiftyPulseSkeleton />
       ) : niftyLatest ? (
         <NiftyPulseCard latest={niftyLatest} history={niftyHistory} />
       ) : (

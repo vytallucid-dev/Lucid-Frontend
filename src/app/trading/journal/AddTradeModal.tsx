@@ -2,23 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Camera, Loader2, Sparkles } from "lucide-react";
+import { X, Loader2, Sparkles } from "lucide-react";
 import { accountTypeLabel, type Direction, type Conviction, type ExitType, type Trade } from "@/lib/demo-data";
 import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade, useUpdateTrade } from "@/hooks/useTrading";
 import type { CreateTradePayload } from "@/lib/api/trading";
-import { getFxPair, getScorecardAsset } from "@/lib/api/oracle";
+import { getFxPair, getScorecardAsset, type ScorecardAssetKey } from "@/lib/api/oracle";
 import { toast } from "@/components/toast";
 import { ScreenshotUploader } from "@/components/ScreenshotUploader";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
-// Pairs the Oracle can produce a Lucid score for (5 FX majors via the FX
-// scorecard, Gold via the asset scorecard). Others have no score → field stays blank.
-const FX_LUCID_PAIRS = new Set(["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY"]);
+// Pairs the Oracle can produce a Lucid score for via the FX scorecard (all
+// nine pairs, now that AUDUSD/AUDJPY/EURAUD/GBPAUD are tradable journal
+// instruments too — Issue 3). Gold and the three indices score via the asset
+// scorecard instead (SCORECARD_LUCID_ASSETS below), not the FX scorecard.
+const FX_LUCID_PAIRS = new Set([
+  "EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY",
+  "AUDUSD", "AUDJPY", "EURAUD", "GBPAUD",
+]);
+// Symbols scored via /api/oracle/scorecard rather than /api/oracle/fx-scorecard.
+// Gold's scorecard key is "Gold", not its trading symbol "XAUUSD" — every
+// other entry here uses its trading symbol directly as the scorecard key.
+const SCORECARD_LUCID_ASSETS = new Set(["XAUUSD", "SPY", "NAS100", "US30"]);
 
 /** Fetch the current Lucid (Oracle) score for a pair symbol; null when unsupported. */
 async function fetchLucidScore(symbol: string): Promise<number | null> {
   if (symbol === "XAUUSD") return (await getScorecardAsset("Gold")).totalScore;
+  // Runtime-verified by the Set membership check above; the plain `string`
+  // parameter can't narrow to the literal union on its own.
+  if (SCORECARD_LUCID_ASSETS.has(symbol)) return (await getScorecardAsset(symbol as ScorecardAssetKey)).totalScore;
   if (FX_LUCID_PAIRS.has(symbol)) return (await getFxPair(symbol)).totalScore;
   return null;
 }
@@ -346,27 +358,6 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
 
           {/* Scrollable content */}
           <div className="lx-overlay-body">
-
-            {/* Screenshot auto-fill zone */}
-            <div
-              className="flex flex-col items-center justify-center gap-2 mb-6 rounded-xl"
-              style={{
-                height: 112,
-                border: "1.5px dashed var(--lucid-line-2)",
-                background: "var(--lucid-surface-2)",
-              }}
-            >
-              <Camera size={22} style={{ color: "var(--lucid-ink-3)" }} />
-              <p className="text-sm" style={{ color: "var(--lucid-ink-3)" }}>
-                Paste an MT4/MT5 screenshot to auto-fill this form.
-              </p>
-              <span
-                className="pill"
-                style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", fontSize: 10 }}
-              >
-                Phase 3 — coming soon
-              </span>
-            </div>
 
             {noAccounts && (
               <div

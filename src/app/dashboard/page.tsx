@@ -18,8 +18,14 @@ import {
   useDeleteTrade,
 } from "@/hooks/useTrading";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
+import { useDelayedFlag } from "@/components/state/Skeleton";
+import {
+  PerformanceBandSkeleton,
+  LivePositionsSkeleton,
+  PlannedBandSkeleton,
+  AccountsBandSkeleton,
+} from "./DashboardSkeletons";
 import { useAuth } from "@/lib/auth/auth-context";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { TradeDrawerContent } from "@/app/trading/journal/TradeDrawerContent";
@@ -29,7 +35,7 @@ import { AddTradeModal } from "@/app/trading/journal/AddTradeModal";
 import { toast } from "@/components/toast";
 import { useQuery } from "@tanstack/react-query";
 import { usePrefersReducedMotion } from "@/components/motion";
-import { getAllFxPairs, getScorecardAsset } from "@/lib/api/oracle";
+import { useAssets } from "@/hooks/useAssets";
 import { getLatestScorecard, getScorecardHistory } from "@/lib/api/nifty";
 
 import {
@@ -39,15 +45,15 @@ import {
   computeDrawdownWindows,
   buildStatusLine,
   type DateRangePreset,
-  type PairBias,
 } from "./dashboard-helpers";
 import { useValueFlash, useNewIds } from "./useDashboardAnimations";
 import { CashFlowModal } from "./CashFlowModal";
 import { HeroBand } from "./HeroBand";
-import { QuickActionsBand } from "./QuickActionsBand";
-import { NiftyPulseBand } from "./NiftyPulseBand";
+import { QuickStrip } from "./QuickStrip";
+import { LivePositionsBand } from "./LivePositionsBand";
+import { TodayBand } from "./TodayBand";
 import { PerformanceBand } from "./PerformanceBand";
-import { OpenWorkBand } from "./OpenWorkBand";
+import { PlannedBand } from "./PlannedBand";
 import { AccountsBand } from "./AccountsBand";
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
@@ -90,10 +96,11 @@ export default function DashboardPage() {
   const pairsQuery = useTradingPairs();
 
   // Fundamental bias (Oracle) + NIFTY macro pulse — independent of trading data.
-  const fxPairsQuery = useQuery({ queryKey: ["oracle", "fx-scorecard", "__all__"], queryFn: getAllFxPairs });
-  // Gold is an asset (not an FX pair). The /scorecard endpoint is single-asset
-  // (asset= is required), so fetch Gold directly rather than as an "all" call.
-  const goldQuery = useQuery({ queryKey: ["oracle", "scorecard", "Gold"], queryFn: () => getScorecardAsset("Gold") });
+  // Same hook, same ['oracle','assets'] query key the Oracle pages call — the
+  // alignment field's orb list (which instruments Oracle currently scores) and
+  // its per-orb score both come from here now, replacing the previous
+  // fxPairsQuery + goldQuery pair that only ever fed the field.
+  const assetsQuery = useAssets();
   const niftyLatestQuery = useQuery({ queryKey: ["nifty", "scorecard", "latest"], queryFn: getLatestScorecard });
   const niftyHistoryQuery = useQuery({
     queryKey: ["nifty", "scorecard", "history-lite", 30],
@@ -105,27 +112,15 @@ export default function DashboardPage() {
   const allAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const pairs = useMemo(() => pairsQuery.data ?? [], [pairsQuery.data]);
 
-  // Map each tracked pair's symbol → its fundamental bias. FX majors come from
-  // the FX scorecard; XAUUSD maps to the Gold asset scorecard.
-  const biasByPair = useMemo(() => {
-    const map = new Map<string, PairBias>();
-    for (const fx of fxPairsQuery.data ?? []) {
-      map.set(fx.key, { bias: fx.bias, score: fx.totalScore, history: fx.scoreHistory });
-    }
-    const gold = goldQuery.data;
-    if (gold) map.set("XAUUSD", { bias: gold.bias, score: gold.totalScore, history: gold.scoreHistory });
-    return map;
-  }, [fxPairsQuery.data, goldQuery.data]);
-
   // NIFTY net-score trend (oldest → newest) for the pulse sparkline.
   const niftyHistory = useMemo(
     () => [...(niftyHistoryQuery.data ?? [])].map((s) => s.net_score).reverse(),
     [niftyHistoryQuery.data],
   );
-  const biasLoading = fxPairsQuery.isLoading || goldQuery.isLoading;
 
   const isLoading = tradesQuery.isLoading || accountsQuery.isLoading || plannedQuery.isLoading;
   const loadError = tradesQuery.error || accountsQuery.error || plannedQuery.error;
+  const showBandSkeletons = useDelayedFlag(isLoading, 100);
 
   // Greeting (computed on render from IST time)
   const greeting = getGreeting();
@@ -193,6 +188,24 @@ export default function DashboardPage() {
     };
   }, [allAccounts, allTrades]);
 
+  // ── The two presentational aggregations this redesign needs. Both are plain
+  // reductions over the already-fetched trade list — no new query, no new
+  // trade statistic, nothing that feeds any existing figure. They exist only
+  // because the new band headers state them.
+  const openRiskPct = useMemo(
+    () => liveTrades.reduce((s, t) => s + (t.risk_pct ?? 0), 0),
+    [liveTrades],
+  );
+  const tradesThisMonth = useMemo(() => {
+    const now = new Date();
+    const m = now.getMonth();
+    const y = now.getFullYear();
+    return allTrades.filter((t) => {
+      const d = new Date(t.date_opened);
+      return d.getMonth() === m && d.getFullYear() === y;
+    }).length;
+  }, [allTrades]);
+
   // Living feedback — metric cards flash their sign color when the value moves
   // (fires on trade add/close/delete via the react-query refetch).
   const pnlFlash = useValueFlash(metrics.overallPnl, !isLoading);
@@ -230,22 +243,24 @@ export default function DashboardPage() {
           wrFlash={wrFlash}
           allAccountsCount={allAccounts.length}
           pairsConfig={pairsConfig}
-          biasByPair={biasByPair}
+          oracleAssets={assetsQuery.data}
           niftyNetScore={niftyLatestQuery.data?.net_score ?? null}
           livePairSymbols={livePairSymbols}
-          biasLoading={biasLoading}
+          assetsLoading={assetsQuery.isLoading}
           onNavigate={(href) => router.push(href)}
         />
       </div>
 
-      {/* Every band below shares one container, one vertical rhythm (72px top
-          and bottom on desktop, 48px on mobile via --lucid-band-y), and a
-          container-width hairline between each. Nothing sets its own width. */}
-      <div className="lx-container">
+      {/* Everything below the hero shares one container (1440px, 40px gutters
+          at desktop) and one 64px band rhythm, with a container-width hairline
+          between bands — except the Today band, which is full-bleed on purpose
+          and re-establishes the container inside itself. */}
 
-        {/* ── Below the fold: Quick Actions + chat bar ─────────────────────── */}
-        <div className="lx-band">
-          <QuickActionsBand
+      {/* ── Band 1: Quick strip — slim by design, the thin bar that makes the
+          band beneath it read as heavy. ───────────────────────────────────── */}
+      <div className="lx-container">
+        <div className="dash-band-slim">
+          <QuickStrip
             chatValue={chatValue}
             onChatChange={setChatValue}
             onChatSubmit={handleChatSubmit}
@@ -253,29 +268,20 @@ export default function DashboardPage() {
             onCashFlow={() => setShowCashFlow(true)}
             onViewPlanned={() => router.push("/trading/planned")}
             onOpenScanner={() => router.push("/oracle")}
+            tradesThisMonth={tradesThisMonth}
           />
         </div>
-
         <div className="lx-rule" />
+      </div>
 
-        {/* ── NIFTY macro pulse — its own band directly below the hero,
-            per B5. Its field orb does not replace this card. ─────────────── */}
-        <div className="lx-band">
-          <NiftyPulseBand
-            niftyLatestLoading={niftyLatestQuery.isLoading}
-            niftyLatest={niftyLatestQuery.data}
-            niftyHistory={niftyHistory}
-          />
-        </div>
-
-        <div className="lx-rule" />
-
+      {/* ── Band 2: Live positions — the heavy band. ───────────────────────── */}
+      <div className="lx-container">
         {isLoading ? (
-          <div className="lx-band">
-            <LoadingState stages={["Loading your dashboard…", "Crunching your numbers…", "Preparing charts…"]} />
-          </div>
+          showBandSkeletons ? (
+            <div className="dash-band"><LivePositionsSkeleton /></div>
+          ) : null
         ) : loadError ? (
-          <div className="lx-band">
+          <div className="dash-band">
             <ErrorState
               error={loadError}
               onRetry={() => { tradesQuery.refetch(); accountsQuery.refetch(); plannedQuery.refetch(); }}
@@ -283,9 +289,49 @@ export default function DashboardPage() {
             />
           </div>
         ) : (
+          <div className="dash-band">
+            <LivePositionsBand
+              liveTrades={liveTrades}
+              pairsConfig={pairsConfig}
+              newLiveIds={newLiveIds}
+              openRiskPct={openRiskPct}
+              onTradeClick={setTradeDrawer}
+              reducedMotion={reducedMotion}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Band 3: Today — full-bleed breath on the deep ground. Escapes the
+          container deliberately and re-establishes it inside. ─────────────── */}
+      <div className="dash-bleed">
+        <div className="lx-container">
+          <TodayBand
+            niftyLatestLoading={niftyLatestQuery.isLoading}
+            niftyLatest={niftyLatestQuery.data}
+            niftyHistory={niftyHistory}
+          />
+        </div>
+      </div>
+
+      <div className="lx-container">
+        {isLoading ? (
+          // Each band keeps its own height while loading, so the bands below
+          // arrive in place rather than pushing the page around. Held back
+          // ~100ms so a warm cache never flashes a skeleton.
+          showBandSkeletons ? (
+            <>
+              <div className="dash-band"><PerformanceBandSkeleton /></div>
+              <div className="lx-rule" />
+              <div className="dash-band"><PlannedBandSkeleton /></div>
+              <div className="lx-rule" />
+              <div className="dash-band"><AccountsBandSkeleton /></div>
+            </>
+          ) : null
+        ) : loadError ? null : (
         <>
-        {/* ── Band 2: Performance ─────────────────────────────────────────── */}
-        <div className="lx-band">
+        {/* ── Band 4: Performance ─────────────────────────────────────────── */}
+        <div className="dash-band">
           <PerformanceBand
             curveData={curveData}
             drawdownWindows={drawdownWindows}
@@ -297,16 +343,13 @@ export default function DashboardPage() {
 
         <div className="lx-rule" />
 
-        {/* ── Band 3: Open work ───────────────────────────────────────────── */}
-        <div className="lx-band">
-          <OpenWorkBand
-            liveTrades={liveTrades}
+        {/* ── Band 5: Planned ─────────────────────────────────────────────── */}
+        <div className="dash-band">
+          <PlannedBand
             activePlanned={activePlanned}
             readyCount={readyCount}
             pairsConfig={pairsConfig}
-            newLiveIds={newLiveIds}
             newPlannedIds={newPlannedIds}
-            onTradeClick={setTradeDrawer}
             onPlannedClick={setPlannedDrawer}
             reducedMotion={reducedMotion}
           />
@@ -314,8 +357,8 @@ export default function DashboardPage() {
 
         <div className="lx-rule" />
 
-        {/* ── Band 4: Accounts ────────────────────────────────────────────── */}
-        <div className="lx-band">
+        {/* ── Band 6: Capital ─────────────────────────────────────────────── */}
+        <div className="dash-band" style={{ paddingBottom: 120 }}>
           <AccountsBand
             allAccounts={allAccounts}
             onAccountClick={setAccountDrawer}

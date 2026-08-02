@@ -51,7 +51,7 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate" style={{ color: "var(--lucid-ink)" }}>
-            {indicator.name}
+            {displayNameFor(indicator)}
           </p>
           <p className="text-[10px] font-mono truncate" style={{ color: "var(--lucid-ink-3)" }}>
             {indicator.code}
@@ -166,6 +166,7 @@ const CURRENCY_FLAGS: Record<string, string> = {
   EUR: "🇪🇺",
   GBP: "🇬🇧",
   JPY: "🇯🇵",
+  AUD: "🇦🇺",
 };
 
 const STANCE_CONFIG: Record<CycleStance, { label: string; color: string; bg: string; border: string }> = {
@@ -505,14 +506,45 @@ function CycleStanceManager() {
   );
 }
 
-const COUNTRY_GROUPS: { key: string; label: string; filter: (ind: AdminIndicator) => boolean }[] = [
-  { key: "US", label: "United States (US)", filter: (i) => i.country === "US" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
-  { key: "EU", label: "Euro Zone (EU)", filter: (i) => i.country === "EU" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
-  { key: "UK", label: "United Kingdom (UK)", filter: (i) => i.country === "UK" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
-  { key: "JP", label: "Japan (JP)", filter: (i) => i.country === "JP" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
+// Phase 6: grouped by the indicator's owning ASSET (primaryAsset, from
+// asset_indicator_map), not by the raw `country` field. This is the same class
+// of fix Phase 2 made for the scoring engine — COUNTRY_BY_ASSET replaced by
+// asset_indicator_map — applied here on the admin side so it isn't
+// reintroduced. Country-based grouping would leave every AUD indicator
+// invisible (no "AU" section existed) and, worse, would put China PMI in an
+// orphaned "China" section instead of next to the AUD indicators an admin
+// actually manages it alongside — despite country='CN', it belongs to AUD via
+// asset_indicator_map, exactly like every other AUD-side indicator.
+const ASSET_GROUPS: { key: string; label: string; filter: (ind: AdminIndicator) => boolean }[] = [
+  { key: "USD", label: "United States (USD)", filter: (i) => i.primaryAsset === "USD" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
+  { key: "EUR", label: "Euro Zone (EUR)", filter: (i) => i.primaryAsset === "EUR" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
+  { key: "GBP", label: "United Kingdom (GBP)", filter: (i) => i.primaryAsset === "GBP" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
+  { key: "JPY", label: "Japan (JPY)", filter: (i) => i.primaryAsset === "JPY" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
+  { key: "AUD", label: "Australia (AUD)", filter: (i) => i.primaryAsset === "AUD" && !i.code.endsWith("_RATE") && !i.code.endsWith("_COT") },
   { key: "RATES", label: "Central Bank Rate Decisions", filter: (i) => i.code.endsWith("_RATE") || i.frequency === "event_driven" },
   { key: "COT", label: "CFTC Commitment of Traders (COT)", filter: (i) => i.dataSource === "cftc" || i.code.endsWith("_COT") },
+  // Safety net: an indicator with no primaryAsset and not caught by RATES/COT
+  // above (e.g. a genuine data gap in asset_indicator_map) still surfaces
+  // here rather than silently vanishing from the admin UI.
+  {
+    key: "UNGROUPED",
+    label: "Ungrouped",
+    filter: (i) => !i.primaryAsset && !i.code.endsWith("_RATE") && i.frequency !== "event_driven" && i.dataSource !== "cftc" && !i.code.endsWith("_COT"),
+  },
 ];
+
+/**
+ * China PMI is a Chinese indicator (country='CN') that scores as an AUD-side
+ * proxy for Chinese industrial demand. Grouping it under AUD is correct — but
+ * silently grouping it there without saying so would hide a real distinction
+ * an admin needs to see. This makes it explicit rather than invisible.
+ */
+function displayNameFor(indicator: AdminIndicator): string {
+  if (indicator.code === "CN_CAIXIN_PMI_MFG") {
+    return `${indicator.name} (AUD proxy)`;
+  }
+  return indicator.name;
+}
 
 const EF_PIPELINE_JOBS: { label: string; job: CronJobName; color: string; description: string }[] = [
   { label: "Forex Factory Fetch", job: "forex_factory_fetch", color: "var(--lucid-pos)", description: "Fetches weekly economic calendar events for all tracked currencies." },
@@ -739,7 +771,7 @@ export default function EdgefinderDataPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {COUNTRY_GROUPS.map(({ key, label, filter }) => {
+          {ASSET_GROUPS.map(({ key, label, filter }) => {
             const group = indicators.filter(filter);
             if (group.length === 0) return null;
             return (

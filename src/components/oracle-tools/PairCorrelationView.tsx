@@ -46,7 +46,8 @@ export function PairCorrelationView({ onClose }: PairCorrelationViewProps) {
   const flat = rows.filter((r) => r.direction === "flat");
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
+    // data-lucid-overlay marks this as an overlay for the global shortcut guard.
+    <div data-lucid-overlay className="fixed inset-0 z-[100] flex flex-col" style={{ background: "var(--lucid-bg)" }}>
       <div
         className="shrink-0 flex items-center justify-between gap-4 px-4 sm:px-6 py-4"
         style={{ borderBottom: "1px solid var(--lucid-line)" }}

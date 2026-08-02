@@ -6,7 +6,7 @@ import { useScorecardHistory } from "@/hooks/useScorecardHistory";
 import { usePatterns } from "@/hooks/usePatterns";
 import type { PublicScorecard, PublicBand } from "@/lib/api/nifty";
 import { DetailDrawer } from "@/components/DetailDrawer";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { bandColor, bandBg, netDisplay, scorePillClass, scoreDisplay, flagPillStyle, formatDate, formatDateShort } from "../nifty-utils";
@@ -53,9 +53,7 @@ export default function HistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6">
-        <LoadingState stages={["Loading scorecards…", "Tracing phases…", "Drawing the timeline…"]} />
-      </div>
+      <PageSkeleton cards={0} blocks={2} blockHeight={300} />
     );
   }
   if (error) {

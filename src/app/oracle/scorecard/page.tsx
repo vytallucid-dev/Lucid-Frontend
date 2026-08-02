@@ -1,34 +1,51 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, Suspense } from "react";
 import {
   getBiasPillClass,
   type BiasType,
 } from "@/data/assets";
 import { useAssetScorecard } from "@/hooks/useAssetScorecard";
 import { useAssets } from "@/hooks/useAssets";
+import { useScorecardSubjects } from "@/hooks/useScorecardSubjects";
+import { useUrlSelectedKey } from "@/hooks/useUrlSelectedKey";
 import { formatUpdated } from "@/lib/format-date";
 import {
   type ScorecardAssetKey,
   type PublicScorecardSection,
   type PublicScorecardIndicator,
 } from "@/lib/api/oracle";
-import { ScoreHistoryChart } from "@/components/ScoreHistoryChart";
-import { ScoreGauge } from "@/components/ScoreGauge";
-import { LoadingState } from "@/components/state/LoadingState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
+import { ContentSwap } from "@/components/state/Skeleton";
+import { type PickerOption } from "@/components/shared/ScorecardPicker";
+import { ScorecardIdentityCard } from "@/components/shared/ScorecardIdentityCard";
+import { ScoreHistoryTrigger } from "@/components/shared/ScoreHistoryTrigger";
+import { ScorecardSkeleton } from "@/components/shared/ScorecardSkeleton";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 
-const assetOptions: { key: ScorecardAssetKey; flag: string; label: string }[] = [
-  { key: "USD", flag: "🇺🇸", label: "USD" },
-  { key: "EUR", flag: "🇪🇺", label: "EUR" },
-  { key: "GBP", flag: "🇬🇧", label: "GBP" },
-  { key: "JPY", flag: "🇯🇵", label: "JPY" },
-  { key: "Gold", flag: "🥇", label: "Gold" },
-  { key: "SPY", flag: "📈", label: "SPY" },
-  { key: "NAS100", flag: "💻", label: "NAS100" },
-];
+// Phase 7 derived the picker's membership from useAssets() (the screener
+// projection), which regressed it to Gold + indices only — that endpoint has
+// never contained standalone currencies. Fixed (Issue 1): membership and
+// flags now come from useScorecardSubjects() (below, in ScorecardPageInner),
+// the registry's actual scorecard-subject set — this file still doesn't need
+// to know AUD or US30 exist for them to appear. The one thing kept local is
+// *ordering* (Currency, then Commodity, then Index — a display preference,
+// not membership); the "XAUUSD" → "Gold" key rename is used only to match a
+// screener entry for score/bias enrichment, since scorecard-subjects already
+// returns "Gold" directly.
+const ASSET_TYPE_ORDER: Record<string, number> = { Currency: 0, Commodity: 1, Index: 2 };
+
+function toScorecardKey(assetCode: string): string {
+  return assetCode === "XAUUSD" ? "Gold" : assetCode;
+}
+
+function isScorecardAssetKey(value: string): value is ScorecardAssetKey {
+  // Any non-empty string is accepted here; useUrlSelectedKey falls back to
+  // the default ("USD") if the live picker options (derived below) don't
+  // contain it, so an invalid/unknown ?asset= still degrades safely.
+  return value.length > 0;
+}
 
 /** Score → theme token (positive green / negative red / neutral gold). */
 function scoreToken(score: number): string {
@@ -292,91 +309,134 @@ function SectionCard({ section, delay = 0 }: { section: PublicScorecardSection; 
 }
 
 export default function ScorecardPage() {
-  const [selectedKey, setSelectedKey] =
-    useState<ScorecardAssetKey>("USD");
+  // Suspense-wrap because the inner uses useSearchParams (to preselect from
+  // ?asset=), which forces a bailout from static prerendering unless
+  // boundaries are explicit — same pattern the NIFTY scorecard page uses.
+  return (
+    <Suspense fallback={<ScorecardSkeleton />}>
+      <ScorecardPageInner />
+    </Suspense>
+  );
+}
 
+function ScorecardPageInner() {
+  // Missing ?asset= → today's default (USD), unchanged. Present but invalid
+  // for this page → same default, silently — no error, no empty page.
+  const [selectedKey, setSelectedKey] = useUrlSelectedKey<ScorecardAssetKey>(
+    "asset",
+    isScorecardAssetKey,
+    "USD",
+  );
+
+  // Issue 1 fix: /api/oracle/assets is the screener projection — it has NEVER
+  // contained standalone currencies (see instrument-registry.ts: "Currencies
+  // are not screener rows — they are scorecard subjects"). Filtering it to
+  // non-Forex only ever leaves Gold and the indices, which is exactly the
+  // regression Phase 7 introduced by deriving membership from it. The
+  // scorecard endpoint's actual valid-subject set is a different registry
+  // projection (scorecardByKey), now exposed via /api/oracle/scorecard-subjects
+  // — that is this picker's real membership source.
+  const { data: subjects } = useScorecardSubjects();
+  // Still read for live score/bias enrichment where it exists — Gold/SPY/
+  // NAS100/US30 appear in the screener and get a real value; standalone
+  // currencies never have and never will (they're not screener rows), so
+  // their picker tabs correctly show no score, same as before Phase 7.
   const { data: allAssets } = useAssets();
   const scorecardQuery = useAssetScorecard(selectedKey);
   const { openScoreTrend } = useOracleTools();
 
-  // Derive which selector tabs are deferred from the Top Setups list.
-  // SPY and NAS100 appear by name in that response; other scorecard assets
-  // (USD, EUR, GBP, JPY, Gold) do not, so they default to non-deferred.
-  const deferredKeys = useMemo<Set<ScorecardAssetKey>>(() => {
-    const set = new Set<ScorecardAssetKey>();
-    for (const a of allAssets ?? []) {
-      if (
-        a.outcome === "deferred" &&
-        (a.asset === "SPY" || a.asset === "NAS100")
-      ) {
-        set.add(a.asset as ScorecardAssetKey);
-      }
-    }
-    return set;
-  }, [allAssets]);
-
   const asset = scorecardQuery.data;
+
+  // Picker options: membership + flag from scorecard-subjects (the true
+  // source), score/bias/deferred-note layered in from the screener list
+  // where a match exists. Ordering (Currency, then Commodity, then Index) is
+  // the one locally-kept display concern — membership is fully API-derived,
+  // so a newly registered scorecard subject appears with zero edit here.
+  const pickerOptions = useMemo<PickerOption[]>(
+    () =>
+      (subjects ?? [])
+        .slice()
+        .sort((a, b) => (ASSET_TYPE_ORDER[a.type] ?? 99) - (ASSET_TYPE_ORDER[b.type] ?? 99))
+        .map((subj) => {
+          const live = (allAssets ?? []).find((a) => toScorecardKey(a.asset) === subj.key);
+          return {
+            key: subj.key,
+            label: subj.key,
+            glyph: subj.flag,
+            score: live?.score ?? null,
+            bias: live?.bias ?? null,
+            note: live?.outcome === "deferred" ? "Deferred" : null,
+          };
+        }),
+    [subjects, allAssets],
+  );
+
+  // The error branch has no `asset` (the fetch that would have supplied
+  // flag/name failed) but still needs an identity to show next to the
+  // picker. selectedKey is one of the live picker options' keys once
+  // useAssets resolves, so this reliably finds a match — the same fallback
+  // ScorecardIdentityCard itself uses while a switch is pending.
+  const selectedOption = pickerOptions.find((o) => o.key === selectedKey);
 
   return (
     <div className="p-4 sm:p-6" style={{ color: "var(--lucid-ink)" }}>
-      {/* Asset selector */}
-      <div className="lt-rise lt-stagger-1 flex items-center gap-2 mb-6 flex-wrap">
-        {assetOptions.map((opt) => {
-          const active = selectedKey === opt.key;
-          const isDeferred = deferredKeys.has(opt.key);
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setSelectedKey(opt.key)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-              style={{
-                background: active
-                  ? "var(--lucid-accent-bg)"
-                  : "var(--lucid-surface-3)",
-                color: active
-                  ? "var(--lucid-accent)"
-                  : isDeferred
-                    ? "var(--lucid-ink-3)"
-                    : "var(--lucid-ink-2)",
-                border: active
-                  ? "1px solid var(--lucid-accent-bd)"
-                  : "1px solid var(--lucid-line)",
-                boxShadow: active ? "0 0 18px rgba(205, 167, 79, 0.16)" : "none",
-                opacity: isDeferred && !active ? 0.6 : 1,
-              }}
-            >
-              <span>{opt.flag}</span>
-              {opt.label}
-              {isDeferred && (
-                <span
-                  className="text-[9px] font-medium px-1.5 py-0.5 rounded"
-                  style={{
-                    background: "var(--lucid-surface-3)",
-                    color: "var(--lucid-ink-3)",
-                    border: "1px solid var(--lucid-line-2)",
-                  }}
-                >
-                  Deferred
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* No standalone selector row — the score card's identity IS the picker. */}
 
       {/* Content area */}
-      {scorecardQuery.isLoading ? (
-        <LoadingState stages={["Loading scorecard…", "Scoring indicators…", "Drawing gauge…"]} />
-      ) : scorecardQuery.error ? (
-        <ErrorState
-          error={scorecardQuery.error}
-          onRetry={() => scorecardQuery.refetch()}
-        />
-      ) : !asset ? (
-        <EmptyState title="No scorecard available" />
-      ) : asset.outcome === "deferred" ? (
+      {scorecardQuery.error && !scorecardQuery.isLoading ? (
+        /* ── Error state ─────────────────────────────────────────────── */
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              failed fetch with no selector anywhere on the page is a dead
+              end — you could select SPY, get a 400, and have no way back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={<>{selectedOption?.glyph} {selectedOption?.label ?? selectedKey}</>}
+              identityName={selectedOption?.label ?? selectedKey}
+              pickerLabel="Asset"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as ScorecardAssetKey)}
+              recentStorageKey="lucid.recent.asset-scorecard"
+            />
+          </div>
+          <ErrorState
+            error={scorecardQuery.error}
+            onRetry={() => scorecardQuery.refetch()}
+          />
+        </div>
+      ) : (
+      <ContentSwap
+        data={asset}
+        busy={scorecardQuery.isLoading}
+        skeleton={<ScorecardSkeleton />}
+        empty={<EmptyState title="No scorecard available" />}
+      >
+      {(asset, pending) => (
+        asset.outcome === "deferred" ? (
         /* ── Deferred state ─────────────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              deferred asset with no selector anywhere on the page is a dead
+              end — you could select SPY and have no way back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={<>{asset.flag} {asset.name}</>}
+              identityName={asset.name}
+              pending={pending}
+              pickerLabel="Asset"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as ScorecardAssetKey)}
+              recentStorageKey="lucid.recent.asset-scorecard"
+            />
+          </div>
           <div
             className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
             style={{ borderColor: "var(--lucid-line-2)" }}
@@ -413,6 +473,24 @@ export default function ScorecardPage() {
       ) : asset.outcome === "insufficient_data" ? (
         /* ── Insufficient data state ─────────────────────────────────── */
         <div className="flex flex-col items-center justify-center py-20 gap-4">
+          {/* The picker lives in EVERY outcome, not just the scored one. A
+              deferred asset with no selector anywhere on the page is a dead
+              end — you could select SPY and have no way back. */}
+          <div className="w-full max-w-lg">
+            <ScorecardIdentityCard
+              score={null}
+              bias={null}
+              biasClass=""
+              identity={<>{asset.flag} {asset.name}</>}
+              identityName={asset.name}
+              pending={pending}
+              pickerLabel="Asset"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as ScorecardAssetKey)}
+              recentStorageKey="lucid.recent.asset-scorecard"
+            />
+          </div>
           <div
             className="lt-card p-10 max-w-lg w-full text-center flex flex-col items-center gap-4"
             style={{
@@ -454,46 +532,32 @@ export default function ScorecardPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* LEFT PANEL */}
           <div className="lt-rise lt-stagger-2 w-full lg:w-70 lg:shrink-0 flex flex-col gap-4">
-            {/* Score & Bias */}
-            <button
-              onClick={() => openScoreTrend(asset.key)}
-              className="lt-card lt-edge p-5 text-center w-full transition-opacity hover:opacity-90 cursor-pointer"
-              title="Open Score Trend"
-              style={{
-                background: `radial-gradient(120% 90% at 50% 0%, ${
-                  asset.totalScore !== null && asset.totalScore >= 3
-                    ? "rgba(72, 186, 124, 0.10)"
-                    : asset.totalScore !== null && asset.totalScore <= -3
-                      ? "rgba(226, 88, 77, 0.10)"
-                      : "rgba(205, 167, 79, 0.10)"
-                }, transparent 65%), var(--lucid-grad-surface)`,
-                boxShadow: "var(--lucid-elev-1)",
-              }}
-            >
-              {asset.totalScore !== null && <ScoreGauge score={asset.totalScore} />}
-              <div className="mb-2 -mt-1">
-                {asset.bias && (
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getBiasPillClass(asset.bias as BiasType)}`}
-                  >
-                    {asset.bias}
-                  </span>
-                )}
-              </div>
-              <p
-                className="lt-serif text-sm font-medium"
-                style={{ color: "var(--lucid-ink-2)" }}
-              >
-                {asset.flag} {asset.name}
-              </p>
-            </button>
+            {/* Score & Bias — and the asset picker. Same gauge, same bias pill,
+                same flag and name; the identity block is now the trigger. */}
+            <ScorecardIdentityCard
+              score={asset.totalScore}
+              bias={asset.bias}
+              biasClass={asset.bias ? getBiasPillClass(asset.bias as BiasType) : ""}
+              identity={<>{asset.flag} {asset.name}</>}
+              identityName={asset.name}
+              pending={pending}
+              pickerLabel="Asset"
+              options={pickerOptions}
+              value={selectedKey}
+              onChange={(k) => setSelectedKey(k as ScorecardAssetKey)}
+              recentStorageKey="lucid.recent.asset-scorecard"
+            />
 
-            {/* Score History Chart — inline score sparkline */}
+            {/* Everything below the identity is a value being replaced during a
+                switch, so it ghosts as one block. */}
+            <div className={`lx-swap flex flex-col gap-4 ${pending ? "lx-swap-busy" : ""}`}>
+            {/* Score History Chart — opens the trajectory view */}
             {asset.scoreHistory && asset.scoreHistory.length > 0 && (
-              <div className="lt-card p-4">
-                <p className="lt-eyebrow mb-3">SCORE HISTORY (12 WEEKS)</p>
-                <ScoreHistoryChart data={asset.scoreHistory} />
-              </div>
+              <ScoreHistoryTrigger
+                data={asset.scoreHistory}
+                onOpen={() => openScoreTrend(asset.key)}
+                subjectName={asset.name}
+              />
             )}
 
             {/* Score breakdown */}
@@ -683,10 +747,13 @@ export default function ScorecardPage() {
             >
               Last updated: {formatUpdated(asset.lastUpdated)}
             </p>
+            </div>
           </div>
 
-          {/* RIGHT PANEL */}
-          <div className="lt-rise lt-stagger-3 flex-1 flex flex-col gap-4 min-w-0">
+          {/* RIGHT PANEL — indicator tables ghost during a switch too. */}
+          <div
+            className={`lt-rise lt-stagger-3 lx-swap flex-1 flex flex-col gap-4 min-w-0 ${pending ? "lx-swap-busy" : ""}`}
+          >
             {asset.sections.map((section, idx) => (
               <SectionCard key={section.label} section={section} delay={Math.min(idx * 0.08, 0.4)} />
             ))}
@@ -731,6 +798,9 @@ export default function ScorecardPage() {
             </div>
           </div>
         </div>
+      )
+      )}
+      </ContentSwap>
       )}
     </div>
   );

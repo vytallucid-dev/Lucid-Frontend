@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { DetailDrawer } from "@/components/DetailDrawer";
-import { LoadingState } from "@/components/state/LoadingState";
+import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { useScorecardHistory } from "@/hooks/useScorecardHistory";
@@ -47,9 +47,7 @@ export default function PatternsPage() {
   // Combined gates
   if (scorecardsQuery.isLoading || patternsQuery.isLoading) {
     return (
-      <div className="p-4 sm:p-6">
-        <LoadingState stages={["Loading patterns…", "Matching against the current scorecard…", "Ranking relevance…"]} />
-      </div>
+      <PageSkeleton cards={3} blocks={2} blockHeight={240} />
     );
   }
   if (scorecardsQuery.error || patternsQuery.error) {
