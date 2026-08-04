@@ -6,6 +6,7 @@ import {
   type Account,
   type AccountStatus,
   type Trade,
+  type Execution,
   type Payout,
   type AccountType,
   pairs,
@@ -17,6 +18,7 @@ import {
   accountTradingPnl,
   ACCOUNT_TYPE_COLORS,
 } from "@/lib/demo-data";
+import { accountStats as computeAccountStats } from "@/lib/stats";
 import { useUpdateAccount } from "@/hooks/useTrading";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/toast";
@@ -45,29 +47,23 @@ export function calcGoalProgress(account: Account, targetPct?: number) {
   return { profitAchieved, profitTarget, pct };
 }
 
-export function calcAccountStats(accountTrades: Trade[]) {
-  const closedTrades = accountTrades.filter(t => t.date_closed);
-  // Outcome decided by manual net P&L (blended_pnl), matching the journal.
-  const wins = closedTrades.filter(t => t.blended_pnl > 0);
-  const losses = closedTrades.filter(t => t.blended_pnl < 0);
-  const denominator = wins.length + losses.length;
-  const winRate = denominator > 0 ? (wins.length / denominator) * 100 : 0;
-  const netPnl = closedTrades.reduce((sum, t) => sum + t.blended_pnl, 0);
-  const avgPnl = closedTrades.length > 0 ? netPnl / closedTrades.length : 0;
+// An account's own performance: every EXECUTION it holds (not the ideas'
+// primaries) — win rate over its own fills, $ averages. Account family:
+// counts executions, sums dollars. See lib/stats.ts.
+export function calcAccountStats(trades: Trade[], accountId: string) {
+  const rows = trades.flatMap((t) => t.executions.filter((e) => e.account_id === accountId).map((e) => ({ e, trade: t })));
+  const closed = rows.filter((r) => r.e.date_closed);
+  const base = computeAccountStats(rows.map((r) => r.e));
 
   const pairPnl: Record<string, number> = {};
-  closedTrades.forEach(t => {
-    pairPnl[t.pair] = (pairPnl[t.pair] ?? 0) + t.blended_pnl;
+  closed.forEach(({ e, trade }) => {
+    pairPnl[trade.pair] = (pairPnl[trade.pair] ?? 0) + e.blended_pnl;
   });
   const pairEntries = Object.entries(pairPnl);
-  const bestPair = pairEntries.length > 0
-    ? pairEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0]
-    : "—";
-  const worstPair = pairEntries.length > 1
-    ? pairEntries.reduce((a, b) => a[1] < b[1] ? a : b)[0]
-    : "—";
+  const bestPair = pairEntries.length > 0 ? pairEntries.reduce((a, b) => (a[1] > b[1] ? a : b))[0] : "—";
+  const worstPair = pairEntries.length > 1 ? pairEntries.reduce((a, b) => (a[1] < b[1] ? a : b))[0] : "—";
 
-  return { tradeCount: accountTrades.length, winRate, avgPnl, bestPair, worstPair };
+  return { tradeCount: base.trade_count, winRate: base.win_rate, avgPnl: base.avg_pnl, bestPair, worstPair };
 }
 
 // ── Pill components ───────────────────────────────────────────────────────────
@@ -242,18 +238,20 @@ function StatMiniCard({ label, value, sub }: { label: string; value: React.React
 
 interface AccountDrawerContentProps {
   account: Account;
-  accountTrades: Trade[];
+  /** Every idea (not just this account's) — this account's own executions
+   * are derived from it, joined back to their parent idea for pair/click-through. */
+  trades: Trade[];
   onTradeClick?: (tradeId: string) => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-export function AccountDrawerContent({ account, accountTrades, onTradeClick, onEdit, onDelete }: AccountDrawerContentProps) {
+export function AccountDrawerContent({ account, trades, onTradeClick, onEdit, onDelete }: AccountDrawerContentProps) {
   const prop = isPropAccount(account);
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
-  const { tradeCount, winRate, avgPnl, bestPair, worstPair } = calcAccountStats(accountTrades);
+  const { tradeCount, winRate, avgPnl, bestPair, worstPair } = calcAccountStats(trades, account.id);
 
   const isPassed = account.status === "Passed";
   const isActive = account.status === "Active";
@@ -264,11 +262,15 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
   const remaining = profitTarget - profitAchieved;
   const fromBlown = drawdownLimit - drawdownUsed;
 
-  // Sort trades: most recent first (by date_closed for closed, date_opened for running)
-  const sortedTrades = [...accountTrades]
-    .filter(t => t.date_closed)
-    .sort((a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime());
-  const recentTrades = sortedTrades.slice(0, 5);
+  // This account's own executions, each joined back to its parent idea (for
+  // pair + click-through). Sorted most recent first by close date.
+  const accountRows = trades.flatMap((t) =>
+    t.executions.filter((e) => e.account_id === account.id).map((e) => ({ execution: e, trade: t })),
+  );
+  const recentTrades = accountRows
+    .filter((r) => r.execution.date_closed)
+    .sort((a, b) => new Date(b.execution.date_closed).getTime() - new Date(a.execution.date_closed).getTime())
+    .slice(0, 5);
 
   function getPairDisplay(pair: string) {
     return pairs.find(p => p.symbol === pair)?.display_name ?? pair;
@@ -441,25 +443,25 @@ export function AccountDrawerContent({ account, accountTrades, onTradeClick, onE
         ) : (
           <div className="lx-card lx-card-compact" style={{ padding: 0 }}>
             <div className="lx-rows">
-              {recentTrades.map((trade) => {
-                const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              {recentTrades.map(({ execution, trade }) => {
+                const pnlCol = execution.blended_pnl > 0 ? "var(--lucid-pos)" : execution.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
                 return (
                   <button
-                    key={trade.id}
+                    key={execution.id}
                     className="lx-row"
                     style={{ paddingInline: 12 }}
                     onClick={() => onTradeClick?.(trade.id)}
                   >
                     <span className="lx-micro" style={{ minWidth: 52 }}>
-                      {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {new Date(execution.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--lucid-ink)", flex: 1 }}>
                       {getPairDisplay(trade.pair)}
                     </span>
                     <span className="lx-value" style={{ fontWeight: 700, color: pnlCol, minWidth: 64, textAlign: "right" }}>
-                      {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
+                      {execution.blended_pnl > 0 ? "+" : ""}{formatCurrency(execution.blended_pnl)}
                     </span>
-                    <ExitTypePill type={trade.exit_type} />
+                    <ExitTypePill type={execution.exit_type} />
                   </button>
                 );
               })}

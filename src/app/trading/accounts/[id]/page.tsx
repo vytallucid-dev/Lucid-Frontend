@@ -52,8 +52,10 @@ function formatDateShort(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// Equity over time = starting size, then every closed trade's P&L and every
-// cash movement (deposit +, withdrawal/payout −) applied in chronological order.
+// Equity over time = starting size, then every closed EXECUTION's P&L in this
+// account and every cash movement (deposit +, withdrawal/payout −), applied
+// in chronological order. `accountTrades` is already narrowed to this
+// account's own execution(s) per idea (see the memo above).
 function buildChartData(account: Account, accountTrades: Trade[]) {
   const fmt = (iso: string) =>
     new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
@@ -61,13 +63,15 @@ function buildChartData(account: Account, accountTrades: Trade[]) {
   type Event = { t: number; date: string; delta: number; label: string };
   const events: Event[] = [];
 
-  for (const trade of accountTrades.filter(t => t.date_closed)) {
-    events.push({
-      t: new Date(trade.date_closed).getTime(),
-      date: fmt(trade.date_closed),
-      delta: trade.blended_pnl,
-      label: `${getPairDisplay(trade.pair)} ${trade.blended_pnl >= 0 ? "+" : ""}${formatCurrency(trade.blended_pnl)}`,
-    });
+  for (const trade of accountTrades) {
+    for (const execution of trade.executions.filter(e => e.date_closed)) {
+      events.push({
+        t: new Date(execution.date_closed).getTime(),
+        date: fmt(execution.date_closed),
+        delta: execution.blended_pnl,
+        label: `${getPairDisplay(trade.pair)} ${execution.blended_pnl >= 0 ? "+" : ""}${formatCurrency(execution.blended_pnl)}`,
+      });
+    }
   }
   for (const cf of account.cash_flows) {
     const signed = cf.type === "deposit" ? cf.amount : -cf.amount;
@@ -177,8 +181,13 @@ export default function AccountDetailPage() {
 
   const account = (accountsQuery.data ?? []).find(a => a.id === id);
 
+  // Ideas with an execution in this account, narrowed to that account's
+  // fill(s) — matches the API's account filter shape.
   const accountTrades = useMemo(
-    () => (tradesQuery.data ?? []).filter(t => t.account_id === id),
+    () =>
+      (tradesQuery.data ?? [])
+        .filter(t => t.executions.some(e => e.account_id === id))
+        .map(t => ({ ...t, executions: t.executions.filter(e => e.account_id === id) })),
     [tradesQuery.data, id]
   );
 
@@ -209,7 +218,7 @@ export default function AccountDetailPage() {
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
-  const { tradeCount, winRate, avgPnl } = calcAccountStats(accountTrades);
+  const { tradeCount, winRate, avgPnl } = calcAccountStats(accountTrades, account.id);
 
   const isPassed = account.status === "Passed";
   const isActive = account.status === "Active";
@@ -223,10 +232,10 @@ export default function AccountDetailPage() {
   // Max drawdown threshold line on chart
   const ddThreshold = account.account_size - drawdownLimit;
 
-  // Closed + sorted trades for the mini table
-  const closedTrades = [...accountTrades]
-    .filter(t => t.date_closed)
-    .sort((a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime());
+  // Closed + sorted executions (this account's own fills) for the mini table
+  const closedExecutions = accountTrades
+    .flatMap(t => t.executions.filter(e => e.date_closed).map(e => ({ trade: t, execution: e })))
+    .sort((a, b) => new Date(b.execution.date_closed).getTime() - new Date(a.execution.date_closed).getTime());
 
   // Payout running total data for chart
   const payoutChartData = account.payouts.map((p, i) => ({
@@ -483,7 +492,7 @@ export default function AccountDetailPage() {
           </h3>
         </div>
 
-        {closedTrades.length === 0 ? (
+        {closedExecutions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades on this account yet.</p>
           </div>
@@ -506,24 +515,23 @@ export default function AccountDetailPage() {
               ))}
             </div>
 
-            {closedTrades.map((trade, idx) => {
-              const isLive = !trade.date_closed;
-              const pnlCol = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-              const pipsCol = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+            {closedExecutions.map(({ trade, execution }, idx) => {
+              const pnlCol = execution.blended_pnl > 0 ? "var(--lucid-pos)" : execution.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const pipsCol = execution.total_pips > 0 ? "var(--lucid-pos)" : execution.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
               return (
                 <div
-                  key={trade.id}
+                  key={execution.id}
                   className="grid px-6 items-center"
                   style={{
                     gridTemplateColumns: "80px 120px 100px 90px 80px 90px 110px",
                     background: idx % 2 === 0 ? "var(--lucid-surface)" : "var(--lucid-surface-2)",
-                    borderBottom: idx < closedTrades.length - 1 ? "1px solid var(--lucid-line)" : "none",
+                    borderBottom: idx < closedExecutions.length - 1 ? "1px solid var(--lucid-line)" : "none",
                     minHeight: 44,
                     minWidth: 680,
                   }}
                 >
                   <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>
-                    {new Date(trade.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {new Date(execution.date_closed).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </span>
                   <span style={{ fontSize: 12, color: "var(--lucid-ink)" }}>{getPairDisplay(trade.pair)}</span>
                   <span style={{ fontSize: 12, color: "var(--lucid-ink-2)" }}>{trade.model}</span>
@@ -531,12 +539,12 @@ export default function AccountDetailPage() {
                     {trade.direction === "Buy" ? "↑" : "↓"} {trade.direction}
                   </span>
                   <span className="lt-num" style={{ fontSize: 12, color: pipsCol }}>
-                    {trade.total_pips > 0 ? "+" : ""}{trade.total_pips}
+                    {execution.total_pips > 0 ? "+" : ""}{execution.total_pips}
                   </span>
                   <span className="lt-num" style={{ fontSize: 12, fontWeight: 700, color: pnlCol }}>
-                    {trade.blended_pnl > 0 ? "+" : ""}{formatCurrency(trade.blended_pnl)}
+                    {execution.blended_pnl > 0 ? "+" : ""}{formatCurrency(execution.blended_pnl)}
                   </span>
-                  <ExitTypePill type={trade.exit_type} />
+                  <ExitTypePill type={execution.exit_type} />
                 </div>
               );
             })}

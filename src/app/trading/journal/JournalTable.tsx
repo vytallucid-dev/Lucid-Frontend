@@ -1,6 +1,8 @@
 "use client";
 
+import { Layers } from "lucide-react";
 import { type Trade, pairs, formatCurrency, formatDate } from "@/lib/demo-data";
+import { getPrimaryExecution, isExecutionOpen, tradeAccountCount } from "@/lib/trade-helpers";
 
 function getConvictionClass(conviction: string, isLive: boolean): string {
   if (isLive) return "row-live";
@@ -78,6 +80,21 @@ function PairCell({ pair }: { pair: string }) {
   );
 }
 
+/** How many accounts this idea was executed across — a small badge so a
+ * multi-account idea is visible at a glance. Not shown for single-account ideas. */
+function AccountsBadge({ count }: { count: number }) {
+  if (count <= 1) return null;
+  return (
+    <span
+      className="pill"
+      style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", display: "inline-flex", alignItems: "center", gap: 3 }}
+      title={`Executed across ${count} accounts`}
+    >
+      <Layers size={10} /> {count}
+    </span>
+  );
+}
+
 const TH_STYLE: React.CSSProperties = {
   padding: "8px 12px",
   textAlign: "left",
@@ -90,6 +107,11 @@ const TH_STYLE: React.CSSProperties = {
   userSelect: "none",
 };
 
+// A row is an idea. Exit/pips/R/P&L come from the PRIMARY execution — or, when
+// `trades` has been pre-filtered to one account (see the Journal page's
+// account filter), from that account's own single execution: getPrimaryExecution
+// falls back to the only execution present, so both cases resolve correctly
+// with no special-casing here.
 export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowClick: (t: Trade) => void }) {
   return (
     <div
@@ -107,7 +129,6 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
             <col style={{ width: 90 }} />
             <col style={{ width: 90 }} />
             <col style={{ width: 80 }} />
-            <col style={{ width: 60 }} />
             <col style={{ width: 70 }} />
             <col style={{ width: 110 }} />
             <col style={{ width: 120 }} />
@@ -120,10 +141,9 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
               <th style={TH_STYLE}>Pair</th>
               <th style={TH_STYLE}>Model</th>
               <th style={TH_STYLE}>Dir</th>
-              <th style={{ ...TH_STYLE, fontVariantNumeric: "tabular-nums" }}>Entry</th>
+              <th style={{ ...TH_STYLE, fontVariantNumeric: "tabular-nums" }}>Planned Entry</th>
               <th style={{ ...TH_STYLE, fontVariantNumeric: "tabular-nums" }}>Exit</th>
               <th style={TH_STYLE}>Pips</th>
-              <th style={TH_STYLE}>Risk</th>
               <th style={TH_STYLE}>R:R</th>
               <th style={TH_STYLE}>P&amp;L</th>
               <th style={TH_STYLE}>Exit Type</th>
@@ -132,10 +152,15 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
           </thead>
           <tbody>
             {trades.map(trade => {
-              const isLive = !trade.date_closed;
-              const pipsColor = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-              const rrColor = trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-              const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const primary = getPrimaryExecution(trade);
+              const isLive = !primary || isExecutionOpen(primary);
+              const pips = primary?.total_pips ?? 0;
+              const rr = primary?.blended_rr ?? 0;
+              const pnl = primary?.blended_pnl ?? 0;
+              const pipsColor = pips > 0 ? "var(--lucid-pos)" : pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const rrColor = rr > 0 ? "var(--lucid-pos)" : rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const pnlColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+              const accountCount = tradeAccountCount(trade);
 
               return (
                 <tr
@@ -175,7 +200,10 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
 
                   {/* Pair */}
                   <td style={{ padding: "0 12px", fontSize: 13 }}>
-                    <PairCell pair={trade.pair} />
+                    <div className="flex items-center gap-1.5">
+                      <PairCell pair={trade.pair} />
+                      <AccountsBadge count={accountCount} />
+                    </div>
                   </td>
 
                   {/* Model */}
@@ -188,29 +216,24 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
                     <DirectionPill direction={trade.direction} />
                   </td>
 
-                  {/* Entry */}
+                  {/* Planned Entry */}
                   <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: "var(--lucid-ink)" }}>
-                    {trade.entry_price}
+                    {trade.planned_entry}
                   </td>
 
-                  {/* Exit */}
+                  {/* Exit (primary execution, or the filtered account's) */}
                   <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontVariantNumeric: "tabular-nums", color: isLive ? "var(--lucid-ink-3)" : "var(--lucid-ink)" }}>
-                    {isLive ? "—" : trade.main_exit_price}
+                    {isLive ? "—" : primary!.main_exit_price}
                   </td>
 
                   {/* Pips */}
                   <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "var(--lucid-ink-3)" : pipsColor, fontVariantNumeric: "tabular-nums" }}>
-                    {isLive ? "—" : (trade.total_pips > 0 ? `+${trade.total_pips}` : `${trade.total_pips}`)}
-                  </td>
-
-                  {/* Risk */}
-                  <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, color: "var(--lucid-ink-2)" }}>
-                    {trade.risk_pct}%
+                    {isLive ? "—" : (pips > 0 ? `+${pips}` : `${pips}`)}
                   </td>
 
                   {/* R:R */}
                   <td className="lt-num" style={{ padding: "0 12px", fontSize: 13, fontWeight: 600, color: isLive ? "var(--lucid-ink-3)" : rrColor, fontVariantNumeric: "tabular-nums" }}>
-                    {isLive ? "—" : `${trade.blended_rr > 0 ? "" : ""}${trade.blended_rr}R`}
+                    {isLive ? "—" : `${rr}R`}
                   </td>
 
                   {/* P&L */}
@@ -222,14 +245,14 @@ export function JournalTable({ trades, onRowClick }: { trades: Trade[]; onRowCli
                       </span>
                     ) : (
                       <span className="lt-num" style={{ fontSize: 13, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
-                        {formatCurrency(trade.blended_pnl)}
+                        {formatCurrency(pnl)}
                       </span>
                     )}
                   </td>
 
                   {/* Exit Type */}
                   <td style={{ padding: "0 12px" }}>
-                    <ExitTypePill type={trade.exit_type} />
+                    {primary && <ExitTypePill type={primary.exit_type} />}
                   </td>
 
                   {/* Conviction */}

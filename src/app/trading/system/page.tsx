@@ -9,8 +9,9 @@ import {
   type Model, type PairConfig, type Session,
 } from "@/lib/demo-data";
 import {
-  getModelStats, getPairStats, getSessionStats, getTotalClosedTradeCount,
+  edgeModelStats, edgePairStats, edgeSessionStats, edgeTotalClosedIdeaCount,
 } from "@/lib/stats";
+import { getPrimaryExecution, isExecutionOpen } from "@/lib/trade-helpers";
 import {
   useTrades, useTradingModels, useTradingPairs,
   useCreateModel, useUpdateModel, useDeleteModel,
@@ -134,9 +135,12 @@ function formatRR(rr: number | null) {
   if (rr === null) return "—";
   return `${rr.toFixed(2)}R`;
 }
+// Expectancy is now in R, not dollars — R is comparable across accounts of
+// different sizes; dollar expectancy summed across a 10k challenge and a
+// 100k funded account describes nothing.
 function formatExp(exp: number | null) {
   if (exp === null) return "—";
-  return formatCurrency(exp);
+  return `${exp.toFixed(2)}R`;
 }
 function wrColor(wr: number | null) {
   if (wr === null) return "var(--lucid-ink-3)";
@@ -333,8 +337,8 @@ function PairModal({ open, onClose, initial, onSave }: PairModalProps) {
 
 function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit: () => void; onDelete: () => void }) {
   const trades = useTrades().data ?? [];
-  const stats = getModelStats(trades, model.name);
-  const modelTrades = trades.filter((t) => t.model === model.name && t.date_closed !== "");
+  const stats = edgeModelStats(trades, model.name);
+  const modelTrades = trades.filter((t) => t.model === model.name && !isExecutionOpen(getPrimaryExecution(t)!));
 
   return (
     <div className="flex flex-col gap-5 p-6" style={{ overflowY: "auto" }}>
@@ -373,11 +377,11 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
         <SectionTitle>Performance</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
-            { label: "Avg RR", value: formatRR(stats.rr), color: "var(--lucid-ink)" },
-            { label: "Total Trades", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "var(--lucid-ink)" },
-            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
-            { label: "Expectancy", value: formatExp(stats.expectancy), color: "var(--lucid-ink)" },
+            { label: "Win Rate", value: formatWR(stats.win_rate), color: wrColor(stats.win_rate) },
+            { label: "Avg RR", value: formatRR(stats.avg_rr), color: "var(--lucid-ink)" },
+            { label: "Total Trades", value: stats.idea_count > 0 ? String(stats.idea_count) : "—", color: "var(--lucid-ink)" },
+            { label: "Net P&L", value: stats.idea_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
+            { label: "Expectancy", value: formatExp(stats.expectancy_r), color: "var(--lucid-ink)" },
             { label: "Best Pair", value: stats.best_pair ?? "—", color: "var(--lucid-ink)" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...CARD, padding: "12px 14px" }}>
@@ -395,24 +399,27 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
           <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1">
-            {modelTrades.slice(0, 10).map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between px-3 py-2 rounded-lg"
-                style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed)}</span>
-                  <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{t.pair}</span>
-                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                    {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
+            {modelTrades.slice(0, 10).map((t) => {
+              const p = getPrimaryExecution(t)!;
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg"
+                  style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(p.date_closed)}</span>
+                    <span style={{ fontSize: 13, color: "var(--lucid-ink)" }}>{t.pair}</span>
+                    <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                      {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
+                    </span>
+                  </div>
+                  <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: p.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                    {formatCurrency(p.blended_pnl)}
                   </span>
                 </div>
-                <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                  {formatCurrency(t.blended_pnl)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -422,8 +429,8 @@ function ModelDrawerContent({ model, onEdit, onDelete }: { model: Model; onEdit:
 
 function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdit: () => void; onDelete: () => void }) {
   const trades = useTrades().data ?? [];
-  const stats = getPairStats(trades, pair.symbol);
-  const pairTrades = trades.filter((t) => t.pair === pair.symbol && t.date_closed !== "");
+  const stats = edgePairStats(trades, pair.symbol);
+  const pairTrades = trades.filter((t) => t.pair === pair.symbol && !isExecutionOpen(getPrimaryExecution(t)!));
 
   return (
     <div className="flex flex-col gap-5 p-6" style={{ overflowY: "auto" }}>
@@ -447,9 +454,9 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
         <SectionTitle>Performance</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: "Win Rate", value: formatWR(stats.wr), color: wrColor(stats.wr) },
-            { label: "Trade Count", value: stats.trade_count > 0 ? String(stats.trade_count) : "—", color: "var(--lucid-ink)" },
-            { label: "Net P&L", value: stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
+            { label: "Win Rate", value: formatWR(stats.win_rate), color: wrColor(stats.win_rate) },
+            { label: "Trade Count", value: stats.idea_count > 0 ? String(stats.idea_count) : "—", color: "var(--lucid-ink)" },
+            { label: "Net P&L", value: stats.idea_count > 0 ? formatCurrency(stats.net_pnl) : "—", color: stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...CARD, padding: "12px 14px" }}>
               <span style={{ fontSize: 11, color: "var(--lucid-ink-3)", display: "block", marginBottom: 4 }}>{label}</span>
@@ -475,24 +482,27 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
           <p style={{ fontSize: 13, color: "var(--lucid-ink-3)" }}>No closed trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1" style={{ maxHeight: 300, overflowY: "auto" }}>
-            {pairTrades.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between px-3 py-2 rounded-lg"
-                style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed)}</span>
-                  <ModelPill model={t.model} />
-                  <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                    {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
+            {pairTrades.map((t) => {
+              const p = getPrimaryExecution(t)!;
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg"
+                  style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="lt-num" style={{ fontSize: 12, color: "var(--lucid-ink-3)" }}>{formatDate(p.date_closed)}</span>
+                    <ModelPill model={t.model} />
+                    <span style={{ fontSize: 12, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                      {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
+                    </span>
+                  </div>
+                  <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: p.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                    {formatCurrency(p.blended_pnl)}
                   </span>
                 </div>
-                <span className="lt-num" style={{ fontSize: 13, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                  {formatCurrency(t.blended_pnl)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -505,7 +515,7 @@ function PairDrawerContent({ pair, onEdit, onDelete }: { pair: PairConfig; onEdi
 function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
   const [showRules, setShowRules] = useState(false);
   const trades = useTrades().data ?? [];
-  const stats = getModelStats(trades, model.name);
+  const stats = edgeModelStats(trades, model.name);
 
   return (
     <div
@@ -536,10 +546,10 @@ function ModelCard({ model, onClick }: { model: Model; onClick: () => void }) {
       <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 16, marginBottom: 16 }}>
         <SectionLabel>Performance</SectionLabel>
         <div className="flex flex-wrap items-center gap-5 sm:gap-8 mt-3">
-          <StatCell label="WR" value={formatWR(stats.wr)} color={wrColor(stats.wr)} />
-          <StatCell label="RR" value={formatRR(stats.rr)} />
-          <StatCell label="Trades" value={stats.trade_count > 0 ? String(stats.trade_count) : "—"} />
-          <StatCell label="Expectancy" value={formatExp(stats.expectancy)} />
+          <StatCell label="WR" value={formatWR(stats.win_rate)} color={wrColor(stats.win_rate)} />
+          <StatCell label="RR" value={formatRR(stats.avg_rr)} />
+          <StatCell label="Trades" value={stats.idea_count > 0 ? String(stats.idea_count) : "—"} />
+          <StatCell label="Expectancy" value={formatExp(stats.expectancy_r)} />
         </div>
       </div>
 
@@ -678,10 +688,10 @@ function ModelsTab() {
 
 function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) {
   const trades = useTrades().data ?? [];
-  const stats = getPairStats(trades, pair.symbol);
+  const stats = edgePairStats(trades, pair.symbol);
   const recentTrades = trades
-    .filter((t) => t.pair === pair.symbol && t.date_closed !== "")
-    .sort((a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime())
+    .filter((t) => t.pair === pair.symbol && !isExecutionOpen(getPrimaryExecution(t)!))
+    .sort((a, b) => new Date(getPrimaryExecution(b)!.date_closed).getTime() - new Date(getPrimaryExecution(a)!.date_closed).getTime())
     .slice(0, 3);
 
   return (
@@ -710,11 +720,11 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
       <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 12, marginBottom: 12 }}>
         <SectionLabel>Performance</SectionLabel>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-2">
-          <StatCell label="Trades" value={stats.trade_count > 0 ? String(stats.trade_count) : "—"} />
-          <StatCell label="WR" value={formatWR(stats.wr)} color={wrColor(stats.wr)} />
+          <StatCell label="Trades" value={stats.idea_count > 0 ? String(stats.idea_count) : "—"} />
+          <StatCell label="WR" value={formatWR(stats.win_rate)} color={wrColor(stats.win_rate)} />
           <StatCell
             label="Net P&L"
-            value={stats.trade_count > 0 ? formatCurrency(stats.net_pnl) : "—"}
+            value={stats.idea_count > 0 ? formatCurrency(stats.net_pnl) : "—"}
             color={stats.net_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)"}
           />
         </div>
@@ -726,24 +736,27 @@ function PairCard({ pair, onClick }: { pair: PairConfig; onClick: () => void }) 
           <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginTop: 6 }}>No trades yet.</p>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
-            {recentTrades.map((t) => (
-              <div key={t.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{formatDate(t.date_closed).replace(", 2026", "")}</span>
-                  <span style={{ fontSize: 11, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                    {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
-                  </span>
+            {recentTrades.map((t) => {
+              const p = getPrimaryExecution(t)!;
+              return (
+                <div key={t.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{formatDate(p.date_closed).replace(", 2026", "")}</span>
+                    <span style={{ fontSize: 11, color: t.direction === "Buy" ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                      {t.direction === "Buy" ? "↑" : "↓"} {t.direction}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="lt-num" style={{ fontSize: 12, fontWeight: 600, color: p.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
+                      {p.blended_pnl > 0 ? "+" : ""}{formatCurrency(p.blended_pnl)}
+                    </span>
+                    <span style={{ fontSize: 12, color: p.blended_pnl > 0 ? "var(--lucid-pos)" : p.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
+                      {p.blended_pnl > 0 ? "✓" : p.blended_pnl < 0 ? "✗" : "—"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="lt-num" style={{ fontSize: 12, fontWeight: 600, color: t.blended_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
-                    {t.blended_pnl > 0 ? "+" : ""}{formatCurrency(t.blended_pnl)}
-                  </span>
-                  <span style={{ fontSize: 12, color: t.blended_pnl > 0 ? "var(--lucid-pos)" : t.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-3)" }}>
-                    {t.blended_pnl > 0 ? "✓" : t.blended_pnl < 0 ? "✗" : "—"}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -872,9 +885,10 @@ const SESSION_DEFINITIONS: { key: Session; emoji: string; label: string; time: s
 
 function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] }) {
   const trades = useTrades().data ?? [];
-  const stats = getSessionStats(trades, session.key);
-  const totalTrades = getTotalClosedTradeCount(trades);
-  const pct = totalTrades > 0 ? stats.trade_count / totalTrades : 0;
+  const stats = edgeSessionStats(trades, session.key);
+  const totalIdeas = edgeTotalClosedIdeaCount(trades);
+  const pct = totalIdeas > 0 ? stats.idea_count / totalIdeas : 0;
+  const avgPnl = stats.idea_count > 0 ? stats.net_pnl / stats.idea_count : null;
 
   return (
     <div style={{ ...CARD, padding: "20px 20px" }}>
@@ -885,10 +899,10 @@ function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] 
       <p style={{ fontSize: 12, color: "var(--lucid-ink-3)", marginBottom: 16 }}>{session.time}</p>
 
       <div className="flex flex-col">
-        {kv("Trade Count", <span className="lt-num" style={{ color: "var(--lucid-ink)", fontWeight: 600 }}>{stats.trade_count > 0 ? stats.trade_count : "—"}</span>)}
-        {kv("Win Rate", <span className="lt-num" style={{ color: wrColor(stats.wr), fontWeight: 600 }}>{formatWR(stats.wr)}</span>)}
-        {kv("Avg P&L", <span className="lt-num" style={{ color: stats.avg_pnl !== null && stats.avg_pnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
-          {stats.avg_pnl !== null ? formatCurrency(stats.avg_pnl) : "—"}
+        {kv("Trade Count", <span className="lt-num" style={{ color: "var(--lucid-ink)", fontWeight: 600 }}>{stats.idea_count > 0 ? stats.idea_count : "—"}</span>)}
+        {kv("Win Rate", <span className="lt-num" style={{ color: wrColor(stats.win_rate), fontWeight: 600 }}>{formatWR(stats.win_rate)}</span>)}
+        {kv("Avg P&L", <span className="lt-num" style={{ color: avgPnl !== null && avgPnl >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)", fontWeight: 600 }}>
+          {avgPnl !== null ? formatCurrency(avgPnl) : "—"}
         </span>)}
         {kv("Best Pair", <span style={{ color: "var(--lucid-ink)", fontWeight: 600 }}>{stats.best_pair ?? "—"}</span>)}
       </div>
@@ -896,7 +910,7 @@ function SessionCard({ session }: { session: typeof SESSION_DEFINITIONS[number] 
       <div style={{ borderTop: "1px solid var(--lucid-line)", paddingTop: 12, marginTop: 8 }}>
         <div className="flex items-center justify-between mb-2">
           <span style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>% of total trades</span>
-          <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{stats.trade_count} trade{stats.trade_count !== 1 ? "s" : ""}</span>
+          <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)" }}>{stats.idea_count} trade{stats.idea_count !== 1 ? "s" : ""}</span>
         </div>
         <div style={{ height: 6, borderRadius: 4, background: "var(--lucid-surface-3)", overflow: "hidden" }}>
           <div

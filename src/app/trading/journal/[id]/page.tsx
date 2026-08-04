@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/demo-data";
+import { getPrimaryExecution, isExecutionOpen } from "@/lib/trade-helpers";
 import { useTrades, useAccounts, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import { LoadingState } from "@/components/state/LoadingState";
@@ -27,8 +28,7 @@ export default function TradeDetailPage() {
 
   const trade = (tradesQuery.data ?? []).find(t => t.id === id);
   const config = (pairsQuery.data ?? []).find(p => p.symbol === trade?.pair);
-  const accountName =
-    (accountsQuery.data ?? []).find(a => a.id === trade?.account_id)?.account_name ?? trade?.account_id ?? "—";
+  const accountNames = new Map((accountsQuery.data ?? []).map(a => [a.id, a.account_name]));
 
   if (tradesQuery.isLoading) {
     return (
@@ -48,8 +48,10 @@ export default function TradeDetailPage() {
     );
   }
 
-  const isLive = !trade.date_closed;
-  const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const primary = getPrimaryExecution(trade);
+  const isLive = !primary || isExecutionOpen(primary);
+  const totalPnl = trade.executions.reduce((s, e) => s + e.blended_pnl, 0);
+  const pnlColor = totalPnl > 0 ? "var(--lucid-pos)" : totalPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
   const pairDisplay = config?.display_name ?? trade.pair;
 
   const actions = (
@@ -125,12 +127,13 @@ export default function TradeDetailPage() {
             </div>
           ) : (
             <span className="lt-num" style={{ fontSize: 32, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
-              {formatCurrency(trade.blended_pnl)}
+              {formatCurrency(totalPnl)}
             </span>
           )}
-          {!isLive && (
+          {!isLive && primary && (
             <p className="lt-num" style={{ fontSize: 13, color: "var(--lucid-ink-3)", marginTop: 4 }}>
-              {trade.total_pips > 0 ? "+" : ""}{trade.total_pips} pips · {trade.blended_rr}R
+              {primary.total_pips > 0 ? "+" : ""}{primary.total_pips} pips · {primary.blended_rr}R (primary)
+              {trade.executions.length > 1 ? ` · ${trade.executions.length} accounts` : ""}
             </p>
           )}
         </div>
@@ -141,7 +144,7 @@ export default function TradeDetailPage() {
 
         {/* Left column: main trade content (reuses drawer content) */}
         <div>
-          <TradeDrawerContent trade={trade} />
+          <TradeDrawerContent trade={trade} accountNames={accountNames} />
         </div>
 
         {/* Right column: Screenshots + Context */}
@@ -198,10 +201,8 @@ export default function TradeDetailPage() {
               Quick Stats
             </p>
             {[
-              ["Account", accountName],
+              ["Accounts", trade.executions.map(e => accountNames.get(e.account_id) ?? e.account_id).join(", ")],
               ["Model", trade.model],
-              ["Lot Size", trade.lot_size],
-              ["Risk", `${trade.risk_pct}%`],
               ["Session", trade.session],
               ["Lucid Score", trade.fundamental_score != null ? String(trade.fundamental_score) : "—"],
               ["Psychology", trade.psychology || "—"],

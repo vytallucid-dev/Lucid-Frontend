@@ -1,7 +1,8 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
-import { type Trade, pairs, formatCurrency, formatDate, formatTime } from "@/lib/demo-data";
+import { Pencil, Trash2, Star } from "lucide-react";
+import { type Trade, type Execution, pairs, formatCurrency, formatDate, formatTime } from "@/lib/demo-data";
+import { getPrimaryExecution, isExecutionOpen } from "@/lib/trade-helpers";
 import { ScreenshotGallery } from "@/components/ScreenshotUploader";
 
 // ── Reusable pill/helpers ─────────────────────────────────────────────────────
@@ -40,9 +41,9 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   return <div className={`lx-card lx-card-compact ${className ?? ""}`}>{children}</div>;
 }
 
-// ── Execution ladder ──────────────────────────────────────────────────────────
-function ExecutionLadder({ trade }: { trade: Trade }) {
-  const isLive = !trade.date_closed;
+// ── Execution ladder — one account's fill against the idea's shared plan ──────
+function ExecutionLadder({ trade, execution }: { trade: Trade; execution: Execution }) {
+  const isLive = isExecutionOpen(execution);
   const isSell = trade.direction === "Sell";
 
   interface LevelItem {
@@ -56,15 +57,15 @@ function ExecutionLadder({ trade }: { trade: Trade }) {
 
   // For Sell: higher prices at top; for Buy: lower prices at bottom
   if (isSell) {
-    levels.push({ label: "SL", price: trade.sl_price, type: "sl", hit: !isLive && trade.exit_type === "SL" });
-    levels.push({ label: "Entry", price: trade.entry_price, type: "entry", hit: true });
-    if (trade.first_tp_price) levels.push({ label: "First TP", price: trade.first_tp_price, type: "tp1", hit: !isLive && !!trade.partial_exit_price });
-    levels.push({ label: "Main TP", price: trade.main_tp_price, type: "tp_main", hit: !isLive && trade.exit_type !== "SL" });
+    levels.push({ label: "SL", price: trade.planned_sl, type: "sl", hit: !isLive && execution.exit_type === "SL" });
+    levels.push({ label: "Entry", price: execution.entry_price, type: "entry", hit: true });
+    if (trade.planned_first_tp) levels.push({ label: "First TP", price: trade.planned_first_tp, type: "tp1", hit: !isLive && !!execution.partial_exit_price });
+    levels.push({ label: "Main TP", price: trade.planned_main_tp, type: "tp_main", hit: !isLive && execution.exit_type !== "SL" });
   } else {
-    levels.push({ label: "Main TP", price: trade.main_tp_price, type: "tp_main", hit: !isLive && trade.exit_type !== "SL" });
-    if (trade.first_tp_price) levels.push({ label: "First TP", price: trade.first_tp_price, type: "tp1", hit: !isLive && !!trade.partial_exit_price });
-    levels.push({ label: "Entry", price: trade.entry_price, type: "entry", hit: true });
-    levels.push({ label: "SL", price: trade.sl_price, type: "sl", hit: !isLive && trade.exit_type === "SL" });
+    levels.push({ label: "Main TP", price: trade.planned_main_tp, type: "tp_main", hit: !isLive && execution.exit_type !== "SL" });
+    if (trade.planned_first_tp) levels.push({ label: "First TP", price: trade.planned_first_tp, type: "tp1", hit: !isLive && !!execution.partial_exit_price });
+    levels.push({ label: "Entry", price: execution.entry_price, type: "entry", hit: true });
+    levels.push({ label: "SL", price: trade.planned_sl, type: "sl", hit: !isLive && execution.exit_type === "SL" });
   }
 
   function dotColor(item: LevelItem) {
@@ -107,14 +108,60 @@ function ExecutionLadder({ trade }: { trade: Trade }) {
             {lvl.price}
           </span>
           {/* Partial note */}
-          {lvl.type === "tp1" && trade.partial_exit_price && (
+          {lvl.type === "tp1" && execution.partial_exit_price && (
             <span className="lt-num" style={{ fontSize: 11, color: "var(--lucid-ink-3)", marginLeft: 4 }}>
-              ({trade.partial_exit_lot_pct}% partial)
+              ({execution.partial_exit_lot_pct}% partial)
             </span>
           )}
         </div>
       ))}
     </div>
+  );
+}
+
+// One card per account the idea was executed in — risk, size, exit, R, P&L.
+// The primary is marked clearly: its outcome is the idea's outcome for edge
+// statistics everywhere else in the app.
+function ExecutionCard({ trade, execution, accountName }: { trade: Trade; execution: Execution; accountName?: string }) {
+  const isLive = isExecutionOpen(execution);
+  const pnlColor = execution.blended_pnl > 0 ? "var(--lucid-pos)" : execution.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const rrColor = execution.blended_rr > 0 ? "var(--lucid-pos)" : execution.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          {execution.is_primary && <Star size={12} fill="var(--lucid-accent)" style={{ color: "var(--lucid-accent)" }} />}
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--lucid-ink)" }}>
+            {accountName ?? execution.account_id}
+          </span>
+          {execution.is_primary && (
+            <span className="pill" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)", fontSize: 10 }}>
+              Primary
+            </span>
+          )}
+        </div>
+        {isLive ? (
+          <span className="pill" style={{ background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)", fontSize: 10 }}>Live</span>
+        ) : (
+          <span className="lx-value" style={{ fontWeight: 700, color: pnlColor }}>
+            {execution.blended_pnl > 0 ? "+" : ""}{formatCurrency(execution.blended_pnl)}
+          </span>
+        )}
+      </div>
+
+      <ExecutionLadder trade={trade} execution={execution} />
+
+      <div className="lx-rows" style={{ marginTop: 12 }}>
+        {kv("Risk", `${execution.risk_pct}%`)}
+        {kv("Lot Size", execution.lot_size)}
+        {!isLive && kv("Pips", `${execution.total_pips > 0 ? "+" : ""}${execution.total_pips}`)}
+        {!isLive && kv("R", <span style={{ color: rrColor }}>{execution.blended_rr}R</span>)}
+        {!isLive && kv("Exit Type", execution.exit_type)}
+        {kv("Closed", isLive ? <span style={{ color: "var(--lucid-pos)" }}>Running</span> : `${formatDate(execution.date_closed)} · ${formatTime(execution.date_closed)}`)}
+        {kv("Held", heldDuration(trade.date_opened, execution.date_closed))}
+      </div>
+    </Card>
   );
 }
 
@@ -132,18 +179,26 @@ function heldDuration(opened: string, closed: string): string {
 // ── Main component ────────────────────────────────────────────────────────────
 export function TradeDrawerContent({
   trade,
+  accountNames,
   onEdit,
   onDelete,
 }: {
   trade: Trade;
+  /** account_id → display name, for the execution cards below. */
+  accountNames?: Map<string, string>;
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
-  const isLive = !trade.date_closed;
+  const primary = getPrimaryExecution(trade);
+  const isLive = !primary || isExecutionOpen(primary);
   const config = pairs.find(p => p.symbol === trade.pair);
-  const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-  const rrColor = trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
-  const pipsColor = trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  // Total P&L is a dollar aggregate — sum across every execution (account
+  // family). The idea's R, for edge purposes, is the primary execution's R.
+  const totalPnl = trade.executions.reduce((s, e) => s + e.blended_pnl, 0);
+  const primaryRr = primary?.blended_rr ?? 0;
+  const pnlColor = totalPnl > 0 ? "var(--lucid-pos)" : totalPnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const rrColor = primaryRr > 0 ? "var(--lucid-pos)" : primaryRr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+  const multiAccount = trade.executions.length > 1;
 
   return (
     <div className="flex flex-col">
@@ -164,29 +219,32 @@ export function TradeDrawerContent({
         </div>
       )}
 
-      {/* Section 1: Outcome */}
+      {/* Section 1: Outcome — the idea's edge outcome (primary execution's R),
+          plus Total P&L, a dollar aggregate across every account it ran in. */}
       <Section first>
         <div className="flex items-start justify-between">
-          {/* P&L */}
+          {/* Total P&L */}
           <div>
-            {isLive ? (
+            {isLive && trade.executions.every((e) => isExecutionOpen(e)) ? (
               <div className="flex items-center gap-2">
                 <span className="pulse-live w-2 h-2 rounded-full" style={{ background: "var(--lucid-accent)", display: "inline-block" }} />
                 <span className="lx-metric-sm" style={{ color: "var(--lucid-accent)" }}>Live</span>
               </div>
             ) : (
-              <span className="lx-metric-sm" style={{ color: pnlColor }}>
-                {formatCurrency(trade.blended_pnl)}
-              </span>
+              <>
+                <span className="lx-metric-sm" style={{ color: pnlColor }}>
+                  {formatCurrency(totalPnl)}
+                </span>
+                <p className="lx-micro" style={{ marginTop: 4 }}>
+                  Total P&L{multiAccount ? ` across ${trade.executions.length} accounts` : ""}
+                </p>
+              </>
             )}
           </div>
 
-          {/* Pips + R:R + pills */}
+          {/* Primary R + pills */}
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <span className="pill lx-value" style={{ color: isLive ? "var(--lucid-ink-3)" : pipsColor, background: "var(--lucid-surface-3)", border: "1px solid var(--lucid-line-2)" }}>
-                {isLive ? "— pips" : `${trade.total_pips > 0 ? "+" : ""}${trade.total_pips} pips`}
-              </span>
               <span
                 className="pill lx-value"
                 style={{
@@ -194,25 +252,17 @@ export function TradeDrawerContent({
                   color: isLive ? "var(--lucid-ink-3)" : rrColor,
                   border: "1px solid var(--lucid-line-2)",
                 }}
+                title="The primary execution's R — the idea's outcome for edge statistics"
               >
-                {isLive ? "—" : `${trade.blended_rr}R`}
+                {isLive ? "—" : `${primaryRr}R`}
               </span>
+              {multiAccount && (
+                <span className="pill lx-value" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line-2)" }}>
+                  {trade.executions.length} accounts
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              <span
-                className="pill"
-                style={{
-                  background: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--lucid-pos-bg)"
-                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--lucid-neg-bg)"
-                    : trade.exit_type === "Manual" ? "var(--lucid-warn-bg)" : "var(--lucid-surface-3)",
-                  color: trade.exit_type === "TP" || trade.exit_type === "Partial+TP" ? "var(--lucid-pos)"
-                    : trade.exit_type === "SL" || trade.exit_type === "Partial+SL" ? "var(--lucid-neg)"
-                    : trade.exit_type === "Manual" ? "var(--lucid-warn)" : "var(--lucid-ink-2)",
-                  border: "1px solid var(--lucid-line)",
-                }}
-              >
-                {trade.exit_type}
-              </span>
               <span
                 className="pill"
                 style={{
@@ -228,7 +278,7 @@ export function TradeDrawerContent({
         </div>
       </Section>
 
-      {/* Section 2: Setup */}
+      {/* Section 2: Setup — the idea, identical across every account */}
       <Section>
         <SectionTitle>Setup</SectionTitle>
         <div className="lx-rows">
@@ -245,20 +295,22 @@ export function TradeDrawerContent({
             </span>
           )}
           {kv("Session", trade.session)}
-          {kv("Risk", `${trade.risk_pct}% ($${(trade.risk_pct / 100 * 10000).toFixed(0)} approx.)`)}
+          {kv("Opened", `${formatDate(trade.date_opened)} · ${formatTime(trade.date_opened)}`)}
         </div>
       </Section>
 
-      {/* Section 3: Execution */}
+      {/* Section 3: Executions — one card per account this idea was taken in */}
       <Section>
-        <SectionTitle>Execution</SectionTitle>
-        <ExecutionLadder trade={trade} />
-        <div className="lx-rows" style={{ marginTop: 16 }}>
-          {kv("Opened", `${formatDate(trade.date_opened)} · ${formatTime(trade.date_opened)}`)}
-          {isLive
-            ? kv("Closed", <span style={{ color: "var(--lucid-pos)" }}>Running</span>)
-            : kv("Closed", `${formatDate(trade.date_closed)} · ${formatTime(trade.date_closed)}`)}
-          {kv("Held", heldDuration(trade.date_opened, trade.date_closed))}
+        <SectionTitle>Executions ({trade.executions.length})</SectionTitle>
+        <div className="flex flex-col gap-3">
+          {trade.executions.map((execution) => (
+            <ExecutionCard
+              key={execution.id}
+              trade={trade}
+              execution={execution}
+              accountName={accountNames?.get(execution.account_id)}
+            />
+          ))}
         </div>
       </Section>
 

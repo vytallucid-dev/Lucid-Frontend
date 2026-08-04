@@ -1,6 +1,8 @@
 "use client";
 
+import { Layers } from "lucide-react";
 import { type Trade, pairs, formatCurrency, formatDate } from "@/lib/demo-data";
+import { getPrimaryExecution, isExecutionOpen, tradeAccountCount } from "@/lib/trade-helpers";
 
 function ModelPill({ model }: { model: string }) {
   const styles: Record<string, { bg: string; color: string; border: string }> = {
@@ -32,9 +34,14 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
       {trades.map((trade, idx) => {
-        const isLive = !trade.date_closed;
+        const primary = getPrimaryExecution(trade);
+        const isLive = !primary || isExecutionOpen(primary);
+        const pips = primary?.total_pips ?? 0;
+        const rr = primary?.blended_rr ?? 0;
+        const pnl = primary?.blended_pnl ?? 0;
+        const accountCount = tradeAccountCount(trade);
         const config = pairs.find(p => p.symbol === trade.pair);
-        const pnlColor = trade.blended_pnl > 0 ? "var(--lucid-pos)" : trade.blended_pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
+        const pnlColor = pnl > 0 ? "var(--lucid-pos)" : pnl < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)";
         const accentColor = isLive ? "var(--lucid-accent)" : trade.conviction === "High" ? "var(--lucid-accent)" : trade.conviction === "Medium" ? "var(--lucid-ink-3)" : "transparent";
 
         return (
@@ -69,6 +76,15 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                 <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   {config && <span>{config.flag_a}{config.flag_b}</span>}
                   {config?.display_name ?? trade.pair}
+                  {accountCount > 1 && (
+                    <span
+                      className="pill"
+                      style={{ background: "var(--lucid-ctx-bg)", color: "var(--lucid-ctx)", border: "1px solid var(--lucid-ctx-bd)", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10 }}
+                      title={`Executed across ${accountCount} accounts`}
+                    >
+                      <Layers size={9} /> {accountCount}
+                    </span>
+                  )}
                 </span>
                 <DirectionPill direction={trade.direction} />
               </div>
@@ -101,22 +117,22 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                   style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: isLive ? "var(--lucid-ink-3)" : (trade.total_pips > 0 ? "var(--lucid-pos)" : trade.total_pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
+                    color: isLive ? "var(--lucid-ink-3)" : (pips > 0 ? "var(--lucid-pos)" : pips < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {isLive ? "—" : (trade.total_pips > 0 ? `+${trade.total_pips}` : trade.total_pips) + " pips"}
+                  {isLive ? "—" : (pips > 0 ? `+${pips}` : pips) + " pips"}
                 </span>
                 <span
                   className="lt-num"
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    color: isLive ? "var(--lucid-ink-3)" : (trade.blended_rr > 0 ? "var(--lucid-pos)" : trade.blended_rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
+                    color: isLive ? "var(--lucid-ink-3)" : (rr > 0 ? "var(--lucid-pos)" : rr < 0 ? "var(--lucid-neg)" : "var(--lucid-ink-2)"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {isLive ? "—" : `${trade.blended_rr}R`}
+                  {isLive ? "—" : `${rr}R`}
                 </span>
               </div>
 
@@ -129,7 +145,7 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
                   </span>
                 ) : (
                   <span className="lt-num" style={{ fontSize: 18, fontWeight: 700, color: pnlColor, fontVariantNumeric: "tabular-nums" }}>
-                    {formatCurrency(trade.blended_pnl)}
+                    {formatCurrency(pnl)}
                   </span>
                 )}
               </div>
@@ -137,22 +153,24 @@ export function JournalGallery({ trades, onCardClick }: { trades: Trade[]; onCar
               {/* Pills row */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <ModelPill model={trade.model} />
-                <span
-                  className="pill"
-                  style={{
-                    background: trade.exit_type === "TP" || trade.exit_type === "Partial+TP"
-                      ? "var(--lucid-pos-bg)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
-                      ? "var(--lucid-neg-bg)" : trade.exit_type === "Manual"
-                      ? "var(--lucid-warn-bg)" : "var(--lucid-surface-3)",
-                    color: trade.exit_type === "TP" || trade.exit_type === "Partial+TP"
-                      ? "var(--lucid-pos)" : trade.exit_type === "SL" || trade.exit_type === "Partial+SL"
-                      ? "var(--lucid-neg)" : trade.exit_type === "Manual"
-                      ? "var(--lucid-warn)" : "var(--lucid-ink-2)",
-                    border: "1px solid var(--lucid-line)",
-                  }}
-                >
-                  {trade.exit_type}
-                </span>
+                {primary && (
+                  <span
+                    className="pill"
+                    style={{
+                      background: primary.exit_type === "TP" || primary.exit_type === "Partial+TP"
+                        ? "var(--lucid-pos-bg)" : primary.exit_type === "SL" || primary.exit_type === "Partial+SL"
+                        ? "var(--lucid-neg-bg)" : primary.exit_type === "Manual"
+                        ? "var(--lucid-warn-bg)" : "var(--lucid-surface-3)",
+                      color: primary.exit_type === "TP" || primary.exit_type === "Partial+TP"
+                        ? "var(--lucid-pos)" : primary.exit_type === "SL" || primary.exit_type === "Partial+SL"
+                        ? "var(--lucid-neg)" : primary.exit_type === "Manual"
+                        ? "var(--lucid-warn)" : "var(--lucid-ink-2)",
+                      border: "1px solid var(--lucid-line)",
+                    }}
+                  >
+                    {primary.exit_type}
+                  </span>
+                )}
                 <span
                   className="pill"
                   style={{

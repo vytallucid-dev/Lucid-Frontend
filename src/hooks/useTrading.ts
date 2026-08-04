@@ -19,7 +19,19 @@ export function useAccounts() {
 }
 
 export function useTrades() {
-  return useQuery({ queryKey: tradingKeys.trades, queryFn: api.getTrades });
+  return useQuery({ queryKey: tradingKeys.trades, queryFn: () => api.getTrades() });
+}
+
+// Account-filtered idea list: ideas with an execution in that account, each
+// idea's `executions` narrowed to that account's fill(s). Distinct query key
+// (not a client-side filter of useTrades()) so the "which account's numbers
+// am I looking at" scoping is explicit and cacheable per account.
+export function useTradesForAccount(accountId: string | undefined) {
+  return useQuery({
+    queryKey: [...tradingKeys.trades, "account", accountId],
+    queryFn: () => api.getTrades(accountId),
+    enabled: !!accountId,
+  });
 }
 
 export function usePlanned() {
@@ -95,6 +107,42 @@ export function useDeleteTrade() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.deleteTrade,
+    onSuccess: () => invalidateTradesAndAccounts(qc),
+  });
+}
+
+// Executions — same dual invalidation as trade mutations: an execution's
+// P&L drives its account's balance, so both the idea list and the accounts
+// list must refresh, exactly as create/update/delete trade already did.
+export function useAddExecution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tradeId, body }: { tradeId: string; body: api.CreateExecutionPayload }) =>
+      api.addExecution(tradeId, body),
+    onSuccess: () => invalidateTradesAndAccounts(qc),
+  });
+}
+export function useUpdateExecution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tradeId, executionId, body }: { tradeId: string; executionId: string; body: api.UpdateExecutionPayload }) =>
+      api.updateExecution(tradeId, executionId, body),
+    onSuccess: () => invalidateTradesAndAccounts(qc),
+  });
+}
+export function useRemoveExecution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tradeId, executionId }: { tradeId: string; executionId: string }) =>
+      api.removeExecution(tradeId, executionId),
+    onSuccess: () => invalidateTradesAndAccounts(qc),
+  });
+}
+export function useSetPrimaryExecution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tradeId, executionId }: { tradeId: string; executionId: string }) =>
+      api.setPrimaryExecution(tradeId, executionId),
     onSuccess: () => invalidateTradesAndAccounts(qc),
   });
 }

@@ -1,5 +1,7 @@
 import type { Trade, Account } from "@/lib/demo-data";
 import { accountTradingPnl, isPropAccount } from "@/lib/demo-data";
+import { getPrimaryExecution } from "@/lib/trade-helpers";
+import * as stats from "@/lib/stats";
 import type { AssetBias } from "@/lib/api/oracle";
 
 // ─── Greeting ────────────────────────────────────────────────────────────────
@@ -20,76 +22,37 @@ export function getGreeting(): string {
 
 export type DateRangePreset = "Last 30d" | "Last 90d" | "All Time";
 
+// Filters ideas by their primary execution's close date (open ideas keep
+// their idea date). This is a dashboard-range convenience filter, not a
+// financial computation — the money curve built from the result still sums
+// every execution of each surviving idea (see buildPnlCurve below), which is
+// correct: P&L is execution-level and every account's fill counts.
 export function applyDateFilter(tradeList: Trade[], preset: DateRangePreset): Trade[] {
   if (preset === "All Time") return tradeList;
   const now = new Date();
   const days = preset === "Last 30d" ? 30 : 90;
   const cutoff = new Date(now.getTime() - days * 86400000);
   return tradeList.filter((t) => {
-    const d = t.date_closed ? new Date(t.date_closed) : new Date(t.date_opened);
+    const primary = getPrimaryExecution(t);
+    const d = primary && primary.date_closed ? new Date(primary.date_closed) : new Date(t.date_opened);
     return d >= cutoff;
   });
 }
 
-export interface CurvePoint {
-  date: string;
-  cumPnl: number;
-  pair: string;
-  pnl: number;
-}
+// Re-exported from lib/stats.ts (the one shared statistics module) with
+// display-formatted dates, so PerformanceBand's chart keeps its existing
+// category-label contract without duplicating the cumulative-sum math here.
+export type CurvePoint = stats.CurvePoint;
+
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 export function buildPnlCurve(filtered: Trade[]): CurvePoint[] {
-  const closed = [...filtered.filter((t) => t.date_closed !== "")].sort(
-    (a, b) => new Date(a.date_closed).getTime() - new Date(b.date_closed).getTime()
-  );
-  const running = filtered.find((t) => t.date_closed === "");
-
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-  const points: CurvePoint[] = [];
-  let cum = 0;
-
-  for (const t of closed) {
-    cum += t.blended_pnl;
-    points.push({ date: fmt(t.date_closed), cumPnl: Math.round(cum * 100) / 100, pair: t.pair, pnl: t.blended_pnl });
-  }
-
-  if (running) {
-    points.push({
-      date: fmt(running.date_opened) + " ·Live",
-      cumPnl: Math.round(cum * 100) / 100,
-      pair: running.pair,
-      pnl: 0,
-    });
-  }
-
-  return points;
+  const points = stats.buildBalanceCurve(filtered);
+  return points.map((p) => ({ ...p, date: p.isLive ? `${fmtDate(p.date)} ·Live` : fmtDate(p.date) }));
 }
 
 export function computeDrawdownWindows(pts: CurvePoint[]): { x1: string; x2: string }[] {
-  const windows: { x1: string; x2: string }[] = [];
-  let peak = -Infinity;
-  let inDD = false;
-  let ddStartIdx = 0;
-
-  for (let i = 0; i < pts.length; i++) {
-    const v = pts[i].cumPnl;
-    if (v > peak) {
-      if (inDD) {
-        windows.push({ x1: pts[ddStartIdx].date, x2: pts[i - 1].date });
-        inDD = false;
-      }
-      peak = v;
-    } else if (v < peak && !inDD) {
-      inDD = true;
-      ddStartIdx = i - 1 >= 0 ? i - 1 : 0;
-    }
-  }
-  if (inDD && pts.length > 0) {
-    windows.push({ x1: pts[ddStartIdx].date, x2: pts[pts.length - 1].date });
-  }
-  return windows;
+  return stats.computeDrawdownWindows(pts).map((w) => ({ x1: pts[w.startIndex].date, x2: pts[w.endIndex].date }));
 }
 
 // ─── Fundamental Bias helpers ─────────────────────────────────────────────────

@@ -85,7 +85,7 @@ function AccountGalleryCard({
   const hasGoal = account.profit_goal_pct != null && account.profit_goal_pct > 0;
   const { drawdownUsed, drawdownLimit, pctUsed } = calcDrawdown(account);
   const { profitAchieved, profitTarget, pct: goalPct } = calcGoalProgress(account);
-  const { winRate, tradeCount } = calcAccountStats(accountTrades);
+  const { winRate, tradeCount } = calcAccountStats(accountTrades, account.id);
   const isPassed = account.status === "Passed";
   const pnl = accountTradingPnl(account);
   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
@@ -200,7 +200,7 @@ function AccountGalleryCard({
         <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
         <span>{daysActive} days</span>
         <span style={{ color: "var(--lucid-ink-3)" }}>·</span>
-        <span>{accountTrades.length} trades</span>
+        <span>{tradeCount} trades</span>
       </div>
     </button>
   );
@@ -591,8 +591,12 @@ export default function AccountsPage() {
   const evaluation = useMemo(() => evaluationCapital(accounts), [accounts]);
   const netPnl = useMemo(() => accounts.reduce((s, a) => s + accountTradingPnl(a), 0), [accounts]);
 
+  // Ideas with an execution in this account, narrowed to that account's
+  // fill(s) — same shape the API's account filter returns.
   function getAccountTrades(accountId: string): Trade[] {
-    return allTrades.filter(t => t.account_id === accountId);
+    return allTrades
+      .filter(t => t.executions.some(e => e.account_id === accountId))
+      .map(t => ({ ...t, executions: t.executions.filter(e => e.account_id === accountId) }));
   }
 
   function handleAddAccount(payload: CreateAccountPayload) {
@@ -777,7 +781,7 @@ export default function AccountsPage() {
                   const prop = isPropAccount(account);
                   const { pctUsed: ddPct } = calcDrawdown(account);
                   const { pct: goalPct } = calcGoalProgress(account);
-                  const { winRate, tradeCount } = calcAccountStats(getAccountTrades(account.id));
+                  const { winRate, tradeCount } = calcAccountStats(getAccountTrades(account.id), account.id);
                   const isPassed = account.status === "Passed";
                   const pnl = accountTradingPnl(account);
                   const pnlPct = account.account_size > 0 ? (pnl / account.account_size) * 100 : 0;
@@ -842,7 +846,7 @@ export default function AccountsPage() {
         {selectedAccount && (
           <AccountDrawerContent
             account={selectedAccount}
-            accountTrades={getAccountTrades(selectedAccount.id)}
+            trades={allTrades}
             onEdit={() => { setEditAccount(selectedAccount); setSelectedAccountId(null); }}
             onDelete={() => setPendingDeleteAccount(selectedAccount)}
           />

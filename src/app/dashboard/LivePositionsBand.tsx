@@ -13,9 +13,17 @@
 // row showed is still here: flags, pair, direction, entry price, the live pulse
 // pill, and the conviction badge.
 
-import { formatDate, type Trade } from "@/lib/demo-data";
+import { formatDate, type Trade, type Execution } from "@/lib/demo-data";
 import type { ApiPair } from "@/lib/api/trading";
 import { useRevealOnScroll } from "./useRevealOnScroll";
+
+/** One open execution, with the idea it belongs to. A card is per-execution
+ * (per-account open risk) now, not per-idea — the same idea running in two
+ * accounts is two cards, since each account carries its own risk/lot/entry. */
+export interface LivePosition {
+  trade: Trade;
+  execution: Execution;
+}
 
 function ConvictionPill({ conviction }: { conviction: string }) {
   if (conviction === "High")
@@ -39,27 +47,32 @@ function ConvictionPill({ conviction }: { conviction: string }) {
 
 /** Where entry sits between stop and target, 0–1. Pure geometry for the track —
  *  the axis is normalised so stop is always the left end, which keeps a sell
- *  reading the same way round as a buy. */
-function entryFraction(t: Trade): number {
-  const span = Math.abs(t.main_tp_price - t.sl_price);
+ *  reading the same way round as a buy. Stop/target are the idea's plan;
+ *  entry is this execution's actual fill, which may sit slightly off-plan. */
+function entryFraction(trade: Trade, execution: Execution): number {
+  const span = Math.abs(trade.planned_main_tp - trade.planned_sl);
   if (!Number.isFinite(span) || span === 0) return 0.3;
-  return Math.max(0, Math.min(1, Math.abs(t.entry_price - t.sl_price) / span));
+  return Math.max(0, Math.min(1, Math.abs(execution.entry_price - trade.planned_sl) / span));
 }
 
 function PositionCard({
   trade,
+  execution,
   pairConf,
+  accountName,
   isNew,
   onClick,
 }: {
   trade: Trade;
+  execution: Execution;
   pairConf: ApiPair | undefined;
+  accountName: string | undefined;
   isNew: boolean;
   onClick: () => void;
 }) {
   const isBuy = trade.direction === "Buy";
   const dir = isBuy ? "var(--lucid-pos)" : "var(--lucid-neg)";
-  const frac = entryFraction(trade);
+  const frac = entryFraction(trade, execution);
 
   return (
     <button
@@ -110,6 +123,7 @@ function PositionCard({
             </div>
             <div className="lx-eyebrow" style={{ marginTop: 5 }}>
               {isBuy ? "↑" : "↓"} {trade.direction} · {trade.model}
+              {accountName ? ` · ${accountName}` : ""}
             </div>
           </div>
         </div>
@@ -126,7 +140,7 @@ function PositionCard({
               color: dir,
             }}
           >
-            {trade.risk_pct}
+            {execution.risk_pct}
             <span style={{ fontSize: 18 }}>%</span>
           </div>
           <div className="lx-eyebrow" style={{ marginTop: 6 }}>
@@ -152,9 +166,9 @@ function PositionCard({
           className="flex justify-between lx-tnum"
           style={{ marginTop: 9, fontFamily: "var(--lucid-font-mono)", fontSize: 11, color: "var(--lucid-ink-2)" }}
         >
-          <span>{trade.sl_price}</span>
-          <span style={{ color: "var(--lucid-ink)" }}>{trade.entry_price}</span>
-          <span>{trade.main_tp_price}</span>
+          <span>{trade.planned_sl}</span>
+          <span style={{ color: "var(--lucid-ink)" }}>{execution.entry_price}</span>
+          <span>{trade.planned_main_tp}</span>
         </div>
       </div>
 
@@ -166,7 +180,7 @@ function PositionCard({
         <div>
           <div className="lx-eyebrow">Lot size</div>
           <div className="lx-value" style={{ marginTop: 7, color: "var(--lucid-ink)" }}>
-            {trade.lot_size}
+            {execution.lot_size}
           </div>
         </div>
         <div>
@@ -187,15 +201,17 @@ function PositionCard({
 }
 
 export function LivePositionsBand({
-  liveTrades,
+  livePositions,
   pairsConfig,
+  accountNames,
   newLiveIds,
   openRiskPct,
   onTradeClick,
   reducedMotion,
 }: {
-  liveTrades: Trade[];
+  livePositions: LivePosition[];
   pairsConfig: ApiPair[];
+  accountNames: Map<string, string>;
   newLiveIds: Set<string>;
   /** Combined risk across the open positions, as a percentage. */
   openRiskPct: number;
@@ -218,23 +234,25 @@ export function LivePositionsBand({
           className="lx-micro lx-tnum shrink-0"
           style={{ letterSpacing: "0.14em", whiteSpace: "nowrap" }}
         >
-          {liveTrades.length} OPEN · {openRiskPct.toFixed(1)}% RISK
+          {livePositions.length} OPEN · {openRiskPct.toFixed(1)}% RISK
         </span>
       </div>
 
-      {liveTrades.length === 0 ? (
+      {livePositions.length === 0 ? (
         <div className="lx-card">
           <p className="lx-body">No live trades running.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {liveTrades.map((t) => (
+          {livePositions.map(({ trade, execution }) => (
             <PositionCard
-              key={t.id}
-              trade={t}
-              pairConf={pairsConfig.find((p) => p.symbol === t.pair)}
-              isNew={newLiveIds.has(t.id)}
-              onClick={() => onTradeClick(t)}
+              key={execution.id}
+              trade={trade}
+              execution={execution}
+              pairConf={pairsConfig.find((p) => p.symbol === trade.pair)}
+              accountName={accountNames.get(execution.account_id)}
+              isNew={newLiveIds.has(execution.id)}
+              onClick={() => onTradeClick(trade)}
             />
           ))}
         </div>

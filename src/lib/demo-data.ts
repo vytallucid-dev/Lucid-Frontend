@@ -18,28 +18,41 @@ export type ModelName = string;
 export type Pair = string;
 export type PlannedStatus = 'Watching' | 'Ready' | 'Invalidated' | 'Cancelled';
 
-export interface Trade {
+// Execution = the fill, per account: its own account, risk %, lot size,
+// actual entry, exit, P&L and R. A Trade (the idea) always has at least one.
+export interface Execution {
   id: string;
+  trade_id: string;
   account_id: string;
-  model: ModelName;
-  pair: Pair;
-  direction: Direction;
-  entry_price: number;
-  sl_price: number;
-  first_tp_price: number | null;
-  main_tp_price: number;
+  is_primary: boolean; // the idea's outcome, for edge statistics, is THIS execution's outcome
+  risk_pct: number;
+  lot_size: number;
+  entry_price: number; // the actual fill — may differ from the idea's planned_entry
   partial_exit_price: number | null;
   partial_exit_lot_pct: number | null;
   main_exit_price: number;
-  lot_size: number;
   total_pips: number;
-  risk_pct: number;
-  conviction: Conviction;
   blended_pnl: number;
   blended_rr: number;
   exit_type: ExitType;
+  date_closed: string; // ISO, or "" if this execution is still open
+}
+
+// Trade = the idea: one setup, one pair, one direction, one entry rationale.
+// This is the unit every edge statistic counts. Execution-specific fields —
+// account, risk %, lot size, actual prices, exit, P&L, R — live on
+// `executions`, one per account the idea was taken in.
+export interface Trade {
+  id: string;
+  model: ModelName;
+  pair: Pair;
+  direction: Direction;
+  planned_entry: number;
+  planned_sl: number;
+  planned_first_tp: number | null;
+  planned_main_tp: number;
+  conviction: Conviction;
   date_opened: string; // ISO
-  date_closed: string; // ISO
   session: Session;
   fundamental_score: number | null; // 1-10, null if not logged
   screenshots: string[]; // URL placeholders
@@ -48,6 +61,7 @@ export interface Trade {
   // Phase 3 placeholder fields
   pre_trade_memory: PreTradeMemory | null;
   debrief_memory: DebriefMemory | null;
+  executions: Execution[];
 }
 
 export interface PreTradeMemory {
@@ -283,326 +297,10 @@ export const pairs: PairConfig[] = [
   { symbol: 'XAUUSD', display_name: 'Gold', flag_a: '🥇', flag_b: '🇺🇸', pip_value: 1, status: 'Active' },
 ];
 
-export const trades: Trade[] = [
-  // Trade 21 — current EURUSD short, running (most recent)
-  {
-    id: 'trd_21',
-    account_id: 'acc_1',
-    model: 'Short',
-    pair: 'EURUSD',
-    direction: 'Sell',
-    entry_price: 1.0865,
-    sl_price: 1.0905,
-    first_tp_price: 1.0825,
-    main_tp_price: 1.0780,
-    partial_exit_price: null,
-    partial_exit_lot_pct: null,
-    main_exit_price: 0,
-    lot_size: 0.45,
-    total_pips: 0,
-    risk_pct: 1.0,
-    conviction: 'High',
-    blended_pnl: 0,
-    blended_rr: 0,
-    exit_type: 'TP',
-    date_opened: '2026-04-28T14:15:00Z',
-    date_closed: '',
-    session: 'London',
-    fundamental_score: 7,
-    screenshots: ['/demo/charts/trd21-entry.png'],
-    psychology: 'Patient',
-    notes: 'EMA rejection clean. Breakdown candle close confirmed.',
-    pre_trade_memory: {
-      setup_description: 'EURUSD at major resistance 1.0900. Shoot into level on Friday. EMA acting as ceiling.',
-      fundamental_bias_at_entry: 'USD bullish — strong NFP, hawkish Fed talk. EUR weak — PMI miss.',
-      lucid_analysis: '[Phase 3 placeholder — Lucid pre-trade analysis will appear here]',
-      agreements: ['Fundamental bias supports short', 'Setup matches Short model template'],
-      disagreements: [],
-      decision_reasoning: 'Aligned setup + fundamentals. Conviction High. Sized 1% risk.',
-    },
-    debrief_memory: null,
-  },
-  // Trade 20 — EURUSD short winner
-  {
-    id: 'trd_20',
-    account_id: 'acc_1',
-    model: 'Short',
-    pair: 'EURUSD',
-    direction: 'Sell',
-    entry_price: 1.0920,
-    sl_price: 1.0960,
-    first_tp_price: 1.0880,
-    main_tp_price: 1.0820,
-    partial_exit_price: 1.0880,
-    partial_exit_lot_pct: 25,
-    main_exit_price: 1.0820,
-    lot_size: 0.40,
-    total_pips: 95,
-    risk_pct: 1.0,
-    conviction: 'High',
-    blended_pnl: 284,
-    blended_rr: 2.85,
-    exit_type: 'Partial+TP',
-    date_opened: '2026-04-15T13:45:00Z',
-    date_closed: '2026-04-22T18:30:00Z',
-    session: 'London',
-    fundamental_score: 8,
-    screenshots: ['/demo/charts/trd20-entry.png', '/demo/charts/trd20-exit.png'],
-    psychology: 'Confident',
-    notes: 'Template trade for Short model. Clean execution.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 19 — Gold winner
-  {
-    id: 'trd_19',
-    account_id: 'acc_1',
-    model: '4HPullBack',
-    pair: 'XAUUSD',
-    direction: 'Buy',
-    entry_price: 2310,
-    sl_price: 2295,
-    first_tp_price: 2330,
-    main_tp_price: 2360,
-    partial_exit_price: 2330,
-    partial_exit_lot_pct: 30,
-    main_exit_price: 2358,
-    lot_size: 0.15,
-    total_pips: 144,
-    risk_pct: 1.2,
-    conviction: 'High',
-    blended_pnl: 312,
-    blended_rr: 3.21,
-    exit_type: 'Partial+TP',
-    date_opened: '2026-04-02T08:30:00Z',
-    date_closed: '2026-04-09T16:45:00Z',
-    session: 'Asian',
-    fundamental_score: 9,
-    screenshots: ['/demo/charts/trd19-entry.png'],
-    psychology: 'Calm',
-    notes: 'Daily 0.618 fib + EMA confluence. Multiple touches confirmed base.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 18 — Gold loser (Iran war wipeout)
-  {
-    id: 'trd_18',
-    account_id: 'acc_1',
-    model: '4HPullBack',
-    pair: 'XAUUSD',
-    direction: 'Buy',
-    entry_price: 2285,
-    sl_price: 2270,
-    first_tp_price: 2305,
-    main_tp_price: 2330,
-    partial_exit_price: null,
-    partial_exit_lot_pct: null,
-    main_exit_price: 2270,
-    lot_size: 0.12,
-    total_pips: -150,
-    risk_pct: 1.0,
-    conviction: 'Medium',
-    blended_pnl: -100,
-    blended_rr: -1.0,
-    exit_type: 'SL',
-    date_opened: '2026-03-25T10:00:00Z',
-    date_closed: '2026-03-26T22:30:00Z',
-    session: 'Asian',
-    fundamental_score: 6,
-    screenshots: [],
-    psychology: 'Frustrated',
-    notes: 'Iran headline gap. Floating profit hit 3% then reversed — should have moved SL to BE. Rule established.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 17 — EURUSD winner
-  {
-    id: 'trd_17',
-    account_id: 'acc_1',
-    model: '4HPullBack',
-    pair: 'EURUSD',
-    direction: 'Buy',
-    entry_price: 1.0780,
-    sl_price: 1.0750,
-    first_tp_price: 1.0810,
-    main_tp_price: 1.0850,
-    partial_exit_price: 1.0810,
-    partial_exit_lot_pct: 25,
-    main_exit_price: 1.0850,
-    lot_size: 0.50,
-    total_pips: 65,
-    risk_pct: 1.5,
-    conviction: 'High',
-    blended_pnl: 245,
-    blended_rr: 2.33,
-    exit_type: 'Partial+TP',
-    date_opened: '2026-03-12T14:00:00Z',
-    date_closed: '2026-03-19T17:00:00Z',
-    session: 'London',
-    fundamental_score: 8,
-    screenshots: [],
-    psychology: 'Patient',
-    notes: 'Textbook 4HPullBack. EMA stack supportive.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 16 — GBPUSD breakout loser
-  {
-    id: 'trd_16',
-    account_id: 'acc_1',
-    model: 'Breakout',
-    pair: 'GBPUSD',
-    direction: 'Buy',
-    entry_price: 1.2650,
-    sl_price: 1.2620,
-    first_tp_price: 1.2680,
-    main_tp_price: 1.2720,
-    partial_exit_price: null,
-    partial_exit_lot_pct: null,
-    main_exit_price: 1.2620,
-    lot_size: 0.35,
-    total_pips: -30,
-    risk_pct: 1.0,
-    conviction: 'Medium',
-    blended_pnl: -105,
-    blended_rr: -1.0,
-    exit_type: 'SL',
-    date_opened: '2026-03-05T15:30:00Z',
-    date_closed: '2026-03-06T11:15:00Z',
-    session: 'London-NY Overlap',
-    fundamental_score: 5,
-    screenshots: [],
-    psychology: 'Eager',
-    notes: 'EURUSD did not confirm. Rule violation — added correlation filter after this.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 15 — USDJPY short failed
-  {
-    id: 'trd_15',
-    account_id: 'acc_1',
-    model: 'Short',
-    pair: 'USDJPY',
-    direction: 'Sell',
-    entry_price: 152.40,
-    sl_price: 152.80,
-    first_tp_price: 152.00,
-    main_tp_price: 151.40,
-    partial_exit_price: null,
-    partial_exit_lot_pct: null,
-    main_exit_price: 152.80,
-    lot_size: 0.20,
-    total_pips: -40,
-    risk_pct: 0.8,
-    conviction: 'Low',
-    blended_pnl: -80,
-    blended_rr: -1.0,
-    exit_type: 'SL',
-    date_opened: '2026-02-22T16:00:00Z',
-    date_closed: '2026-02-24T05:30:00Z',
-    session: 'London-NY Overlap',
-    fundamental_score: 4,
-    screenshots: [],
-    psychology: 'Impulsive',
-    notes: 'Entered before EMA rejection complete. Template failure for Short model — informed model rules.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 14 — EURJPY winner
-  {
-    id: 'trd_14',
-    account_id: 'acc_1',
-    model: '4HPullBack',
-    pair: 'EURJPY',
-    direction: 'Buy',
-    entry_price: 164.50,
-    sl_price: 163.80,
-    first_tp_price: 165.30,
-    main_tp_price: 166.50,
-    partial_exit_price: 165.30,
-    partial_exit_lot_pct: 30,
-    main_exit_price: 166.40,
-    lot_size: 0.20,
-    total_pips: 175,
-    risk_pct: 1.0,
-    conviction: 'High',
-    blended_pnl: 130,
-    blended_rr: 2.71,
-    exit_type: 'Partial+TP',
-    date_opened: '2026-02-10T13:00:00Z',
-    date_closed: '2026-02-17T16:30:00Z',
-    session: 'London',
-    fundamental_score: 7,
-    screenshots: [],
-    psychology: 'Confident',
-    notes: 'Clean pullback structure. Held full 7 days.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 13 — USDJPY breakeven
-  {
-    id: 'trd_13',
-    account_id: 'acc_1',
-    model: 'Breakout',
-    pair: 'USDJPY',
-    direction: 'Buy',
-    entry_price: 151.50,
-    sl_price: 151.20,
-    first_tp_price: 151.80,
-    main_tp_price: 152.20,
-    partial_exit_price: null,
-    partial_exit_lot_pct: null,
-    main_exit_price: 151.50,
-    lot_size: 0.25,
-    total_pips: 0,
-    risk_pct: 0.7,
-    conviction: 'Medium',
-    blended_pnl: 0,
-    blended_rr: 0,
-    exit_type: 'BE',
-    date_opened: '2026-01-30T15:00:00Z',
-    date_closed: '2026-02-02T10:00:00Z',
-    session: 'London-NY Overlap',
-    fundamental_score: 5,
-    screenshots: [],
-    psychology: 'Neutral',
-    notes: 'Moved SL to BE after partial profit. Stopped out at BE — system working.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-  // Trade 12 — Gold winner
-  {
-    id: 'trd_12',
-    account_id: 'acc_1',
-    model: '4HPullBack',
-    pair: 'XAUUSD',
-    direction: 'Buy',
-    entry_price: 2265,
-    sl_price: 2250,
-    first_tp_price: 2285,
-    main_tp_price: 2310,
-    partial_exit_price: 2285,
-    partial_exit_lot_pct: 30,
-    main_exit_price: 2308,
-    lot_size: 0.10,
-    total_pips: 134,
-    risk_pct: 0.9,
-    conviction: 'High',
-    blended_pnl: 139,
-    blended_rr: 2.86,
-    exit_type: 'Partial+TP',
-    date_opened: '2026-01-22T09:30:00Z',
-    date_closed: '2026-01-29T15:00:00Z',
-    session: 'Asian',
-    fundamental_score: 8,
-    screenshots: [],
-    psychology: 'Patient',
-    notes: 'High conviction trade. Sized up appropriately.',
-    pre_trade_memory: null,
-    debrief_memory: null,
-  },
-];
-
+// Dead fixture data (unused — no consumer imports this array; all
+// pages read live Trade[] via useTrades()). Removed rather than
+// hand-migrated to the new nested Trade+Execution shape for content
+// nobody calls.
 export const plannedTrades: PlannedTrade[] = [
   {
     id: 'plt_1',
@@ -658,10 +356,6 @@ export const plannedTrades: PlannedTrade[] = [
 ];
 
 // === HELPER FUNCTIONS ===
-
-export function calculatePnLPercent(trade: Trade, account: Account): number {
-  return (trade.blended_pnl / account.account_size) * 100;
-}
 
 export function getAccountById(id: string): Account | undefined {
   return accounts.find(a => a.id === id);

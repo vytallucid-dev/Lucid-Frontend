@@ -2,6 +2,7 @@ import { apiFetch } from "./client";
 import type {
   Account,
   Trade,
+  Execution,
   PlannedTrade,
   Model,
   PairConfig,
@@ -50,34 +51,46 @@ export interface CashFlowPayload {
   note?: string | null;
 }
 
-export interface CreateTradePayload {
+// One account's fill within a CreateTradePayload's `executions` array.
+export interface CreateExecutionPayload {
   account_id: string;
-  model: string;
-  pair: string;
-  direction: Direction;
-  entry_price: number;
-  sl_price: number;
-  first_tp_price?: number | null;
-  main_tp_price: number;
-  lot_size: number;
+  is_primary?: boolean;
   risk_pct: number;
-  conviction: Conviction;
-  fundamental_score?: number | null;
-  psychology?: string | null;
-  notes?: string | null;
-  screenshots?: string[];
-  date_opened?: string;
+  lot_size: number;
+  entry_price: number;
   is_closed?: boolean;
   partial_exit_price?: number | null;
   partial_exit_lot_pct?: number | null;
   main_exit_price?: number | null;
   date_closed?: string | null;
   exit_type?: ExitType;
-  // User-entered realized net P&L for a closed trade. Stored verbatim (no
-  // recompute); the sign decides the trade's outcome everywhere.
+  // User-entered realized net P&L for a closed execution. Stored verbatim (no
+  // recompute); the sign decides this execution's outcome everywhere.
   net_pnl?: number | null;
 }
-export type UpdateTradePayload = Partial<CreateTradePayload>;
+export type UpdateExecutionPayload = Partial<CreateExecutionPayload>;
+
+// Trade = the idea. Created with one or more executions inline; executions on
+// an existing trade are then added/updated/removed/re-primaried individually.
+export interface CreateTradePayload {
+  model: string;
+  pair: string;
+  direction: Direction;
+  planned_entry: number;
+  planned_sl: number;
+  planned_first_tp?: number | null;
+  planned_main_tp: number;
+  conviction: Conviction;
+  fundamental_score?: number | null;
+  psychology?: string | null;
+  notes?: string | null;
+  screenshots?: string[];
+  date_opened?: string;
+  executions: CreateExecutionPayload[];
+}
+// Idea-level fields only — executions are managed via the /executions
+// endpoints below, not folded into a trade PATCH.
+export type UpdateTradePayload = Partial<Omit<CreateTradePayload, "executions">>;
 
 export interface CreatePlannedPayload {
   pair: string;
@@ -137,10 +150,16 @@ export async function addCashFlow(id: string, body: CashFlowPayload): Promise<Ac
   return (await apiFetch<Envelope<Account>>(`/api/trading/accounts/${id}/cash-flows`, { method: "POST", ...jsonBody(body) })).data;
 }
 
-// ─── Trades ───────────────────────────────────────────────────────────────────
+// ─── Trades (ideas) ─────────────────────────────────────────────────────────
 
-export async function getTrades(): Promise<Trade[]> {
-  return (await apiFetch<Envelope<Trade[]>>("/api/trading/trades")).data;
+// account_id: ideas with an execution in that account, each idea's
+// `executions` filtered down to that account's fill(s) only.
+export async function getTrades(accountId?: string): Promise<Trade[]> {
+  const qs = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+  return (await apiFetch<Envelope<Trade[]>>(`/api/trading/trades${qs}`)).data;
+}
+export async function getTrade(id: string): Promise<Trade> {
+  return (await apiFetch<Envelope<Trade>>(`/api/trading/trades/${id}`)).data;
 }
 export async function createTrade(body: CreateTradePayload): Promise<Trade> {
   return (await apiFetch<Envelope<Trade>>("/api/trading/trades", { method: "POST", ...jsonBody(body) })).data;
@@ -150,6 +169,21 @@ export async function updateTrade(id: string, body: UpdateTradePayload): Promise
 }
 export async function deleteTrade(id: string): Promise<void> {
   await apiFetch(`/api/trading/trades/${id}`, { method: "DELETE" });
+}
+
+// ─── Executions (fills, per account) ───────────────────────────────────────
+
+export async function addExecution(tradeId: string, body: CreateExecutionPayload): Promise<Trade> {
+  return (await apiFetch<Envelope<Trade>>(`/api/trading/trades/${tradeId}/executions`, { method: "POST", ...jsonBody(body) })).data;
+}
+export async function updateExecution(tradeId: string, executionId: string, body: UpdateExecutionPayload): Promise<Trade> {
+  return (await apiFetch<Envelope<Trade>>(`/api/trading/trades/${tradeId}/executions/${executionId}`, { method: "PATCH", ...jsonBody(body) })).data;
+}
+export async function removeExecution(tradeId: string, executionId: string): Promise<Trade> {
+  return (await apiFetch<Envelope<Trade>>(`/api/trading/trades/${tradeId}/executions/${executionId}`, { method: "DELETE" })).data;
+}
+export async function setPrimaryExecution(tradeId: string, executionId: string): Promise<Trade> {
+  return (await apiFetch<Envelope<Trade>>(`/api/trading/trades/${tradeId}/executions/${executionId}/primary`, { method: "POST" })).data;
 }
 
 // ─── Planned trades ───────────────────────────────────────────────────────────

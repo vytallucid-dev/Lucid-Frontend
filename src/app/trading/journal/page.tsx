@@ -6,6 +6,7 @@ import {
   formatCurrency,
   type Trade,
 } from "@/lib/demo-data";
+import { edgeOutcome } from "@/lib/stats";
 import { useTrades, useAccounts, useTradingModels, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { AnimatedNumber } from "@/components/motion";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -26,18 +27,16 @@ interface ActiveFilter {
   value: string;
 }
 
-function getOutcome(trade: Trade): "Win" | "Loss" | "BE" | "Live" {
-  if (!trade.date_closed) return "Live";
-  // Outcome is decided by the manual net P&L (blended_pnl), the single source of
-  // truth, matching analytics/accounts/dashboard — NOT the display R (blended_rr).
-  if (trade.blended_pnl > 0) return "Win";
-  if (trade.blended_pnl < 0) return "Loss";
-  return "BE";
-}
+// Outcome is decided by the primary execution's manual net P&L (blended_pnl)
+// — the idea's outcome for edge purposes everywhere in the app.
+const getOutcome = edgeOutcome;
 
 function calcSummary(tradeList: Trade[]) {
-  const closed = tradeList.filter(t => t.date_closed);
-  const net = closed.reduce((sum, t) => sum + t.blended_pnl, 0);
+  // count = ideas (rows), not executions — logging one idea to two accounts
+  // must not inflate this. net = $ sum across every embedded execution
+  // (all accounts when unfiltered, just the filtered account's when not —
+  // see the account filter below), a legitimate dollar/account-family total.
+  const net = tradeList.reduce((sum, t) => sum + t.executions.reduce((s, e) => s + (e.date_closed ? e.blended_pnl : 0), 0), 0);
   return { count: tradeList.length, net };
 }
 
@@ -134,6 +133,7 @@ export default function JournalPage() {
   }
 
   const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const accountNames = useMemo(() => new Map(accounts.map(a => [a.id, a.account_name])), [accounts]);
 
   const filterOptions = useMemo<Record<FilterCategory, string[]>>(() => ({
     Pair: (pairsQuery.data ?? []).map(p => p.symbol),
@@ -151,7 +151,14 @@ export default function JournalPage() {
 
   const filteredTrades = useMemo(() => {
     let list = sortedTrades;
-    if (selectedAccount !== "all") list = list.filter(t => t.account_id === selectedAccount);
+    // "Show account X" = ideas with an execution in X, and that idea's
+    // `executions` narrowed to X's fill(s) only — so every downstream reader
+    // (table, gallery, summary, drawer) shows X's numbers, not the primary's.
+    if (selectedAccount !== "all") {
+      list = list
+        .filter(t => t.executions.some(e => e.account_id === selectedAccount))
+        .map(t => ({ ...t, executions: t.executions.filter(e => e.account_id === selectedAccount) }));
+    }
     if (activeFilters.length === 0) return list;
     const byCategory = activeFilters.reduce<Record<string, string[]>>((acc, f) => {
       if (!acc[f.category]) acc[f.category] = [];
@@ -237,6 +244,11 @@ export default function JournalPage() {
             <option value="all">All Accounts</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
           </select>
+          {selectedAccount !== "all" && (
+            <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
+              Showing {accounts.find(a => a.id === selectedAccount)?.account_name ?? "this account"}&apos;s executions, not the idea&apos;s primary
+            </span>
+          )}
         </div>
 
         {/* Middle: filters */}
@@ -328,7 +340,16 @@ export default function JournalPage() {
         {selectedTrade && (
           <TradeDrawerContent
             trade={selectedTrade}
-            onEdit={() => { setEditTrade(selectedTrade); setSelectedTrade(null); }}
+            accountNames={accountNames}
+            onEdit={() => {
+              // Always edit the FULL idea (every account's execution), even
+              // when the account filter narrowed what the drawer displays —
+              // editing a filtered view must never look like removing every
+              // other account's execution.
+              const full = sortedTrades.find(t => t.id === selectedTrade.id) ?? selectedTrade;
+              setEditTrade(full);
+              setSelectedTrade(null);
+            }}
             onDelete={() => setPendingDelete(selectedTrade)}
           />
         )}

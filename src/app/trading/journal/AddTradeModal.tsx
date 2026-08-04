@@ -2,10 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Loader2, Sparkles } from "lucide-react";
+import { X, Loader2, Sparkles, Plus, Trash2, Star } from "lucide-react";
 import { accountTypeLabel, type Direction, type Conviction, type ExitType, type Trade } from "@/lib/demo-data";
-import { useAccounts, useTradingModels, useTradingPairs, useCreateTrade, useUpdateTrade } from "@/hooks/useTrading";
-import type { CreateTradePayload } from "@/lib/api/trading";
+import {
+  useAccounts,
+  useTradingModels,
+  useTradingPairs,
+  useCreateTrade,
+  useUpdateTrade,
+  useAddExecution,
+  useUpdateExecution,
+  useRemoveExecution,
+} from "@/hooks/useTrading";
+import type { CreateTradePayload, CreateExecutionPayload, UpdateExecutionPayload } from "@/lib/api/trading";
 import { getFxPair, getScorecardAsset, type ScorecardAssetKey } from "@/lib/api/oracle";
 import { toast } from "@/components/toast";
 import { ScreenshotUploader } from "@/components/ScreenshotUploader";
@@ -41,15 +50,16 @@ function toLocalDatetimeInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Optional pre-fill, e.g. when converting a planned trade into a live one. */
+/** Optional pre-fill, e.g. when converting a planned trade into a live one.
+ * risk_pct seeds the first account row's risk % (risk is execution-level now). */
 export interface AddTradePrefill {
   pair?: string;
   model?: string;
   direction?: Direction;
-  entry_price?: number;
-  sl_price?: number;
-  first_tp_price?: number | null;
-  main_tp_price?: number;
+  planned_entry?: number;
+  planned_sl?: number;
+  planned_first_tp?: number | null;
+  planned_main_tp?: number;
   risk_pct?: number;
   conviction?: Conviction;
 }
@@ -73,7 +83,7 @@ function FieldGroup({ label, children, full }: { label: string; children: React.
   );
 }
 
-function GroupHeader({ children }: { children: React.ReactNode }) {
+function GroupHeader({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <h3
       style={{
@@ -85,9 +95,13 @@ function GroupHeader({ children }: { children: React.ReactNode }) {
         paddingBottom: 8,
         borderBottom: "1px solid var(--lucid-line)",
         marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
       }}
     >
-      {children}
+      <span>{children}</span>
+      {action}
     </h3>
   );
 }
@@ -131,12 +145,61 @@ function SegmentedControl<T extends string>({
   );
 }
 
+// One account's fill, as edited in the form. `executionId` is set only when
+// this row mirrors an existing Execution (edit mode) — its presence is what
+// tells submit() whether to PATCH or POST.
+interface ExecutionRow {
+  key: string;
+  executionId?: string;
+  accountId: string;
+  isPrimary: boolean;
+  riskPct: string;
+  lotSize: string;
+  entryPrice: string;
+  isClosed: boolean;
+  partialExit: string;
+  partialPct: string;
+  mainExit: string;
+  mainExitAuto: boolean;
+  dateClosed: string;
+  exitType: ExitType;
+  netPnl: string;
+}
+
+let rowKeySeq = 0;
+function newRowKey() {
+  rowKeySeq += 1;
+  return `new-${rowKeySeq}`;
+}
+
+function blankRow(accountId: string, isPrimary: boolean, riskPct?: number): ExecutionRow {
+  return {
+    key: newRowKey(),
+    accountId,
+    isPrimary,
+    riskPct: riskPct != null ? String(riskPct) : "",
+    lotSize: "",
+    entryPrice: "",
+    isClosed: false,
+    partialExit: "",
+    partialPct: "",
+    mainExit: "",
+    mainExitAuto: true,
+    dateClosed: "",
+    exitType: "TP",
+    netPnl: "",
+  };
+}
+
 export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }: AddTradeModalProps) {
   const accountsQuery = useAccounts();
   const modelsQuery = useTradingModels();
   const pairsQuery = useTradingPairs();
   const createTrade = useCreateTrade();
   const updateTrade = useUpdateTrade();
+  const addExecution = useAddExecution();
+  const updateExecution = useUpdateExecution();
+  const removeExecution = useRemoveExecution();
 
   const isEdit = !!editTrade;
 
@@ -144,16 +207,14 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
   const modelList = modelsQuery.data ?? [];
   const pairList = pairsQuery.data ?? [];
 
+  // Idea fields
   const [pair, setPair] = useState("");
   const [model, setModel] = useState("");
   const [direction, setDirection] = useState<Direction>("Buy");
-  const [account, setAccount] = useState("");
-  const [entryPrice, setEntryPrice] = useState("");
-  const [sl, setSl] = useState("");
-  const [firstTp, setFirstTp] = useState("");
-  const [mainTp, setMainTp] = useState("");
-  const [lotSize, setLotSize] = useState("");
-  const [riskPct, setRiskPct] = useState("");
+  const [plannedEntry, setPlannedEntry] = useState("");
+  const [plannedSl, setPlannedSl] = useState("");
+  const [plannedFirstTp, setPlannedFirstTp] = useState("");
+  const [plannedMainTp, setPlannedMainTp] = useState("");
   const [conviction, setConviction] = useState<Conviction>("Medium");
   const [fundScore, setFundScore] = useState("");
   // Whether the Lucid score should still auto-fill from the Oracle. Set false once
@@ -163,18 +224,11 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
   const [notes, setNotes] = useState("");
   const [dateOpened, setDateOpened] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
-  const [isClosed, setIsClosed] = useState(false);
-  const [partialExit, setPartialExit] = useState("");
-  const [partialPct, setPartialPct] = useState("");
-  const [mainExit, setMainExit] = useState("");
-  // Whether the exit price should still auto-fill from the trade's stored TP/SL
-  // when the exit type changes. Set false once the user types an exit price.
-  const [mainExitAuto, setMainExitAuto] = useState(true);
-  const [dateClosed, setDateClosed] = useState("");
-  const [exitType, setExitType] = useState<ExitType>("TP");
-  // Manual, user-entered realized net P&L (+profit / −loss / 0 = break-even).
-  // Stored verbatim as the trade result — never auto-calculated from prices.
-  const [netPnl, setNetPnl] = useState("");
+
+  // Execution rows — one per account
+  const [rows, setRows] = useState<ExecutionRow[]>([]);
+  const [removedExecutionIds, setRemovedExecutionIds] = useState<string[]>([]);
+
   const [error, setError] = useState<string | null>(null);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -197,14 +251,11 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     const e = editTrade;
     setPair(e?.pair ?? prefill?.pair ?? "");
     setModel(e?.model ?? prefill?.model ?? "");
-    setAccount(e?.account_id ?? "");
     setDirection(e?.direction ?? prefill?.direction ?? "Buy");
-    setEntryPrice(e ? String(e.entry_price) : prefill?.entry_price != null ? String(prefill.entry_price) : "");
-    setSl(e ? String(e.sl_price) : prefill?.sl_price != null ? String(prefill.sl_price) : "");
-    setFirstTp(e?.first_tp_price != null ? String(e.first_tp_price) : prefill?.first_tp_price != null ? String(prefill.first_tp_price) : "");
-    setMainTp(e ? String(e.main_tp_price) : prefill?.main_tp_price != null ? String(prefill.main_tp_price) : "");
-    setLotSize(e ? String(e.lot_size) : "");
-    setRiskPct(e ? String(e.risk_pct) : prefill?.risk_pct != null ? String(prefill.risk_pct) : "");
+    setPlannedEntry(e ? String(e.planned_entry) : prefill?.planned_entry != null ? String(prefill.planned_entry) : "");
+    setPlannedSl(e ? String(e.planned_sl) : prefill?.planned_sl != null ? String(prefill.planned_sl) : "");
+    setPlannedFirstTp(e?.planned_first_tp != null ? String(e.planned_first_tp) : prefill?.planned_first_tp != null ? String(prefill.planned_first_tp) : "");
+    setPlannedMainTp(e ? String(e.planned_main_tp) : prefill?.planned_main_tp != null ? String(prefill.planned_main_tp) : "");
     setConviction(e?.conviction ?? prefill?.conviction ?? "Medium");
     setFundScore(e?.fundamental_score != null ? String(e.fundamental_score) : "");
     setLucidAuto(!e); // in edit mode keep the saved score; in create mode auto-fill
@@ -212,18 +263,32 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     setNotes(e?.notes ?? "");
     setDateOpened(toLocalDatetimeInput(e?.date_opened ? new Date(e.date_opened) : new Date()));
     setScreenshots(e?.screenshots ?? []);
-    const closed = !!e?.date_closed;
-    setIsClosed(closed);
-    setPartialExit(e?.partial_exit_price != null ? String(e.partial_exit_price) : "");
-    setPartialPct(e?.partial_exit_lot_pct != null ? String(e.partial_exit_lot_pct) : "");
-    setMainExit(closed && e?.main_exit_price ? String(e.main_exit_price) : "");
-    // Edit mode keeps the saved exit price; create mode auto-fills from TP/SL.
-    setMainExitAuto(!e);
-    setDateClosed(closed && e?.date_closed ? toLocalDatetimeInput(new Date(e.date_closed)) : "");
-    setExitType(e?.exit_type ?? "TP");
-    // Seed the manual net P&L from the stored result on a closed trade.
-    setNetPnl(closed && e?.blended_pnl != null ? String(e.blended_pnl) : "");
     setError(null);
+    setRemovedExecutionIds([]);
+
+    if (e) {
+      setRows(
+        e.executions.map((ex) => ({
+          key: ex.id,
+          executionId: ex.id,
+          accountId: ex.account_id,
+          isPrimary: ex.is_primary,
+          riskPct: String(ex.risk_pct),
+          lotSize: String(ex.lot_size),
+          entryPrice: String(ex.entry_price),
+          isClosed: !!ex.date_closed,
+          partialExit: ex.partial_exit_price != null ? String(ex.partial_exit_price) : "",
+          partialPct: ex.partial_exit_lot_pct != null ? String(ex.partial_exit_lot_pct) : "",
+          mainExit: ex.date_closed && ex.main_exit_price ? String(ex.main_exit_price) : "",
+          mainExitAuto: false,
+          dateClosed: ex.date_closed ? toLocalDatetimeInput(new Date(ex.date_closed)) : "",
+          exitType: ex.exit_type,
+          netPnl: ex.date_closed && ex.blended_pnl != null ? String(ex.blended_pnl) : "",
+        })),
+      );
+    } else {
+      setRows([blankRow("", true, prefill?.risk_pct)]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -233,7 +298,9 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     if (!open || isEdit) return;
     if (!pair && pairList.length) setPair(prefill?.pair ?? pairList[0].symbol);
     if (!model && modelList.length) setModel(prefill?.model ?? modelList[0].name);
-    if (!account && accountList.length) setAccount(accountList[0].id);
+    if (accountList.length) {
+      setRows((rs) => (rs.length === 1 && !rs[0].accountId ? [{ ...rs[0], accountId: accountList[0].id }] : rs));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pairList, modelList, accountList]);
 
@@ -252,81 +319,140 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pair]);
 
-  // Auto-fill the exit price from the trade's stored TP/SL when closing: exit
-  // type TP → Main TP, SL → Stop Loss. Convenience prefill only — editable, and
-  // never clobbers a hand-typed exit (mainExitAuto flips false once the user
-  // types). Blank when there's no stored price. Other exit types are left alone.
+  // Auto-fill each row's exit price from the idea's planned TP/SL when that
+  // row is closed: exit type TP → Main TP, SL → Stop Loss. Convenience
+  // prefill only — editable, and never clobbers a hand-typed exit.
   useEffect(() => {
-    if (!open || !isClosed || !mainExitAuto) return;
-    if (exitType === "TP") setMainExit(mainTp);
-    else if (exitType === "SL") setMainExit(sl);
-  }, [open, isClosed, mainExitAuto, exitType, mainTp, sl]);
+    if (!open) return;
+    setRows((rs) =>
+      rs.map((r) => {
+        if (!r.isClosed || !r.mainExitAuto) return r;
+        if (r.exitType === "TP") return { ...r, mainExit: plannedMainTp };
+        if (r.exitType === "SL") return { ...r, mainExit: plannedSl };
+        return r;
+      }),
+    );
+  }, [open, plannedMainTp, plannedSl, rows.map((r) => `${r.isClosed}:${r.exitType}`).join("|")]);
 
   if (!open) return null;
 
   const noAccounts = !accountsQuery.isLoading && accountList.length === 0;
-  const saving = createTrade.isPending || updateTrade.isPending;
+  const saving =
+    createTrade.isPending || updateTrade.isPending || addExecution.isPending || updateExecution.isPending || removeExecution.isPending;
+
+  function updateRow(key: string, patch: Partial<ExecutionRow>) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    const used = new Set(rows.map((r) => r.accountId));
+    const next = accountList.find((a) => !used.has(a.id))?.id ?? accountList[0]?.id ?? "";
+    setRows((rs) => [...rs, blankRow(next, false)]);
+  }
+  function removeRow(key: string) {
+    setRows((rs) => {
+      if (rs.length <= 1) return rs; // last execution can't be removed
+      const removed = rs.find((r) => r.key === key);
+      const remaining = rs.filter((r) => r.key !== key);
+      if (removed?.executionId) setRemovedExecutionIds((ids) => [...ids, removed.executionId!]);
+      // Mirrors the backend's own promotion rule (earliest-added remaining
+      // execution becomes primary) so the form doesn't submit zero primaries.
+      if (removed?.isPrimary && remaining.length > 0 && !remaining.some((r) => r.isPrimary)) {
+        remaining[0] = { ...remaining[0], isPrimary: true };
+      }
+      return remaining;
+    });
+  }
+  function setPrimary(key: string) {
+    setRows((rs) => rs.map((r) => ({ ...r, isPrimary: r.key === key })));
+  }
 
   async function handleSubmit() {
     setError(null);
-    if (!account) {
-      setError("Select an account first.");
+    if (rows.length === 0 || rows.some((r) => !r.accountId)) {
+      setError("Select an account for every row.");
       return;
     }
-    const entryNum = parseFloat(entryPrice);
-    const slNum = parseFloat(sl);
-    const mainTpNum = parseFloat(mainTp);
-    const lotNum = parseFloat(lotSize);
-    if ([entryNum, slNum, mainTpNum, lotNum].some(Number.isNaN)) {
-      setError("Entry, Stop Loss, Main TP and Lot Size are required numbers.");
+    const plannedEntryNum = parseFloat(plannedEntry);
+    const plannedSlNum = parseFloat(plannedSl);
+    const plannedMainTpNum = parseFloat(plannedMainTp);
+    if ([plannedEntryNum, plannedSlNum, plannedMainTpNum].some(Number.isNaN)) {
+      setError("Entry, Stop Loss, and Main TP are required numbers.");
       return;
     }
-    const mainExitNum = mainExit ? parseFloat(mainExit) : NaN;
-    if (isClosed && Number.isNaN(mainExitNum)) {
-      setError("Main Exit Price is required to log a closed trade.");
-      return;
+    for (const r of rows) {
+      if ([parseFloat(r.riskPct), parseFloat(r.lotSize), parseFloat(r.entryPrice)].some(Number.isNaN)) {
+        setError("Entry, Stop Loss, Main TP and Lot Size are required numbers.");
+        return;
+      }
+      if (r.isClosed && !r.mainExit) {
+        setError("Main Exit Price is required to log a closed trade.");
+        return;
+      }
     }
 
-    const payload: CreateTradePayload = {
-      account_id: account,
+    const ideaBody = {
       model: model || (modelList[0]?.name ?? ""),
       pair: pair || (pairList[0]?.symbol ?? ""),
       direction,
-      entry_price: entryNum,
-      sl_price: slNum,
-      first_tp_price: firstTp ? parseFloat(firstTp) : null,
-      main_tp_price: mainTpNum,
-      lot_size: lotNum,
-      risk_pct: riskPct ? parseFloat(riskPct) : 0,
+      planned_entry: plannedEntryNum,
+      planned_sl: plannedSlNum,
+      planned_first_tp: plannedFirstTp ? parseFloat(plannedFirstTp) : null,
+      planned_main_tp: plannedMainTpNum,
       conviction,
       fundamental_score: fundScore !== "" ? parseInt(fundScore, 10) : null,
       psychology: psychology.trim() || null,
       notes: notes.trim() || null,
       screenshots,
       ...(dateOpened ? { date_opened: new Date(dateOpened).toISOString() } : {}),
-      is_closed: isClosed,
-      exit_type: exitType,
-      ...(isClosed
-        ? {
-            partial_exit_price: partialExit ? parseFloat(partialExit) : null,
-            partial_exit_lot_pct: partialPct ? parseFloat(partialPct) : null,
-            main_exit_price: mainExitNum,
-            date_closed: dateClosed ? new Date(dateClosed).toISOString() : null,
-            // Manual net P&L, stored verbatim (never recomputed from prices).
-            net_pnl: netPnl !== "" ? parseFloat(netPnl) : null,
-          }
-        : {}),
     };
+
+    function executionBody(r: ExecutionRow): CreateExecutionPayload {
+      return {
+        account_id: r.accountId,
+        is_primary: r.isPrimary || undefined,
+        risk_pct: parseFloat(r.riskPct) || 0,
+        lot_size: parseFloat(r.lotSize),
+        entry_price: parseFloat(r.entryPrice),
+        is_closed: r.isClosed,
+        exit_type: r.exitType,
+        ...(r.isClosed
+          ? {
+              partial_exit_price: r.partialExit ? parseFloat(r.partialExit) : null,
+              partial_exit_lot_pct: r.partialPct ? parseFloat(r.partialPct) : null,
+              main_exit_price: r.mainExit ? parseFloat(r.mainExit) : null,
+              date_closed: r.dateClosed ? new Date(r.dateClosed).toISOString() : null,
+              net_pnl: r.netPnl !== "" ? parseFloat(r.netPnl) : null,
+            }
+          : {}),
+      };
+    }
 
     try {
       if (editTrade) {
-        await updateTrade.mutateAsync({ id: editTrade.id, body: payload });
-        toast.success(`${pair || payload.pair} ${direction} updated.`, { title: "Trade updated" });
+        await updateTrade.mutateAsync({ id: editTrade.id, body: ideaBody });
+        for (const id of removedExecutionIds) {
+          await removeExecution.mutateAsync({ tradeId: editTrade.id, executionId: id });
+        }
+        for (const r of rows) {
+          if (r.executionId) {
+            const body: UpdateExecutionPayload = executionBody(r);
+            if (!r.isPrimary) delete body.is_primary; // never send is_primary:false — rejected
+            await updateExecution.mutateAsync({ tradeId: editTrade.id, executionId: r.executionId, body });
+          }
+        }
+        for (const r of rows) {
+          if (!r.executionId) {
+            await addExecution.mutateAsync({ tradeId: editTrade.id, body: executionBody(r) });
+          }
+        }
+        toast.success(`${pair || ideaBody.pair} ${direction} updated.`, { title: "Trade updated" });
       } else {
+        const payload: CreateTradePayload = { ...ideaBody, executions: rows.map(executionBody) };
         await createTrade.mutateAsync(payload);
+        const anyClosed = rows.some((r) => r.isClosed);
         toast.success(
-          `${pair || payload.pair} ${direction} ${isClosed ? "saved" : "is now live"} in your journal.`,
-          { title: isClosed ? "Trade logged" : "Trade opened" },
+          `${pair || payload.pair} ${direction} ${anyClosed ? "saved" : "is now live"} in your journal.`,
+          { title: anyClosed ? "Trade logged" : "Trade opened" },
         );
       }
       onSubmitted?.();
@@ -402,15 +528,6 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                     />
                   </FieldGroup>
 
-                  <FieldGroup label="Account">
-                    <select className="lx-input lx-select" value={account} onChange={e => setAccount(e.target.value)}>
-                      {accountList.length === 0 && <option value="">No accounts</option>}
-                      {accountList.map(a => (
-                        <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
-                      ))}
-                    </select>
-                  </FieldGroup>
-
                   <FieldGroup label="Date Opened">
                     <input
                       type="datetime-local"
@@ -422,27 +539,21 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                 </div>
               </div>
 
-              {/* Group 2: Prices */}
+              {/* Group 2: Prices (the plan — shared across every account) */}
               <div>
                 <GroupHeader>Prices</GroupHeader>
                 <div className="lx-form-grid">
                   <FieldGroup label="Entry Price">
-                    <input type="number" step="any" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="1.0865" className="lx-input lx-input-num" />
+                    <input type="number" step="any" value={plannedEntry} onChange={e => setPlannedEntry(e.target.value)} placeholder="1.0865" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Stop Loss">
-                    <input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder="1.0905" className="lx-input lx-input-num" />
+                    <input type="number" step="any" value={plannedSl} onChange={e => setPlannedSl(e.target.value)} placeholder="1.0905" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="First TP (optional)">
-                    <input type="number" step="any" value={firstTp} onChange={e => setFirstTp(e.target.value)} placeholder="1.0825" className="lx-input lx-input-num" />
+                    <input type="number" step="any" value={plannedFirstTp} onChange={e => setPlannedFirstTp(e.target.value)} placeholder="1.0825" className="lx-input lx-input-num" />
                   </FieldGroup>
                   <FieldGroup label="Main TP">
-                    <input type="number" step="any" value={mainTp} onChange={e => setMainTp(e.target.value)} placeholder="1.0780" className="lx-input lx-input-num" />
-                  </FieldGroup>
-                  <FieldGroup label="Lot Size">
-                    <input type="number" step="any" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.45" className="lx-input lx-input-num" />
-                  </FieldGroup>
-                  <FieldGroup label="Risk %">
-                    <input type="number" step="0.1" value={riskPct} onChange={e => setRiskPct(e.target.value)} placeholder="1.0" className="lx-input lx-input-num" />
+                    <input type="number" step="any" value={plannedMainTp} onChange={e => setPlannedMainTp(e.target.value)} placeholder="1.0780" className="lx-input lx-input-num" />
                   </FieldGroup>
                 </div>
               </div>
@@ -510,66 +621,125 @@ export function AddTradeModal({ open, onClose, prefill, editTrade, onSubmitted }
                 </div>
               </div>
 
-              {/* Group 5: Outcome toggle */}
+              {/* Group 5: Accounts — one card per execution. Same idea, different
+                  account, different risk/size/exit. */}
               <div>
-                <GroupHeader>Outcome</GroupHeader>
-                <div className="flex items-center gap-3 mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsClosed(c => !c)}
-                    className="relative flex-shrink-0 rounded-full transition-colors duration-200"
-                    style={{
-                      width: 40,
-                      height: 24,
-                      background: isClosed ? "var(--lucid-accent)" : "var(--lucid-surface-3)",
-                      border: isClosed ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line-2)",
-                    }}
-                  >
-                    <span
-                      className="absolute rounded-full transition-transform duration-200"
-                      style={{
-                        width: 16,
-                        height: 16,
-                        top: 3,
-                        left: 3,
-                        background: "var(--lucid-ink)",
-                        transform: isClosed ? "translateX(16px)" : "translateX(0)",
-                        boxShadow: "var(--lucid-elev-thumb)",
-                      }}
-                    />
-                  </button>
-                  <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>This trade is closed</span>
-                </div>
+                <GroupHeader
+                  action={
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      disabled={accountList.length === 0}
+                      className="flex items-center gap-1"
+                      style={{ fontSize: 11, fontWeight: 600, color: "var(--lucid-accent)", textTransform: "none", letterSpacing: 0 }}
+                    >
+                      <Plus size={12} /> Add Account
+                    </button>
+                  }
+                >
+                  Accounts
+                </GroupHeader>
 
-                {isClosed && (
-                  <div className="lx-form-grid">
-                    <FieldGroup label="Partial Exit Price">
-                      <input type="number" step="any" value={partialExit} onChange={e => setPartialExit(e.target.value)} placeholder="Optional" className="lx-input lx-input-num" />
-                    </FieldGroup>
-                    <FieldGroup label="Partial Lot %">
-                      <input type="number" value={partialPct} onChange={e => setPartialPct(e.target.value)} placeholder="25" className="lx-input lx-input-num" />
-                    </FieldGroup>
-                    <FieldGroup label="Main Exit Price">
-                      <input type="number" step="any" value={mainExit} onChange={e => { setMainExit(e.target.value); setMainExitAuto(false); }} placeholder="1.0820" className="lx-input lx-input-num" />
-                    </FieldGroup>
-                    <FieldGroup label="Date Closed">
-                      <input type="datetime-local" value={dateClosed} onChange={e => setDateClosed(e.target.value)} className="lx-input lx-input-num" />
-                    </FieldGroup>
-                    <FieldGroup label="Exit Type" full>
-                      <select className="lx-input lx-select" value={exitType} onChange={e => setExitType(e.target.value as ExitType)}>
-                        {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </FieldGroup>
-                    <FieldGroup label="Net P&amp;L" full>
-                      <input type="number" step="any" value={netPnl} onChange={e => setNetPnl(e.target.value)} placeholder="e.g. 284 or -100" className="lx-input lx-input-num" />
-                      <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
-                        Your actual closed P&amp;L. Positive = profit, negative = loss, 0 = break-even. Decides the trade&apos;s outcome.
-                      </p>
-                    </FieldGroup>
-                  </div>
-                )}
+                <div className="flex flex-col gap-4">
+                  {rows.map((r, i) => (
+                    <div
+                      key={r.key}
+                      className="rounded-lg p-4"
+                      style={{ background: "var(--lucid-surface-2)", border: `1px solid ${r.isPrimary ? "var(--lucid-accent-bd)" : "var(--lucid-line)"}` }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setPrimary(r.key)}
+                          className="flex items-center gap-1.5"
+                          style={{ fontSize: 11, fontWeight: 700, color: r.isPrimary ? "var(--lucid-accent)" : "var(--lucid-ink-3)" }}
+                          title="The idea's outcome, for edge statistics, is the primary execution's outcome."
+                        >
+                          <Star size={12} fill={r.isPrimary ? "var(--lucid-accent)" : "none"} />
+                          {r.isPrimary ? "Primary" : "Set primary"}
+                        </button>
+                        {rows.length > 1 && (
+                          <button type="button" onClick={() => removeRow(r.key)} className="lx-icon-btn" title="Remove this account">
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="lx-form-grid">
+                        <FieldGroup label="Account">
+                          <select
+                            className="lx-input lx-select"
+                            value={r.accountId}
+                            onChange={e => updateRow(r.key, { accountId: e.target.value })}
+                          >
+                            {accountList.length === 0 && <option value="">No accounts</option>}
+                            {accountList.map(a => (
+                              <option key={a.id} value={a.id}>{a.account_name} ({accountTypeLabel(a.account_type)})</option>
+                            ))}
+                          </select>
+                        </FieldGroup>
+                        <FieldGroup label="Risk %">
+                          <input type="number" step="0.1" value={r.riskPct} onChange={e => updateRow(r.key, { riskPct: e.target.value })} placeholder="1.0" className="lx-input lx-input-num" />
+                        </FieldGroup>
+                        <FieldGroup label="Lot Size">
+                          <input type="number" step="any" value={r.lotSize} onChange={e => updateRow(r.key, { lotSize: e.target.value })} placeholder="0.45" className="lx-input lx-input-num" />
+                        </FieldGroup>
+                        <FieldGroup label="Entry Price">
+                          <input type="number" step="any" value={r.entryPrice} onChange={e => updateRow(r.key, { entryPrice: e.target.value })} placeholder="1.0865" className="lx-input lx-input-num" />
+                        </FieldGroup>
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-4 mb-1">
+                        <button
+                          type="button"
+                          onClick={() => updateRow(r.key, { isClosed: !r.isClosed })}
+                          className="relative flex-shrink-0 rounded-full transition-colors duration-200"
+                          style={{
+                            width: 40, height: 24,
+                            background: r.isClosed ? "var(--lucid-accent)" : "var(--lucid-surface-3)",
+                            border: r.isClosed ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line-2)",
+                          }}
+                        >
+                          <span
+                            className="absolute rounded-full transition-transform duration-200"
+                            style={{ width: 16, height: 16, top: 3, left: 3, background: "var(--lucid-ink)", transform: r.isClosed ? "translateX(16px)" : "translateX(0)", boxShadow: "var(--lucid-elev-thumb)" }}
+                          />
+                        </button>
+                        <span style={{ fontSize: 13, color: "var(--lucid-ink-2)" }}>This account&apos;s trade is closed</span>
+                      </div>
+
+                      {r.isClosed && (
+                        <div className="lx-form-grid mt-3">
+                          <FieldGroup label="Partial Exit Price">
+                            <input type="number" step="any" value={r.partialExit} onChange={e => updateRow(r.key, { partialExit: e.target.value })} placeholder="Optional" className="lx-input lx-input-num" />
+                          </FieldGroup>
+                          <FieldGroup label="Partial Lot %">
+                            <input type="number" value={r.partialPct} onChange={e => updateRow(r.key, { partialPct: e.target.value })} placeholder="25" className="lx-input lx-input-num" />
+                          </FieldGroup>
+                          <FieldGroup label="Main Exit Price">
+                            <input type="number" step="any" value={r.mainExit} onChange={e => updateRow(r.key, { mainExit: e.target.value, mainExitAuto: false })} placeholder="1.0820" className="lx-input lx-input-num" />
+                          </FieldGroup>
+                          <FieldGroup label="Date Closed">
+                            <input type="datetime-local" value={r.dateClosed} onChange={e => updateRow(r.key, { dateClosed: e.target.value })} className="lx-input lx-input-num" />
+                          </FieldGroup>
+                          <FieldGroup label="Exit Type" full>
+                            <select className="lx-input lx-select" value={r.exitType} onChange={e => updateRow(r.key, { exitType: e.target.value as ExitType })}>
+                              {(["TP", "SL", "Manual", "Partial+TP", "Partial+SL", "BE"] as ExitType[]).map(t => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </select>
+                          </FieldGroup>
+                          <FieldGroup label="Net P&amp;L" full>
+                            <input type="number" step="any" value={r.netPnl} onChange={e => updateRow(r.key, { netPnl: e.target.value })} placeholder="e.g. 284 or -100" className="lx-input lx-input-num" />
+                            <p style={{ fontSize: 10.5, color: "var(--lucid-ink-3)", marginTop: 4 }}>
+                              This account&apos;s actual closed P&amp;L. Positive = profit, negative = loss, 0 = break-even. Decides this execution&apos;s outcome.
+                            </p>
+                          </FieldGroup>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

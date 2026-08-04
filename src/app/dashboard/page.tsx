@@ -10,12 +10,16 @@ import {
   type Account,
 } from "@/lib/demo-data";
 import { managedCapital, evaluationCapital } from "@/lib/account-capital";
+import { isTradeOpen, getPrimaryExecution } from "@/lib/trade-helpers";
+import { edgeRollingWinRate } from "@/lib/stats";
+import type { LivePosition } from "./LivePositionsBand";
 import {
   useTrades,
   usePlanned,
   useAccounts,
   useTradingPairs,
   useDeleteTrade,
+  useUpdatePlanned,
 } from "@/hooks/useTrading";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -78,7 +82,9 @@ export default function DashboardPage() {
   const [showCashFlow, setShowCashFlow] = useState(false);
   const [editTrade, setEditTrade] = useState<Trade | null>(null);
   const [pendingDeleteTrade, setPendingDeleteTrade] = useState<Trade | null>(null);
+  const [convertPlanned, setConvertPlanned] = useState<PlannedTrade | null>(null);
   const deleteTrade = useDeleteTrade();
+  const updatePlannedM = useUpdatePlanned();
 
   // Chat input
   const [chatValue, setChatValue] = useState("");
@@ -125,28 +131,39 @@ export default function DashboardPage() {
   // Greeting (computed on render from IST time)
   const greeting = getGreeting();
 
-  // Live and planned counts
-  const liveTrades = useMemo(() => allTrades.filter((t) => t.date_closed === ""), [allTrades]);
+  // Live Positions band is execution-level: one card per open ACCOUNT FILL,
+  // not per idea — the same idea open in two accounts is two cards, since
+  // each account carries its own risk/lot/entry and its own open exposure.
+  const livePositions = useMemo<LivePosition[]>(
+    () =>
+      allTrades.flatMap((trade) =>
+        trade.executions.filter((e) => e.date_closed === "").map((execution) => ({ trade, execution })),
+      ),
+    [allTrades],
+  );
+  // Ideas whose PRIMARY execution is still open — the idea-level "is this
+  // still running" question (edge outcome isn't decided yet).
+  const liveIdeas = useMemo(() => allTrades.filter(isTradeOpen), [allTrades]);
   const activePlanned = useMemo(
     () => allPlanned.filter((p) => p.status === "Watching" || p.status === "Ready"),
     [allPlanned]
   );
   const readyCount = useMemo(() => allPlanned.filter((p) => p.status === "Ready").length, [allPlanned]);
 
-  // A5 — the alignment field marks pairs with an open position, reusing the
-  // exact same "open trade" identification the Live Trades band already uses
-  // (t.date_closed === "") and the same pair-identifier field (t.pair, the
-  // symbol) already matched against elsewhere on this page.
-  const livePairSymbols = useMemo(() => new Set(liveTrades.map((t) => t.pair)), [liveTrades]);
+  // A5 — the alignment field marks pairs with an open position: any account
+  // still holding an open fill in that pair, not just the primary.
+  const livePairSymbols = useMemo(() => new Set(livePositions.map((p) => p.trade.pair)), [livePositions]);
 
   // Living feedback — newly arrived rows get a one-shot gold highlight.
-  const newLiveIds = useNewIds(useMemo(() => liveTrades.map((t) => t.id), [liveTrades]), !isLoading);
+  const newLiveIds = useNewIds(useMemo(() => livePositions.map((p) => p.execution.id), [livePositions]), !isLoading);
   const newPlannedIds = useNewIds(useMemo(() => activePlanned.map((p) => p.id), [activePlanned]), !isLoading);
+
+  const accountNames = useMemo(() => new Map(allAccounts.map((a) => [a.id, a.account_name])), [allAccounts]);
 
   // Status line — type-agnostic, framed off whatever accounts exist
   const statusLine = useMemo(
-    () => buildStatusLine(allAccounts, readyCount, liveTrades.length),
-    [allAccounts, readyCount, liveTrades.length],
+    () => buildStatusLine(allAccounts, readyCount, liveIdeas.length),
+    [allAccounts, readyCount, liveIdeas.length],
   );
 
   // Metric cards
@@ -157,14 +174,10 @@ export default function DashboardPage() {
     const overallPnl = allAccounts.reduce((s, a) => s + accountTradingPnl(a), 0);
     const activeCount = activeAccounts.length;
 
-    const closedSorted = [...allTrades.filter((t) => t.date_closed !== "")].sort(
-      (a, b) => new Date(b.date_closed).getTime() - new Date(a.date_closed).getTime()
-    );
-    const last20 = closedSorted.slice(0, 20);
-    // Outcome decided by manual net P&L (blended_pnl), matching the journal.
-    const wins = last20.filter((t) => t.blended_pnl > 0);
-    const losses = last20.filter((t) => t.blended_pnl < 0);
-    const wr = wins.length + losses.length > 0 ? (wins.length / (wins.length + losses.length)) * 100 : 0;
+    // Edge statistic: last 20 IDEAS to close (by primary execution), not the
+    // last 20 rows — one idea logged to three accounts is still one slot.
+    const { winRate, count } = edgeRollingWinRate(allTrades, 20);
+    const wr = (winRate ?? 0) * 100;
 
     // Adaptive 4th metric: challenges if any prop accounts exist, else best performer.
     const propAccounts = allAccounts.filter(isPropAccount);
@@ -180,7 +193,7 @@ export default function DashboardPage() {
       overallPnl,
       activeCount,
       wr,
-      tradeCount: last20.length,
+      tradeCount: count,
       hasProp: propAccounts.length > 0,
       challengesActive,
       bestName: best?.account_name ?? "—",
@@ -193,8 +206,8 @@ export default function DashboardPage() {
   // trade statistic, nothing that feeds any existing figure. They exist only
   // because the new band headers state them.
   const openRiskPct = useMemo(
-    () => liveTrades.reduce((s, t) => s + (t.risk_pct ?? 0), 0),
-    [liveTrades],
+    () => livePositions.reduce((s, p) => s + (p.execution.risk_pct ?? 0), 0),
+    [livePositions],
   );
   const tradesThisMonth = useMemo(() => {
     const now = new Date();
@@ -291,8 +304,9 @@ export default function DashboardPage() {
         ) : (
           <div className="dash-band">
             <LivePositionsBand
-              liveTrades={liveTrades}
+              livePositions={livePositions}
               pairsConfig={pairsConfig}
+              accountNames={accountNames}
               newLiveIds={newLiveIds}
               openRiskPct={openRiskPct}
               onTradeClick={setTradeDrawer}
@@ -373,6 +387,36 @@ export default function DashboardPage() {
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <AddTradeModal open={showAddTrade} onClose={() => setShowAddTrade(false)} />
       <AddTradeModal open={!!editTrade} editTrade={editTrade ?? undefined} onClose={() => setEditTrade(null)} />
+      {/* Convert planned → live, prefilled — mirrors /trading/planned's own
+          conversion flow exactly (this used to open a blank form here). */}
+      {convertPlanned && (
+        <AddTradeModal
+          open={!!convertPlanned}
+          prefill={{
+            pair: convertPlanned.pair,
+            model: convertPlanned.model,
+            direction: convertPlanned.direction,
+            planned_entry: convertPlanned.planned_entry,
+            planned_sl: convertPlanned.planned_sl,
+            planned_first_tp: convertPlanned.planned_first_tp,
+            planned_main_tp: convertPlanned.planned_main_tp,
+            risk_pct: convertPlanned.planned_risk_pct,
+            conviction: convertPlanned.conviction,
+          }}
+          onSubmitted={() => {
+            const cp = convertPlanned;
+            if (!cp) return;
+            updatePlannedM.mutate({
+              id: cp.id,
+              body: {
+                status: "Cancelled",
+                notes: (cp.notes ? cp.notes + "\n" : "") + "[Converted to Live Trade]",
+              },
+            });
+          }}
+          onClose={() => setConvertPlanned(null)}
+        />
+      )}
       <CashFlowModal open={showCashFlow} onClose={() => setShowCashFlow(false)} />
 
       <ConfirmDialog
@@ -421,8 +465,8 @@ export default function DashboardPage() {
           <PlannedDrawerContent
             trade={plannedDrawer}
             onConvert={() => {
+              setConvertPlanned(plannedDrawer);
               setPlannedDrawer(null);
-              setShowAddTrade(true);
             }}
             onMarkInvalidated={() => setPlannedDrawer(null)}
           />
@@ -439,7 +483,7 @@ export default function DashboardPage() {
         {accountDrawer && (
           <AccountDrawerContent
             account={accountDrawer}
-            accountTrades={allTrades.filter((t) => t.account_id === accountDrawer.id)}
+            trades={allTrades}
             onTradeClick={(tradeId) => {
               const t = allTrades.find((tr) => tr.id === tradeId);
               if (!t) return;

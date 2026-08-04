@@ -17,12 +17,29 @@ import { formatCurrency, type Trade } from "@/lib/demo-data";
 import { useTrades, useAccounts } from "@/hooks/useTrading";
 import { Skeleton, SkeletonCard } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
+import { getPrimaryExecution, edgeOutcome, isTradeOpen } from "@/lib/trade-helpers";
+import {
+  edgeStats,
+  buildBalanceCurve,
+  computeDrawdownWindows as sharedComputeDrawdownWindows,
+  computeMaxDrawdown as sharedComputeMaxDrawdown,
+  type EdgeBreakdownStats,
+  type CurvePoint,
+} from "@/lib/stats";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Analytics — the trader's review process. blended_pnl (manual net P&L) is the
-// SINGLE source of truth for every win/loss/BE and every aggregate here:
+// Analytics — the trader's review process.
+//
+// Win rate / expectancy / breakdowns are EDGE statistics: they count IDEAS
+// (one row per Trade), decided by the PRIMARY execution's manual net P&L:
 //   pnl  > 0 → Win     pnl < 0 → Loss     pnl === 0 → Break-even
-// blended_rr survives only as a DISPLAY metric (the average R multiple).
+// blended_rr survives as R — comparable across accounts of different sizes,
+// which is why expectancy is expressed in R here, not dollars.
+// Net P&L / avg win / avg loss remain dollar figures — ACCOUNT statistics,
+// summed across every execution of the ideas in view (all accounts, or the
+// one account selected by the filter below).
+// All of this comes from lib/stats.ts, the one shared statistics module —
+// this page no longer reimplements win-rate/expectancy/equity-curve math.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type DateRangePreset =
@@ -58,6 +75,9 @@ function pnlColorVar(v: number): string {
 
 // ─── Filter ─────────────────────────────────────────────────────────────────
 
+// Filters ideas by their primary execution's close date (open ideas keep
+// their idea date) — a dashboard-range convenience filter, not a financial
+// computation; see dashboard/dashboard-helpers.ts for the identical pattern.
 function applyDateFilter(tradeList: Trade[], preset: DateRangePreset): Trade[] {
   if (preset === "All Time") return tradeList;
   const now = new Date();
@@ -79,135 +99,27 @@ function applyDateFilter(tradeList: Trade[], preset: DateRangePreset): Trade[] {
       return tradeList;
   }
   return tradeList.filter((t) => {
-    const date = t.date_closed ? new Date(t.date_closed) : new Date(t.date_opened);
+    const primary = getPrimaryExecution(t);
+    const date = primary?.date_closed ? new Date(primary.date_closed) : new Date(t.date_opened);
     return date >= cutoff;
   });
 }
 
-// ─── Core aggregate (the same math every table + headline reuses) ─────────────
+// ─── Breakdown dimensions — every row is edgeStats() over a group of IDEAS ────
 
-interface Agg {
-  count: number;      // closed trades
-  wins: number;
-  losses: number;
-  be: number;
-  winRate: number | null;   // wins / (wins + losses), BE excluded; null if none decided
-  netPnl: number;
-  avgWin: number;           // mean P&L of winners (>= 0)
-  avgLoss: number;          // mean |P&L| of losers (>= 0)
-  expectancy: number | null;// (WR × avgWin) − (LR × avgLoss); null if no decided trades
-  avgRR: number | null;     // display: mean blended_rr over winners; null if none
-}
-
-/** Expectancy uses the classic decomposition, consistent everywhere:
- *  E = (winRate × avgWin) − (lossRate × avgLoss), lossRate = 1 − winRate.
- *  (Equivalent to netPnl / decidedCount, but kept in decomposed form so the
- *  headline can also surface avgWin / avgLoss from the same source.) */
-function aggregate(trades: Trade[]): Agg {
-  const closed = trades.filter((t) => t.date_closed !== "");
-  const winTrades = closed.filter((t) => t.blended_pnl > 0);
-  const lossTrades = closed.filter((t) => t.blended_pnl < 0);
-  const be = closed.length - winTrades.length - lossTrades.length;
-
-  const decided = winTrades.length + lossTrades.length;
-  const winRate = decided > 0 ? winTrades.length / decided : null;
-
-  const netPnl = closed.reduce((s, t) => s + t.blended_pnl, 0);
-  const avgWin = winTrades.length > 0 ? winTrades.reduce((s, t) => s + t.blended_pnl, 0) / winTrades.length : 0;
-  const avgLoss =
-    lossTrades.length > 0 ? Math.abs(lossTrades.reduce((s, t) => s + t.blended_pnl, 0) / lossTrades.length) : 0;
-
-  const expectancy = winRate === null ? null : winRate * avgWin - (1 - winRate) * avgLoss;
-
-  const rrWinners = winTrades.filter((t) => Number.isFinite(t.blended_rr));
-  const avgRR = rrWinners.length > 0 ? rrWinners.reduce((s, t) => s + t.blended_rr, 0) / rrWinners.length : null;
-
-  return {
-    count: closed.length,
-    wins: winTrades.length,
-    losses: lossTrades.length,
-    be,
-    winRate,
-    netPnl,
-    avgWin,
-    avgLoss,
-    expectancy,
-    avgRR,
-  };
-}
-
-// ─── Equity curve ─────────────────────────────────────────────────────────────
-
-interface CurvePoint {
-  date: string;
-  cumPnl: number;
-  pair: string;
-  pnl: number;
-}
-
-function buildEquityCurve(closed: Trade[]): CurvePoint[] {
-  const sorted = [...closed].sort(
-    (a, b) => new Date(a.date_closed).getTime() - new Date(b.date_closed).getTime(),
-  );
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const points: CurvePoint[] = [];
-  let cum = 0;
-  for (const t of sorted) {
-    cum += t.blended_pnl;
-    points.push({ date: fmt(t.date_closed), cumPnl: Math.round(cum * 100) / 100, pair: t.pair, pnl: t.blended_pnl });
-  }
-  return points;
-}
-
-/** Contiguous windows where equity sits below its running peak (drawdown). */
-function computeDrawdownWindows(pts: CurvePoint[]): { x1: string; x2: string }[] {
-  const windows: { x1: string; x2: string }[] = [];
-  let peak = -Infinity;
-  let inDD = false;
-  let ddStartIdx = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const v = pts[i].cumPnl;
-    if (v > peak) {
-      if (inDD) {
-        windows.push({ x1: pts[ddStartIdx].date, x2: pts[i - 1].date });
-        inDD = false;
-      }
-      peak = v;
-    } else if (v < peak && !inDD) {
-      inDD = true;
-      ddStartIdx = i - 1 >= 0 ? i - 1 : 0;
-    }
-  }
-  if (inDD && pts.length > 0) windows.push({ x1: pts[ddStartIdx].date, x2: pts[pts.length - 1].date });
-  return windows;
-}
-
-function computeMaxDrawdown(pts: CurvePoint[]): number {
-  let peak = -Infinity;
-  let maxDD = 0;
-  for (const p of pts) {
-    if (p.cumPnl > peak) peak = p.cumPnl;
-    const dd = peak - p.cumPnl;
-    if (dd > maxDD) maxDD = dd;
-  }
-  return maxDD;
-}
-
-// ─── Breakdown dimensions ──────────────────────────────────────────────────────
-
-interface Row extends Agg {
+interface Row extends EdgeBreakdownStats {
   key: string;
 }
 
-function buildRows(closed: Trade[], keyOf: (t: Trade) => string, order?: string[]): Row[] {
+function buildRows(trades: Trade[], keyOf: (t: Trade) => string, order?: string[]): Row[] {
   const groups = new Map<string, Trade[]>();
-  for (const t of closed) {
+  for (const t of trades) {
     const k = keyOf(t);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(t);
   }
   const rows: Row[] = [];
-  for (const [key, ts] of groups) rows.push({ key, ...aggregate(ts) });
+  for (const [key, ts] of groups) rows.push({ key, ...edgeStats(ts) });
   if (order) {
     rows.sort((a, b) => {
       const ia = order.indexOf(a.key);
@@ -220,17 +132,22 @@ function buildRows(closed: Trade[], keyOf: (t: Trade) => string, order?: string[
 
 const PAIR_ORDER = ["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "GBPJPY", "XAUUSD"];
 
-/** Conviction tier bucketed by risk_pct — the cleaner, always-present signal.
- *  ≥ 0.7% risk = "High conviction", below = "Standard". (Stated in the UI.) */
+/** Conviction tier bucketed by risk % — the cleaner, always-present signal.
+ *  ≥ 0.7% risk = "High conviction", below = "Standard". (Stated in the UI.)
+ *  Risk is execution-level now; the primary execution's risk % represents
+ *  the idea, matching every other idea-level derived value in this app. */
 const HIGH_CONVICTION_RISK = 0.7;
 function convictionTier(t: Trade): string {
-  return t.risk_pct >= HIGH_CONVICTION_RISK ? "High (≥0.7%)" : "Standard (<0.7%)";
+  const risk = getPrimaryExecution(t)?.risk_pct ?? 0;
+  return risk >= HIGH_CONVICTION_RISK ? "High (≥0.7%)" : "Standard (<0.7%)";
 }
 
-/** Hold-time bucket from dateClosed − dateOpened. */
+/** Hold-time bucket from the primary execution's close − the idea's open. */
 const HOLD_ORDER = ["< 3 days", "3–7 days", "1–3 weeks", "> 3 weeks"];
 function holdBucket(t: Trade): string {
-  const ms = new Date(t.date_closed).getTime() - new Date(t.date_opened).getTime();
+  const primary = getPrimaryExecution(t);
+  if (!primary?.date_closed) return "< 3 days";
+  const ms = new Date(primary.date_closed).getTime() - new Date(t.date_opened).getTime();
   const days = ms / 864e5;
   if (days < 3) return "< 3 days";
   if (days < 7) return "3–7 days";
@@ -240,16 +157,16 @@ function holdBucket(t: Trade): string {
 
 // ─── Sortable table ─────────────────────────────────────────────────────────
 
-type SortKey = "key" | "count" | "winRate" | "netPnl" | "expectancy" | "avgRR";
+type SortKey = "key" | "idea_count" | "win_rate" | "net_pnl" | "expectancy_r" | "avg_rr";
 type SortDir = "asc" | "desc";
 
 const COLUMNS: { id: SortKey; label: string; align: "left" | "right" }[] = [
   { id: "key", label: "", align: "left" },
-  { id: "count", label: "# Trades", align: "right" },
-  { id: "winRate", label: "Win Rate", align: "right" },
-  { id: "netPnl", label: "Net P&L", align: "right" },
-  { id: "expectancy", label: "Expectancy", align: "right" },
-  { id: "avgRR", label: "Avg R:R", align: "right" },
+  { id: "idea_count", label: "# Trades", align: "right" },
+  { id: "win_rate", label: "Win Rate", align: "right" },
+  { id: "net_pnl", label: "Net P&L", align: "right" },
+  { id: "expectancy_r", label: "Expectancy", align: "right" },
+  { id: "avg_rr", label: "Avg R:R", align: "right" },
 ];
 
 function sortRows(rows: Row[], key: SortKey, dir: SortDir): Row[] {
@@ -257,11 +174,11 @@ function sortRows(rows: Row[], key: SortKey, dir: SortDir): Row[] {
   const val = (r: Row): number | string => {
     switch (key) {
       case "key": return r.key;
-      case "count": return r.count;
-      case "winRate": return r.winRate ?? -1;
-      case "netPnl": return r.netPnl;
-      case "expectancy": return r.expectancy ?? -Infinity;
-      case "avgRR": return r.avgRR ?? -Infinity;
+      case "idea_count": return r.idea_count;
+      case "win_rate": return r.win_rate ?? -1;
+      case "net_pnl": return r.net_pnl;
+      case "expectancy_r": return r.expectancy_r ?? -Infinity;
+      case "avg_rr": return r.avg_rr ?? -Infinity;
     }
   };
   return [...rows].sort((a, b) => {
@@ -283,7 +200,7 @@ function BreakdownTable({
   rows: Row[];
   dimensionLabel: string;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>("netPnl");
+  const [sortKey, setSortKey] = useState<SortKey>("net_pnl");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const sorted = useMemo(() => sortRows(rows, sortKey, sortDir), [rows, sortKey, sortDir]);
@@ -294,8 +211,8 @@ function BreakdownTable({
     let best = rows[0];
     let worst = rows[0];
     for (const r of rows) {
-      if (r.netPnl > best.netPnl) best = r;
-      if (r.netPnl < worst.netPnl) worst = r;
+      if (r.net_pnl > best.net_pnl) best = r;
+      if (r.net_pnl < worst.net_pnl) worst = r;
     }
     return { bestKey: best.key, worstKey: worst.key };
   }, [rows]);
@@ -385,19 +302,19 @@ function BreakdownTable({
                       {r.key}
                     </td>
                     <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", color: "var(--lucid-ink-2)" }}>
-                      {r.count}
+                      {r.idea_count}
                     </td>
                     <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", color: "var(--lucid-ink-2)" }}>
-                      {pctText(r.winRate)}
+                      {pctText(r.win_rate)}
                     </td>
-                    <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: pnlColorVar(r.netPnl) }}>
-                      {signedCurrency(r.netPnl)}
+                    <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: pnlColorVar(r.net_pnl) }}>
+                      {signedCurrency(r.net_pnl)}
                     </td>
-                    <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: r.expectancy === null ? "var(--lucid-ink-3)" : pnlColorVar(r.expectancy) }}>
-                      {r.expectancy === null ? "—" : signedCurrency(r.expectancy)}
+                    <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: r.expectancy_r === null ? "var(--lucid-ink-3)" : pnlColorVar(r.expectancy_r) }}>
+                      {r.expectancy_r === null ? "—" : `${r.expectancy_r.toFixed(2)}R`}
                     </td>
                     <td className="lt-num" style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", color: "var(--lucid-ink-2)" }}>
-                      {r.avgRR === null ? "—" : `${r.avgRR.toFixed(2)}R`}
+                      {r.avg_rr === null ? "—" : `${r.avg_rr.toFixed(2)}R`}
                     </td>
                   </tr>
                 );
@@ -489,45 +406,73 @@ export default function AnalyticsPage() {
   const allTrades = useMemo(() => tradesQuery.data ?? [], [tradesQuery.data]);
   const accounts = accountsQuery.data ?? [];
 
+  // Account filter: ideas with an execution in that account, narrowed to that
+  // account's own execution — every edge stat below then naturally reads as
+  // "as if I only had this account" (getPrimaryExecution falls back to the
+  // sole remaining execution), and every dollar figure sums just its P&L.
   const filtered = useMemo(() => {
     let t = allTrades;
-    if (accountFilter !== "all") t = t.filter((x) => x.account_id === accountFilter);
+    if (accountFilter !== "all") {
+      t = t
+        .filter((x) => x.executions.some((e) => e.account_id === accountFilter))
+        .map((x) => ({ ...x, executions: x.executions.filter((e) => e.account_id === accountFilter) }));
+    }
     return applyDateFilter(t, dateRange);
   }, [allTrades, accountFilter, dateRange]);
 
-  const closed = useMemo(() => filtered.filter((t) => t.date_closed !== ""), [filtered]);
-  const head = useMemo(() => aggregate(filtered), [filtered]);
+  const closed = useMemo(() => filtered.filter((t) => !isTradeOpen(t)), [filtered]);
 
-  const curve = useMemo(() => buildEquityCurve(closed), [closed]);
-  const maxDD = useMemo(() => computeMaxDrawdown(curve), [curve]);
-  const ddWindows = useMemo(() => computeDrawdownWindows(curve), [curve]);
+  // Edge headline: counts ideas, primary execution's outcome. edgeStats()
+  // already computes win_rate/avg_win_r/avg_loss_r/expectancy_r/net_pnl; wins/
+  // losses/be are the only extra breakdown this headline needs on top.
+  const head = useMemo(
+    () => ({
+      ...edgeStats(filtered),
+      wins: closed.filter((t) => edgeOutcome(t) === "Win").length,
+      losses: closed.filter((t) => edgeOutcome(t) === "Loss").length,
+      be: closed.filter((t) => edgeOutcome(t) === "BE").length,
+    }),
+    [filtered, closed],
+  );
 
-  const byPair = useMemo(() => buildRows(closed, (t) => t.pair, PAIR_ORDER), [closed]);
-  const byModel = useMemo(() => buildRows(closed, (t) => (t.model?.trim() ? t.model : "Untagged")), [closed]);
-  const byConviction = useMemo(() => buildRows(closed, convictionTier), [closed]);
-  const bySession = useMemo(() => buildRows(closed, (t) => t.session), [closed]);
-  const byHold = useMemo(() => buildRows(closed, holdBucket, HOLD_ORDER), [closed]);
+  // Account headline: dollar sum across every execution in view — the money
+  // curve, execution-level, correctly counting every account's fill.
+  const curve = useMemo(() => buildBalanceCurve(closed), [closed]);
+  const maxDD = useMemo(() => sharedComputeMaxDrawdown(curve), [curve]);
+  const ddWindowsRaw = useMemo(() => sharedComputeDrawdownWindows(curve), [curve]);
+  const ddWindows = useMemo(
+    () => ddWindowsRaw.map((w) => ({ x1: curve[w.startIndex]?.date ?? "", x2: curve[w.endIndex]?.date ?? "" })),
+    [ddWindowsRaw, curve],
+  );
+
+  const byPair = useMemo(() => buildRows(filtered, (t) => t.pair, PAIR_ORDER), [filtered]);
+  const byModel = useMemo(() => buildRows(filtered, (t) => (t.model?.trim() ? t.model : "Untagged")), [filtered]);
+  const byConviction = useMemo(() => buildRows(filtered, convictionTier), [filtered]);
+  const bySession = useMemo(() => buildRows(filtered, (t) => t.session), [filtered]);
+  const byHold = useMemo(() => buildRows(filtered, holdBucket, HOLD_ORDER), [filtered]);
 
   // Rule-violation split (works off the Mistakes field; empty state if absent).
+  // Dollar impact sums every execution — an account-family total, like Net P&L.
   const violation = useMemo(() => {
     const tagged = closed.filter((t) => tradeMistakes(t).length > 0);
     const clean = closed.filter((t) => tradeMistakes(t).length === 0);
     const anyTagged = tagged.length > 0;
+    const sumPnl = (ts: Trade[]) => ts.reduce((s, t) => s + t.executions.reduce((es, e) => es + e.blended_pnl, 0), 0);
     return {
       anyTagged,
       taggedCount: tagged.length,
       cleanCount: clean.length,
-      taggedPnl: tagged.reduce((s, t) => s + t.blended_pnl, 0),
-      cleanPnl: clean.reduce((s, t) => s + t.blended_pnl, 0),
+      taggedPnl: sumPnl(tagged),
+      cleanPnl: sumPnl(clean),
     };
   }, [closed]);
 
   const wrColor =
-    head.winRate === null
+    head.win_rate === null
       ? "var(--lucid-ink)"
-      : head.winRate >= 0.5
+      : head.win_rate >= 0.5
       ? "var(--lucid-pos)"
-      : head.winRate >= 0.4
+      : head.win_rate >= 0.4
       ? "var(--lucid-warn)"
       : "var(--lucid-neg)";
 
@@ -604,26 +549,29 @@ export default function AnalyticsPage() {
 
       {/* ── 1. HEADLINE STATS ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {/* Hero: expectancy per trade */}
+        {/* Hero: expectancy per trade, in R — portable across account sizes;
+            dollar expectancy summed across a 10k challenge and a 100k funded
+            account describes nothing. */}
         <div className="col-span-2 lg:col-span-1">
           <Stat
             hero
-            label="Expectancy / Trade"
-            value={head.expectancy === null ? "—" : signedCurrency(head.expectancy)}
-            color={head.expectancy === null ? "var(--lucid-ink)" : pnlColorVar(head.expectancy)}
-            sub="(WR × avg win) − (LR × avg loss)"
+            label="Expectancy / Trade (R)"
+            value={head.expectancy_r === null ? "—" : `${head.expectancy_r.toFixed(2)}R`}
+            color={head.expectancy_r === null ? "var(--lucid-ink)" : pnlColorVar(head.expectancy_r)}
+            sub="(WR × avg win R) − (LR × avg loss R)"
           />
         </div>
         <Stat
           label="Net P&L"
-          value={signedCurrency(head.netPnl)}
-          color={pnlColorVar(head.netPnl)}
+          value={signedCurrency(head.net_pnl)}
+          color={pnlColorVar(head.net_pnl)}
+          sub="every execution, all accounts in view"
         />
-        <Stat label="Win Rate" value={pctText(head.winRate)} color={wrColor} sub="BE excluded" />
-        <Stat label="Avg Winner" value={head.wins > 0 ? formatCurrency(head.avgWin) : "—"} color={head.wins > 0 ? "var(--lucid-pos)" : "var(--lucid-ink)"} />
-        <Stat label="Avg Loser" value={head.losses > 0 ? `-${formatCurrency(head.avgLoss)}` : "—"} color={head.losses > 0 ? "var(--lucid-neg)" : "var(--lucid-ink)"} />
-        <Stat label="Avg R:R" value={head.avgRR === null ? "—" : `${head.avgRR.toFixed(2)}R`} sub="display metric" />
-        <Stat label="Total Trades" value={String(filtered.length)} sub={`${head.count} closed`} />
+        <Stat label="Win Rate" value={pctText(head.win_rate)} color={wrColor} sub="BE excluded, idea-counted" />
+        <Stat label="Avg Winner (R)" value={head.wins > 0 && head.avg_win_r !== null ? `${head.avg_win_r.toFixed(2)}R` : "—"} color={head.wins > 0 ? "var(--lucid-pos)" : "var(--lucid-ink)"} />
+        <Stat label="Avg Loser (R)" value={head.losses > 0 && head.avg_loss_r !== null ? `-${head.avg_loss_r.toFixed(2)}R` : "—"} color={head.losses > 0 ? "var(--lucid-neg)" : "var(--lucid-ink)"} />
+        <Stat label="Avg R:R" value={head.avg_rr === null ? "—" : `${head.avg_rr.toFixed(2)}R`} sub="display metric" />
+        <Stat label="Total Trades" value={String(filtered.length)} sub={`${head.idea_count} closed`} />
         <Stat
           label="W / L / BE"
           value={`${head.wins} / ${head.losses} / ${head.be}`}
