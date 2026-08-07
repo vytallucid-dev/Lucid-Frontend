@@ -50,6 +50,10 @@ export const NAV_SHORTCUTS: ShortcutDef[] = [
   { keys: ["g", "c"], label: "Oracle → Compass", href: "/oracle/compass" },
   { keys: ["g", "n"], label: "NIFTY → Pulse", href: "/nifty/pulse" },
   { keys: ["g", "s"], label: "NIFTY → Scorecard", href: "/nifty/scorecard" },
+  // `e` for Economic calendar — `c` is already Compass, and the calendar is a
+  // top-level surface rather than an Oracle sub-tab, so it reads as its own
+  // destination rather than "Oracle → something".
+  { keys: ["g", "e"], label: "Economic Calendar", href: "/calendar" },
   // Not a route — the only `g` sequence that acts on the page you are already
   // on, which is why it is the only one carrying a scope. Grouped with the
   // rest because what a trader wants to scan is "everything `g` does".

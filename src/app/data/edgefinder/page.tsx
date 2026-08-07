@@ -115,6 +115,26 @@ function IndicatorCard({ indicator }: { indicator: AdminIndicator }) {
         >
           {FRESHNESS_LABELS[freshness]}
         </span>
+        {/* B1/B4 — a distinct fifth badge, deliberately separate from the
+            Fresh/Stale/Critical freshness badge above (a different, older,
+            client-side-computed mechanism this pass leaves untouched — see
+            the overdue-resolver.ts header comment for the full inventory of
+            staleness-adjacent mechanisms in this codebase). Overdue answers
+            "did a specific scheduled release get missed"; freshness answers
+            "is the last fetch old for this cadence" — not the same fact. */}
+        {indicator.overdue && (
+          <span
+            title="A scheduled release passed more than 24h ago with nothing entered"
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
+            style={{
+              background: "var(--lucid-neg-bg)",
+              color: "var(--lucid-neg)",
+              border: "1px solid var(--lucid-neg-bd)",
+            }}
+          >
+            Overdue
+          </span>
+        )}
       </div>
 
       {/* Last data point */}

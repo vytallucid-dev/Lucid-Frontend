@@ -3,6 +3,7 @@ import {
   NotebookPen,
   Activity,
   Telescope,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,6 +73,22 @@ export const SECTIONS: NavSection[] = [
       { label: "Compass", href: "/oracle/compass" },
     ],
   },
+  {
+    // Top-level surface, peer to Oracle and NIFTY rather than a sub-tab of
+    // either — the calendar spans every tracked currency, so it does not
+    // belong inside a single tool's section.
+    key: "calendar",
+    label: "Calendar",
+    href: "/calendar",
+    icon: CalendarDays,
+    // Fix 4: History is a distinct, deep-linkable route rather than a mode
+    // toggle on the live page — a shared week/range URL only survives a
+    // reload if it's the actual route, not client-only state.
+    subtabs: [
+      { label: "Live", href: "/calendar" },
+      { label: "History", href: "/calendar/history" },
+    ],
+  },
 ];
 
 export function isSectionActive(key: string, pathname: string): boolean {
@@ -79,12 +96,18 @@ export function isSectionActive(key: string, pathname: string): boolean {
   if (key === "trading") return pathname.startsWith("/trading");
   if (key === "nifty") return pathname.startsWith("/nifty");
   if (key === "oracle") return pathname.startsWith("/oracle");
+  if (key === "calendar") return pathname.startsWith("/calendar");
   return false;
 }
 
 export function isSubtabActive(key: string, href: string, pathname: string): boolean {
   // Mirrors each section's own layout.tsx matching rule exactly.
   if (key === "oracle") return pathname === href;
+  // Exact match, not startsWith: "/calendar" is a literal prefix of
+  // "/calendar/history" (Fix 4's new subtab), so startsWith would light up
+  // both tabs on the history page. Trading and NIFTY never hit this because
+  // none of their subtab hrefs prefix one another.
+  if (key === "calendar") return pathname === href;
   // Trading + NIFTY both use startsWith against each sub-tab's own href.
   return pathname.startsWith(href);
 }

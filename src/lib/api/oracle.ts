@@ -5,7 +5,12 @@ import { apiFetch } from './client';
 // Issue 2: widened to include "AU" (the AUD economy — grouped by owning
 // asset, not raw country; see the backend's heatmapEconomyKeyForAsset).
 export type OracleEconomy = 'US' | 'EU' | 'UK' | 'JP' | 'AU';
-export type OracleOutcome = 'scored' | 'carry_forward' | 'insufficient_data';
+// 'aging' — renamed from 'stale' on the wire (see the shared backend comment
+// on isAging in oracle-mappers.ts). Deliberately independent of `overdue`,
+// which is carried on each type below as its own boolean, never folded into
+// this union — aging and overdue are different facts and must never be
+// merged into one marker.
+export type OracleOutcome = 'scored' | 'carry_forward' | 'insufficient_data' | 'aging';
 // Phase 7: widened to the full current registry (AUD, US30) so the picker
 // types cover every instrument /api/oracle/assets can return. The picker
 // UIs themselves derive their option lists from that response at runtime
@@ -19,12 +24,27 @@ export type FxPairKey =
 
 // ─── Heatmap types ────────────────────────────────────────────────────────────
 
+/**
+ * The next scheduled occurrence for an indicator, from a stored calendar
+ * event — never computed from cadence. `variant` is the release rung
+ * (flash/final/prelim/...) when the indicator has a registered ladder, null
+ * for a single-release indicator.
+ */
+export interface NextReleaseInfo {
+  scheduledAt: string; // ISO-8601 UTC instant
+  variant: string | null;
+}
+
 export interface PublicHeatmapIndicator {
+  code: string;
   name: string;
   frequency: string;
   category: string;
   lastRelease: string;
-  nextRelease: string;
+  // Null when no future calendar event is stored for this indicator — the
+  // common case, since the feed is current-week-only. Never a fabricated
+  // date; render an honest "unknown" state, not a guess.
+  nextRelease: NextReleaseInfo | null;
   actual: string | null;
   forecast: string | null;
   previous: string | null;
@@ -32,8 +52,12 @@ export interface PublicHeatmapIndicator {
   score: number | null;
   outcome: OracleOutcome;
   reason: string | null;
-  stale?: boolean;
-  staleDate?: string;
+  // Renamed from stale/staleDate — flat 60-day observationDate tolerance.
+  aging?: boolean;
+  agingDate?: string;
+  // B1 — a scheduled release passed >24h ago with nothing entered.
+  // Independent of `aging` above; never conflate the two into one marker.
+  overdue?: boolean;
 }
 
 export type PublicHeatmapResponse = Record<OracleEconomy, PublicHeatmapIndicator[]>;
@@ -49,7 +73,10 @@ export interface PublicScorecardIndicator {
   score: number | null;
   outcome: OracleOutcome;
   reason: string | null;
-  staleDate?: string;
+  // Renamed from staleDate.
+  agingDate?: string;
+  // B1 — see PublicHeatmapIndicator.overdue.
+  overdue?: boolean;
 }
 
 export interface PublicScorecardSection {
@@ -94,6 +121,10 @@ export interface PublicFxIndicatorSide {
   forecast?: string | null;
   surprise?: string | null;
   outcome: OracleOutcome;
+  // Brought in line with the asset scorecard and heatmap (previously this
+  // side had no aging/overdue concept at all).
+  agingDate?: string;
+  overdue?: boolean;
 }
 
 export interface PublicFxIndicatorRow {

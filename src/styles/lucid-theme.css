@@ -2258,3 +2258,913 @@ td.lt-eyebrow {
   border-top: 1px solid var(--lucid-line);
   line-height: 1.7;
 }
+
+/* ============================================================
+   CALENDAR — economic release schedule.
+   Presentational only. Every colour is a token; no new palette.
+   ============================================================ */
+
+/* ── Event row ──
+   Extends .lx-row. The leading rail encodes impact without spending a third
+   coloured chip per row — twenty chip-laden rows read as decoration, a rail
+   scans as a column. Gold stays reserved for interactive. */
+.lx-cal-row {
+  position: relative;
+  padding-left: 14px;
+  gap: 10px;
+}
+.lx-cal-rail {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 20px;
+  border-radius: 1px;
+}
+/* Fixed gutters so time and currency form true columns down the card — a
+   ragged left edge is the thing that makes a schedule hard to scan. */
+.lx-cal-time {
+  width: 46px;
+  flex-shrink: 0;
+  color: var(--lucid-ink);
+}
+.lx-cal-ccy {
+  width: 34px;
+  flex-shrink: 0;
+  letter-spacing: 0.08em;
+}
+.lx-cal-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.lx-cal-name-text {
+  color: var(--lucid-ink);
+  line-height: 1.4;
+  min-width: 0;
+}
+/* Variant (flash / final / prelim) — a qualifier on the name, not a status.
+   Mono + uppercase micro so it reads as metadata at a glance. */
+.lx-cal-variant {
+  flex-shrink: 0;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+/* Status — "awaiting" is the resting state and stays quiet; "actual in" is
+   the state change worth seeing, so only it earns colour. */
+.lx-cal-status {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+.lx-cal-status.is-in {
+  color: var(--lucid-pos);
+}
+
+/* ── Day group heading inside the week band ── */
+.lx-cal-day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.lx-cal-day + .lx-card {
+  margin-bottom: 0;
+}
+.lx-cal-day-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--lucid-line);
+}
+.lx-cal-day.is-today .lx-eyebrow {
+  color: var(--lucid-accent);
+}
+
+/* ── Filters ──
+   Toggle chips. Gold on the active one is correct here: it is an interactive
+   control reflecting a choice, which is exactly what the accent is for. */
+.lx-cal-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.lx-cal-chip {
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  background: transparent;
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 6px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition:
+    color var(--lucid-dur-fast) var(--lucid-ease-out),
+    border-color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-cal-chip:hover {
+  color: var(--lucid-ink-2);
+  border-color: var(--lucid-line-3);
+}
+.lx-cal-chip.is-on {
+  color: var(--lucid-accent);
+  border-color: var(--lucid-accent-bd);
+  background: var(--lucid-accent-bg);
+}
+.lx-cal-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-cal-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lx-cal-filter-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--lucid-line-2);
+}
+
+/* ── Empty state ──
+   A designed rest state, not blank space. Most days genuinely have nothing,
+   so this is a common view and must look intentional. */
+.lx-cal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.lx-cal-empty-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--lucid-line-2);
+  color: var(--lucid-ink-3);
+}
+
+/* ── Unmapped queue — deliberately recessed ──
+   Sits one step below the page ground so it reads as a basement, not a peer
+   of the calendar bands. Admin concern, not the daily view. */
+.lx-cal-admin {
+  background: var(--lucid-page-bg-deep);
+  border: 1px solid var(--lucid-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.lx-cal-admin-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-cal-admin-head:hover {
+  background: var(--lucid-hover-row);
+}
+.lx-cal-admin-head:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-cal-admin-body {
+  padding: 0 16px 14px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.lx-cal-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 9px;
+}
+.lx-cal-admin-row + .lx-cal-admin-row {
+  border-top: 1px solid var(--lucid-line);
+}
+
+/* ── Calendar layout helpers ──
+   Extracted because each was repeating across the calendar components; an
+   inline style object appearing more than once is a utility that has not been
+   named yet. */
+
+/* Summary metric: eyebrow → value → caption, one fixed rhythm. */
+.lx-cal-stat-value {
+  margin-top: 8px;
+  color: var(--lucid-ink);
+}
+.lx-cal-stat-value.is-accent {
+  color: var(--lucid-accent);
+}
+.lx-cal-stat-value.is-muted {
+  color: var(--lucid-ink-3);
+}
+.lx-cal-stat-note {
+  margin-top: 6px;
+}
+
+/* Header strip: filters left, zone selector right, wrapping on narrow. */
+.lx-cal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.lx-cal-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* The zone selector is a compact control, not a form field — it shrinks to its
+   content rather than filling the row like .lx-input alone would. */
+.lx-cal-zone-select {
+  width: auto;
+  height: 32px;
+  font-size: 12px;
+}
+
+/* Vertical stack of day groups. */
+.lx-cal-days {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Prose that explains the horizon — measured for reading, not full-bleed. */
+.lx-cal-note {
+  margin-top: 12px;
+  max-width: 62ch;
+}
+
+/* The admin basement hangs off the band above it rather than opening its own. */
+.lx-cal-admin-band {
+  padding-top: 0;
+}
+
+.lx-cal-admin-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.lx-cal-admin-when {
+  flex-shrink: 0;
+}
+.lx-cal-admin-intro {
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.lx-cal-admin-chev {
+  color: var(--lucid-ink-3);
+  transition: transform var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-cal-admin-head[aria-expanded="true"] .lx-cal-admin-chev {
+  transform: rotate(90deg);
+}
+.lx-cal-admin-error {
+  color: var(--lucid-neg);
+}
+.lx-cal-empty-title {
+  color: var(--lucid-ink-2);
+}
+.lx-cal-empty-detail {
+  max-width: 34ch;
+  line-height: 1.7;
+}
+
+/* ── Calendar rhythm ──
+   EVERY rule below is scoped to .lx-cal-page. --lucid-band-y and the shared
+   .lx-band / .lx-band-head / .lx-rule definitions are untouched, because the
+   dashboard depends on them.
+
+   Why the override exists: --lucid-band-y (48/72px) is calibrated for dense
+   pages where a band is full of content. The calendar is sparse — often three
+   or four rows, sometimes an empty state — so it inherits vertical space it
+   cannot fill and the bands read as separated islands rather than one view.
+   The fix is less air between bands, not less air everywhere. */
+.lx-cal-page .lx-band {
+  padding-block: 28px;
+}
+@media (min-width: 1024px) {
+  .lx-cal-page .lx-band {
+    padding-block: 36px;
+  }
+}
+/* The first band opens the page — it needs the page's own top margin, not a
+   band gap on top of it. */
+.lx-cal-page > .lx-band:first-child {
+  padding-top: 24px;
+}
+/* Band heads sit closer to their content here: with only a few rows beneath,
+   the shared 28px reads as a gap rather than a relationship. */
+.lx-cal-page .lx-band-head {
+  margin-bottom: 18px;
+}
+
+/* An empty state must not reserve the height a populated band would — that is
+   precisely what makes a quiet day look like a broken page. The card keeps its
+   frame so the layout does not jump; only the interior air is reduced. */
+.lx-cal-page .lx-cal-empty {
+  padding: 26px 24px;
+  gap: 8px;
+}
+/* A card containing nothing but an empty state drops its own generous padding
+   too — otherwise 28px of card padding wraps 26px of empty-state padding.
+   An explicit modifier rather than :has(), which has no precedent in this
+   stylesheet and no declared browserslist to check it against. */
+.lx-cal-page .lx-card.is-empty {
+  padding: 0;
+}
+
+/* The admin basement is an appendix, not a peer band. It hangs directly off
+   the content above it. */
+.lx-cal-page .lx-cal-admin-band {
+  padding-top: 0;
+  padding-bottom: 28px;
+}
+
+/* ── Calendar colour weight ──
+   All scoped to .lx-cal-page or to .lx-cal-* classes the calendar owns. No
+   shared class or token is redefined, and no new colour is introduced — every
+   value below resolves to an existing --lucid-* token.
+
+   Gold is deliberately absent from everything here. It stays brand/interactive
+   (the active filter chip, the next-release countdown) and never decorates a
+   row. */
+
+/* Impact: three distinct weights rather than a colour swap.
+   High   — full-height rail in --lucid-neg, a tinted row wash, brighter ink.
+   Medium — shorter rail in --lucid-warn, no wash.
+   Low    — no rail at all, receding ink.
+   The point is that High reads as heavier at a glance without anyone parsing
+   a legend; colour alone would only differentiate, not rank. */
+.lx-cal-row .lx-cal-rail {
+  width: 2px;
+  border-radius: 1px;
+  background: transparent;
+}
+.lx-cal-row.is-high .lx-cal-rail {
+  background: var(--lucid-neg);
+  height: 100%;
+  top: 0;
+  transform: none;
+  width: 2px;
+}
+.lx-cal-row.is-medium .lx-cal-rail {
+  background: var(--lucid-warn);
+  height: 18px;
+}
+
+/* A very low-alpha wash, so a high-impact row separates as a band across the
+   whole width rather than only at its leading edge. --lucid-neg-wash is an
+   existing token used for exactly this kind of full-row tint. */
+.lx-cal-row.is-high {
+  background: var(--lucid-neg-wash);
+}
+/* Hover must still register on a washed row — the shared .lx-row:hover sets
+   the same property, so without this the wash simply wins and the row appears
+   dead to the pointer. Two translucent layers stack instead of one replacing
+   the other: the wash paints the element, the hover tint rides on top as a
+   gradient over it. */
+.lx-cal-row.is-high:hover {
+  background-image: linear-gradient(
+    var(--lucid-hover-row),
+    var(--lucid-hover-row)
+  );
+}
+
+/* Name ink follows the same ranking: High is fully lit, Medium normal, Low
+   steps back so the eye skips it when scanning for what matters. */
+.lx-cal-row.is-high .lx-cal-name-text {
+  color: var(--lucid-ink);
+  font-weight: 500;
+}
+.lx-cal-row.is-low .lx-cal-name-text {
+  color: var(--lucid-ink-2);
+}
+/* Time is the other thing read at a glance on a high-impact row. */
+.lx-cal-row.is-high .lx-cal-time {
+  color: var(--lucid-ink);
+}
+.lx-cal-row.is-low .lx-cal-time {
+  color: var(--lucid-ink-2);
+}
+
+/* Currency: a bordered token so EUR and USD separate as shapes while
+   scanning, not just as three letters in a column of identical grey. The
+   differentiation is weight and enclosure, not per-currency hues — assigning
+   a colour per currency would invent a palette and collide with the impact
+   ranking the row already carries. */
+.lx-cal-page .lx-cal-ccy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  padding-block: 2px;
+  border: 1px solid var(--lucid-line);
+  border-radius: 4px;
+  background: var(--lucid-surface-2);
+  color: var(--lucid-ink-2);
+  font-weight: 500;
+}
+/* On a high-impact row the currency lifts with the rest of the row. */
+.lx-cal-row.is-high .lx-cal-ccy {
+  border-color: var(--lucid-neg-bd);
+  color: var(--lucid-ink);
+}
+
+/* Status: entered vs awaiting must be readable without reading. A filled dot
+   in --lucid-pos versus a hollow ring in --lucid-ink-3 carries it at a
+   glance; the words stay for anyone who looks directly. */
+.lx-cal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lx-cal-status::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--lucid-ink-3);
+  background: transparent;
+}
+.lx-cal-status.is-in::before {
+  border-color: var(--lucid-pos);
+  background: var(--lucid-pos);
+}
+
+/* ============================================================
+   OVERDUE BADGE + PANEL (B3) — top-bar badge, dropdown panel.
+   ============================================================ */
+
+.lx-overdue-badge-root {
+  position: relative;
+}
+
+.lx-overdue-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--lucid-ink-3);
+  cursor: pointer;
+  transition:
+    color var(--lucid-dur-fast) var(--lucid-ease-out),
+    background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overdue-trigger:hover {
+  color: var(--lucid-ink-2);
+  background: var(--lucid-hover-soft);
+}
+.lx-overdue-trigger.has-overdue {
+  color: var(--lucid-neg);
+}
+.lx-overdue-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+}
+
+.lx-overdue-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding-inline: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--lucid-neg);
+  color: var(--lucid-page-bg);
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lx-overdue-panel {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(400px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--lucid-popover);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 12px;
+  box-shadow: var(--lucid-elev-float);
+  overflow: hidden;
+  animation: lx-picker-open var(--lucid-dur-fast) var(--lucid-ease-out) backwards;
+}
+
+.lx-overdue-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--lucid-line);
+  flex-shrink: 0;
+}
+.lx-overdue-panel-title {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+.lx-overdue-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--lucid-ink-3);
+  cursor: pointer;
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out), background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overdue-panel-close:hover {
+  color: var(--lucid-ink);
+  background: var(--lucid-hover-soft);
+}
+
+.lx-overdue-panel-body {
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.lx-overdue-empty {
+  padding: 20px 14px;
+  font-family: var(--lucid-font-sans);
+  font-size: 12px;
+  color: var(--lucid-ink-3);
+  text-align: center;
+}
+
+.lx-overdue-section + .lx-overdue-section {
+  border-top: 1px solid var(--lucid-line);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.lx-overdue-section-title {
+  padding: 6px 14px 4px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+
+/* Deferred — recessed, not hidden. B3: a deferred entry must stay visible
+   (a March deferral discovered in September means a scorecard has been
+   scoring off a year-old print), just visually secondary to Due Today and
+   Overdue above it. Applied via an explicit modifier class, not :has() —
+   see the earlier no-:has()-precedent note on .lx-cal-card.is-empty. */
+.lx-overdue-section.is-recessed {
+  background: var(--lucid-page-bg-deep);
+}
+.lx-overdue-section.is-recessed .lx-overdue-row-name,
+.lx-overdue-section.is-recessed .lx-overdue-row-meta {
+  color: var(--lucid-ink-3);
+}
+
+.lx-overdue-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overdue-row:hover {
+  background: var(--lucid-hover-row);
+}
+
+.lx-overdue-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.lx-overdue-row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--lucid-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--lucid-ink);
+}
+.lx-overdue-row-variant {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.lx-overdue-row-meta {
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  color: var(--lucid-ink-3);
+}
+.lx-overdue-row-reason {
+  font-family: var(--lucid-font-sans);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--lucid-ink-3);
+}
+
+.lx-overdue-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.lx-overdue-row-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--lucid-ink-3);
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out), background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overdue-row-jump:hover {
+  color: var(--lucid-accent);
+  background: var(--lucid-accent-bg);
+}
+.lx-overdue-row-action {
+  font-family: var(--lucid-font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--lucid-ink-3);
+  background: transparent;
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 6px;
+  padding: 3px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out), border-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-overdue-row-action:hover {
+  color: var(--lucid-ink);
+  border-color: var(--lucid-line-3);
+}
+.lx-overdue-row-date {
+  font-family: var(--lucid-font-mono);
+  font-size: 10px;
+  color: var(--lucid-ink);
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+/* ============================================================
+   CALENDAR HISTORY (Fix 4) — week/range browser, sortable table.
+   ============================================================ */
+
+/* ── Week/range navigation strip ── */
+.lx-hist-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.lx-hist-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lx-hist-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--lucid-surface-2);
+  border: 1px solid var(--lucid-line-2);
+  color: var(--lucid-ink-2);
+  cursor: pointer;
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out), border-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-hist-nav-btn:hover:not(:disabled) {
+  color: var(--lucid-ink);
+  border-color: var(--lucid-line-3);
+}
+.lx-hist-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.lx-hist-nav-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--lucid-focus-ring);
+}
+.lx-hist-range-label {
+  font-family: var(--lucid-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lucid-ink);
+  min-width: 15ch;
+  text-align: center;
+}
+.lx-hist-edge-note {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  color: var(--lucid-ink-3);
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* ── Date-range picker — hand-built on .lx-input, no new component library ── */
+.lx-hist-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lx-hist-picker-input {
+  width: auto;
+  height: 32px;
+  font-size: 11px;
+  padding-inline: 8px;
+}
+.lx-hist-picker-sep {
+  color: var(--lucid-ink-3);
+  font-size: 11px;
+}
+
+/* ── Table ──
+   Real <table> markup (not .lx-row flex divs) — sorting needs semantic
+   headers, and a dense multi-column scan is what a table is for. */
+.lx-hist-table-wrap {
+  overflow-x: auto;
+}
+.lx-hist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--lucid-font-sans);
+}
+.lx-hist-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border-bottom: 1px solid var(--lucid-line-2);
+  white-space: nowrap;
+}
+.lx-hist-table thead th.is-num {
+  text-align: right;
+}
+.lx-hist-table th.is-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-hist-table th.is-sortable:hover {
+  color: var(--lucid-ink-2);
+}
+.lx-hist-table th.is-sortable.is-active {
+  color: var(--lucid-accent);
+}
+.lx-hist-sort-arrow {
+  margin-left: 4px;
+  display: inline-block;
+}
+
+/* Country group header row — spans the table, breaks the scan into currency
+   blocks the way Forex Factory / Trading Economics both do. */
+.lx-hist-group-row td {
+  padding: 14px 12px 6px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-accent);
+  border-bottom: 1px solid var(--lucid-line);
+}
+.lx-hist-group-row:first-child td {
+  padding-top: 0;
+}
+
+.lx-hist-table tbody tr.lx-hist-row {
+  border-bottom: 1px solid var(--lucid-line);
+  transition: background-color var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-hist-table tbody tr.lx-hist-row:hover {
+  background: var(--lucid-hover-row);
+}
+.lx-hist-table td {
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--lucid-ink-2);
+  vertical-align: middle;
+}
+.lx-hist-table td.is-num {
+  font-family: var(--lucid-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--lucid-ink);
+}
+.lx-hist-cell-date {
+  font-family: var(--lucid-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--lucid-ink-2);
+  white-space: nowrap;
+}
+.lx-hist-cell-time {
+  font-family: var(--lucid-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--lucid-ink);
+}
+.lx-hist-cell-name {
+  color: var(--lucid-ink);
+  font-weight: 500;
+}
+.lx-hist-cell-variant {
+  margin-left: 6px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border: 1px solid var(--lucid-line-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.lx-hist-impact-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.lx-hist-status {
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+}
+.lx-hist-status.is-in {
+  color: var(--lucid-pos);
+}
+
+.lx-hist-empty {
+  padding: 48px 24px;
+}

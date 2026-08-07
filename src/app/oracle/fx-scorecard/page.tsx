@@ -192,6 +192,28 @@ function SideCell({ side }: { side: PublicFxIndicatorRow["currA"] }) {
           {side.actual ?? "—"}
         </span>
       )}
+      {/* OVERDUE and AGING — independent facts, never merged into one marker
+          (see the shared backend comment on isAging in oracle-mappers.ts).
+          Brought in line with the asset scorecard and heatmap; this side
+          previously had no aging/overdue concept at all. */}
+      {side.overdue && (
+        <span
+          title="A scheduled release passed more than 24h ago with nothing entered"
+          className="text-[8px] font-medium px-1 rounded uppercase tracking-wider"
+          style={{ background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
+        >
+          overdue
+        </span>
+      )}
+      {side.agingDate && (
+        <span
+          title={`Data is more than 60 days old (last observation ${side.agingDate})`}
+          className="text-[8px] font-medium px-1 rounded"
+          style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}
+        >
+          aging
+        </span>
+      )}
     </div>
   );
 }

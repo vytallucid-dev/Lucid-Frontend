@@ -1,17 +1,24 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useSyncExternalStore } from "react";
 import { economies } from "@/data/heatmap";
 import { useHeatmap } from "@/hooks/useHeatmap";
 import { useOracleTools } from "@/components/oracle-tools/OracleToolsProvider";
 import type {
   OracleEconomy,
   PublicHeatmapIndicator,
+  NextReleaseInfo,
 } from "@/lib/api/oracle";
 import { PageSkeleton } from "@/components/state/PageSkeleton";
 import { ErrorState } from "@/components/state/ErrorState";
 import { EmptyState } from "@/components/state/EmptyState";
 import { AnimatedNumber } from "@/components/motion";
+import { zonedTime, zonedWeekday } from "@/lib/calendar-time";
+import {
+  subscribeTimezone,
+  getTimezoneSnapshot,
+  getTimezoneServerSnapshot,
+} from "@/lib/calendar-timezone-store";
 
 const CATEGORIES = ["ECONOMIC GROWTH", "INFLATION", "JOBS MARKET"] as const;
 
@@ -50,19 +57,57 @@ function deriveIndicatorCode(economy: OracleEconomy, name: string): string | nul
   return null;
 }
 
-function daysUntil(dateStr: string, today: Date): number | null {
-  if (dateStr === "Daily" || dateStr === "—") return null;
-  const d = new Date(dateStr);
+/**
+ * Days from `today` to a stored next-release instant. Null covers both real
+ * absence (no calendar event stored — the common case, since the feed is
+ * current-week-only) and "Daily"/event-driven indicators, which never have a
+ * calendar row to begin with — same null, same downstream treatment, no
+ * special-casing needed here now that the arithmetic that used to distinguish
+ * them is gone.
+ */
+function daysUntil(next: NextReleaseInfo | null, today: Date): number | null {
+  if (!next) return null;
+  const d = new Date(next.scheduledAt);
   if (isNaN(d.getTime())) return null;
   return Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
 }
 
-function nextReleaseStyle(dateStr: string, today: Date): React.CSSProperties {
-  const days = daysUntil(dateStr, today);
+function nextReleaseStyle(next: NextReleaseInfo | null, today: Date): React.CSSProperties {
+  const days = daysUntil(next, today);
   if (days === null) return { color: "var(--lucid-ink-3)" };
   if (days <= 2) return { color: "var(--lucid-warn)", fontWeight: 500 };
   if (days <= 7) return { color: "var(--lucid-ink-2)", fontWeight: 500 };
   return { color: "var(--lucid-ink-3)" };
+}
+
+/**
+ * "Tue 14:45 · Final" or "Tue 14:45" for a single-release indicator.
+ * "Not scheduled" when no future calendar event is stored — a clearly-labelled
+ * unknown, never a fabricated date. This is the ordinary state for most
+ * indicators most of the time, not an error: the feed only ever holds the
+ * current week.
+ *
+ * B5 — reads the SAME persisted timezone preference the calendar page reads
+ * and writes (calendar-timezone-store.ts, defaults to IST). Previously this
+ * used the browser's implicit local zone via toLocaleDateString/
+ * toLocaleTimeString with no `timeZone` option — a viewer in London and a
+ * viewer in Mumbai would see the same UTC instant rendered as two different
+ * clock times on this page, while the calendar page (right next to it in the
+ * dock) showed a third, IST-anchored answer. Same event must read the same
+ * time everywhere; unifying on one stored preference is what makes that true
+ * rather than aspirational.
+ */
+function formatNextRelease(next: NextReleaseInfo | null, timeZone: string): string {
+  if (!next) return "Not scheduled";
+  const d = new Date(next.scheduledAt);
+  if (isNaN(d.getTime())) return "Not scheduled";
+  const day = zonedWeekday(d, timeZone);
+  const time = zonedTime(d, timeZone);
+  return next.variant ? `${day} ${time} · ${capitalize(next.variant)}` : `${day} ${time}`;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** Surprise cell colouring: beat = pos, miss = neg (color-coded actual vs forecast). */
@@ -121,6 +166,12 @@ export default function HeatmapPage() {
   const { data: heatmap, isLoading, error, refetch } = useHeatmap();
   const { openIndicatorTrend } = useOracleTools();
   const TODAY = useMemo(() => new Date(), []);
+  // B5 — same store the calendar page reads/writes; see formatNextRelease's doc.
+  const timeZone = useSyncExternalStore(
+    subscribeTimezone,
+    getTimezoneSnapshot,
+    getTimezoneServerSnapshot,
+  );
 
   const indicators: PublicHeatmapIndicator[] = useMemo(
     () => (heatmap ? heatmap[economy] ?? [] : []),
@@ -240,12 +291,12 @@ export default function HeatmapPage() {
               {CATEGORIES.map((cat) => {
                 const rows = grouped.get(cat);
                 if (!rows || rows.length === 0) return null;
-                return <CategoryGroup key={cat} category={cat} rows={rows} today={TODAY} economy={economy} onOpen={openIndicatorTrend} />;
+                return <CategoryGroup key={cat} category={cat} rows={rows} today={TODAY} economy={economy} onOpen={openIndicatorTrend} timeZone={timeZone} />;
               })}
               {(() => {
                 const otherRows = indicators.filter((i) => !CATEGORIES.includes(i.category as typeof CATEGORIES[number]));
                 if (otherRows.length === 0) return null;
-                return <CategoryGroup key="OTHER" category="OTHER" rows={otherRows} today={TODAY} economy={economy} onOpen={openIndicatorTrend} />;
+                return <CategoryGroup key="OTHER" category="OTHER" rows={otherRows} today={TODAY} economy={economy} onOpen={openIndicatorTrend} timeZone={timeZone} />;
               })()}
             </tbody>
           </table>
@@ -302,12 +353,14 @@ function CategoryGroup({
   today,
   economy,
   onOpen,
+  timeZone,
 }: {
   category: string;
   rows: PublicHeatmapIndicator[];
   today: Date;
   economy: OracleEconomy;
   onOpen: (code: string) => void;
+  timeZone: string;
 }) {
   return (
     <>
@@ -322,10 +375,23 @@ function CategoryGroup({
       </tr>
       {rows.map((ind) => {
         const isInsufficient = ind.outcome === "insufficient_data";
-        const staleTooltip = ind.stale
-          ? ind.staleDate
-            ? `Data is more than 60 days old (last observation ${ind.staleDate})`
+        // Three independent, visually distinct facts — never merged into one
+        // marker (see the shared comment on isAging in oracle-mappers.ts):
+        //   OVERDUE — a specific scheduled release passed with nothing
+        //     entered. The most actionable state; reads as urgent (neg red).
+        //   AGING (renamed from "stale") — the value on file is old in
+        //     absolute terms, independent of whether anything is newly due.
+        //     Reads as a caution (warn amber) — real data, just old.
+        //   INAPPLICABLE / insufficient_data — not this row's concern here
+        //     (handled by isInsufficient above); genuinely different from
+        //     both of the above, never conflated with either.
+        const agingTooltip = ind.aging
+          ? ind.agingDate
+            ? `Data is more than 60 days old (last observation ${ind.agingDate})`
             : "Data is more than 60 days old"
+          : undefined;
+        const overdueTooltip = ind.overdue
+          ? "A scheduled release passed more than 24h ago with nothing entered"
           : undefined;
         const code = deriveIndicatorCode(economy, ind.name);
         const clickable = code !== null && !isInsufficient;
@@ -342,14 +408,28 @@ function CategoryGroup({
             {/* Indicator */}
             <td className="px-3 py-2.5">
               <span className="font-semibold" style={{ color: "var(--lucid-ink)" }}>{ind.name}</span>
-              {ind.stale && (
+              {/* OVERDUE first — the more actionable of the two, and neg-red
+                  so it visually outranks aging's amber when both are true
+                  for the same row (a genuinely old value that ALSO just
+                  missed a fresh scheduled release). */}
+              {ind.overdue && (
                 <span
-                  title={staleTooltip}
+                  title={overdueTooltip}
+                  className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider align-middle"
+                  style={{ background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)" }}
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--lucid-neg)" }} aria-hidden="true" />
+                  overdue
+                </span>
+              )}
+              {ind.aging && (
+                <span
+                  title={agingTooltip}
                   className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider align-middle"
                   style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)", border: "1px solid var(--lucid-warn-bd)" }}
                 >
                   <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--lucid-warn)" }} aria-hidden="true" />
-                  stale
+                  aging
                 </span>
               )}
               <br />
@@ -359,15 +439,17 @@ function CategoryGroup({
             {/* Last Release */}
             <td
               className="px-3 py-2.5 lt-num whitespace-nowrap"
-              style={{ color: ind.stale ? "var(--lucid-warn)" : "var(--lucid-ink-2)" }}
-              title={ind.stale ? staleTooltip : undefined}
+              style={{ color: ind.aging ? "var(--lucid-warn)" : "var(--lucid-ink-2)" }}
+              title={ind.aging ? agingTooltip : undefined}
             >
               {ind.lastRelease}
             </td>
 
-            {/* Next Release */}
+            {/* Next Release — from a stored calendar event, or a clearly-
+                labelled unknown when none is stored (the common case: the
+                feed is current-week-only). Never a guessed date. */}
             <td className="px-3 py-2.5 lt-num whitespace-nowrap" style={nextReleaseStyle(ind.nextRelease, today)}>
-              {ind.nextRelease}
+              {formatNextRelease(ind.nextRelease, timeZone)}
             </td>
 
             {/* Actual */}

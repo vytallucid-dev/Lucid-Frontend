@@ -188,8 +188,27 @@ function IndicatorRow({ ind }: { ind: PublicScorecardIndicator }) {
       >
         <div className="flex items-center gap-2">
           {ind.name}
-          {ind.staleDate && (
+          {/* OVERDUE and AGING are independent facts, never merged into one
+              marker (see the shared backend comment on isAging in
+              oracle-mappers.ts) — overdue is the more actionable of the two,
+              so it's neg-red to visually outrank aging's amber when both are
+              true for the same row. */}
+          {ind.overdue && (
             <span
+              title="A scheduled release passed more than 24h ago with nothing entered"
+              className="text-[9px] font-medium px-1.5 py-0.5 rounded uppercase tracking-wider"
+              style={{
+                background: "var(--lucid-neg-bg)",
+                color: "var(--lucid-neg)",
+                border: "1px solid var(--lucid-neg-bd)",
+              }}
+            >
+              overdue
+            </span>
+          )}
+          {ind.agingDate && (
+            <span
+              title={`Data is more than 60 days old (last observation ${ind.agingDate})`}
               className="text-[9px] font-medium px-1.5 py-0.5 rounded"
               style={{
                 background: "var(--lucid-warn-bg)",
@@ -197,7 +216,7 @@ function IndicatorRow({ ind }: { ind: PublicScorecardIndicator }) {
                 border: "1px solid var(--lucid-warn-bd)",
               }}
             >
-              {ind.staleDate}
+              {ind.agingDate}
             </span>
           )}
         </div>

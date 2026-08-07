@@ -7,6 +7,7 @@ import { useIsFetching, useQueryClient, notifyManager } from "@tanstack/react-qu
 import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { findActiveSection, findActiveSubtab } from "@/lib/nav";
+import { OverdueBadge } from "./OverdueBadge";
 
 // Derives the top bar's label from the same nav map the dock renders from
 // (src/lib/nav.ts), plus — for routes with no matching sub-tab (a detail or
@@ -224,6 +225,12 @@ export function TopBar() {
             {statusLabel}
           </span>
         </div>
+
+        {/* B3 — the overdue badge. Present on every page because TopBar is;
+            plain useQuery inside (see OverdueBadge.tsx's own doc for why
+            that sidesteps the "Cannot update while rendering" defect this
+            file documents above for the error-count subscription). */}
+        <OverdueBadge />
 
         {/* User menu */}
         {loading ? (

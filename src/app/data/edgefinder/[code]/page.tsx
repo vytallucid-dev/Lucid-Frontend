@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Database,
   Info,
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
@@ -23,11 +24,13 @@ import {
   fetchFredIndicator,
   submitEdgefinderManualInput,
   isRevisionConfirmationRequired,
+  editDataPoint,
   getCotData,
   type FetchLog,
   type DataPoint,
   type CotDataPoint,
   type RevisionConfirmationRequired,
+  type IndicatorVariantOption,
 } from "@/lib/api/admin";
 import {
   DATA_SOURCE_COLORS,
@@ -113,11 +116,13 @@ function ForexFactoryPanel({
   code,
   indicatorName,
   lastActual,
+  variants,
   onSuccess,
 }: {
   code: string;
   indicatorName: string;
   lastActual: { value: number; observationDate: string } | null;
+  variants: IndicatorVariantOption[];
   onSuccess: (msg: string) => void;
 }) {
   const mutation = useMutation({
@@ -175,6 +180,7 @@ function ForexFactoryPanel({
         actualPlaceholder="e.g. 115 (for 115K)"
         submitLabel="Save Manual Value"
         autoFillPrevious={lastActual}
+        variants={variants}
         onSuccess={onSuccess}
         instructions={
           <div
@@ -407,6 +413,180 @@ function RevisionConfirmModal({
   );
 }
 
+// B4 edit path — correcting a typo in an already-entered row, in place. No
+// revision is ever created here (unlike ManualEntryForm's POST, which infers
+// intent from a previous-value mismatch); this is an explicit admin action
+// so there is no intent to infer. Editable: actual, forecast, previous,
+// observation date, variant.
+function EditDataPointModal({
+  dataPoint,
+  indicatorName,
+  variants,
+  onClose,
+  onSaved,
+}: {
+  dataPoint: DataPoint;
+  indicatorName: string;
+  variants: IndicatorVariantOption[];
+  onClose: () => void;
+  onSaved: (msg: string) => void;
+}) {
+  const [date, setDate] = useState(dataPoint.observationDate);
+  const [actual, setActual] = useState(String(dataPoint.value));
+  const [forecast, setForecast] = useState(
+    dataPoint.forecastValue != null ? String(dataPoint.forecastValue) : "",
+  );
+  const [previous, setPrevious] = useState(
+    dataPoint.previousValue != null ? String(dataPoint.previousValue) : "",
+  );
+  const [variant, setVariant] = useState<string>(dataPoint.variant ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      editDataPoint(dataPoint.id, {
+        observationDate: date,
+        actual: parseFloat(actual),
+        forecast: forecast ? parseFloat(forecast) : null,
+        previous: previous ? parseFloat(previous) : null,
+        ...(variants.length > 0 ? { variant: variant || null } : {}),
+      }),
+    onSuccess: (res) => {
+      onSaved(`Corrected ${indicatorName}: ${res.value} for ${res.observationDate}`);
+    },
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "var(--lucid-scrim)" }}
+      onClick={onClose}
+    >
+      <div
+        className="lt-card w-full max-w-md rounded-2xl p-5 flex flex-col gap-4"
+        style={{ background: "var(--lucid-surface)", border: "1px solid var(--lucid-line-2)" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start gap-3">
+          <Pencil size={18} className="mt-0.5 shrink-0" style={{ color: "var(--lucid-accent)" }} />
+          <div>
+            <h2 className="lt-serif text-base font-semibold" style={{ color: "var(--lucid-ink)" }}>
+              Correct entry
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--lucid-ink-2)" }}>
+              {indicatorName} — overwrites this row in place. No revision record is created.
+            </p>
+          </div>
+        </div>
+
+        {variants.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Release</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[...variants]
+                .sort((a, b) => a.ordinal - b.ordinal)
+                .map((v) => (
+                  <button
+                    key={v.variant}
+                    type="button"
+                    onClick={() => setVariant(v.variant)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all"
+                    style={
+                      variant === v.variant
+                        ? { background: "var(--lucid-accent)", color: "#fff" }
+                        : { background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }
+                    }
+                  >
+                    {v.variant}
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)", colorScheme: "dark" }}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Actual</label>
+            <input
+              type="number"
+              step="any"
+              value={actual}
+              onChange={(e) => setActual(e.target.value)}
+              className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Forecast</label>
+            <input
+              type="number"
+              step="any"
+              value={forecast}
+              onChange={(e) => setForecast(e.target.value)}
+              className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>Previous</label>
+            <input
+              type="number"
+              step="any"
+              value={previous}
+              onChange={(e) => setPrevious(e.target.value)}
+              className="lt-num rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "var(--lucid-surface-2)", border: "1px solid var(--lucid-line-2)", color: "var(--lucid-ink)" }}
+            />
+          </div>
+        </div>
+
+        {mutation.error && (
+          <p className="text-xs" style={{ color: "var(--lucid-neg)" }}>
+            Error: {(mutation.error as Error).message}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !actual || !date}
+            className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+            style={{ background: "var(--lucid-accent)", color: "#fff" }}
+          >
+            {mutation.isPending ? (
+              <><Loader2 size={14} className="animate-spin" /> Saving...</>
+            ) : (
+              <><CheckCircle2 size={14} /> Save correction</>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={mutation.isPending}
+            className="flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition-all disabled:opacity-50"
+            style={{ color: "var(--lucid-ink-3)" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Reusable manual data-entry form. Posts to the EdgeFinder manual endpoint
 // (data_points, vintage-aware idempotent upsert). Used by the manual / rate
 // pipelines AND embedded in the Forex Factory panel for backfill/corrections.
@@ -422,6 +602,7 @@ function ManualEntryForm({
   actualPlaceholder,
   submitLabel = "Submit Value",
   autoFillPrevious,
+  variants = [],
   onSuccess,
 }: {
   code: string;
@@ -434,6 +615,11 @@ function ManualEntryForm({
   // pre-filled from. Null/undefined for rate decisions or first releases, in
   // which case no pre-fill and no hint are shown.
   autoFillPrevious?: { value: number; observationDate: string } | null;
+  // Allowed release variants for this indicator, from IndicatorVariant.
+  // Empty (the default) means single-release — the selector doesn't render
+  // at all, which is the common case and must stay clean. Derived from the
+  // registry, never a hardcoded indicator list.
+  variants?: IndicatorVariantOption[];
   onSuccess: (msg: string) => void;
 }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -443,6 +629,12 @@ function ManualEntryForm({
     autoFillPrevious ? String(autoFillPrevious.value) : "",
   );
   const [notes, setNotes] = useState("");
+  // Pre-select the lowest-ordinal (earliest-in-ladder) variant by default —
+  // e.g. Flash before Final, Advance before Second/Third — since that's the
+  // release an admin is most often entering first.
+  const [variant, setVariant] = useState<string>(() =>
+    variants.length > 0 ? [...variants].sort((a, b) => a.ordinal - b.ordinal)[0].variant : "",
+  );
   // Set when the backend returns the 409 gate; drives the confirmation modal.
   const [pendingRevision, setPendingRevision] = useState<RevisionConfirmationRequired | null>(null);
   const previousInputRef = useRef<HTMLInputElement>(null);
@@ -477,6 +669,7 @@ function ManualEntryForm({
         previous: previous ? parseFloat(previous) : undefined,
         notes: notes || undefined,
         ...(confirmRevision ? { confirmRevision: true } : {}),
+        ...(variants.length > 0 ? { variant } : {}),
       }),
     onSuccess: (res) => {
       if (isRevisionConfirmationRequired(res)) {
@@ -497,6 +690,37 @@ function ManualEntryForm({
   return (
     <div className="flex flex-col gap-4">
       {instructions}
+
+      {variants.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium" style={{ color: "var(--lucid-ink-2)" }}>
+            Release <span style={{ color: "var(--lucid-neg)" }}>*</span>
+          </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {[...variants]
+              .sort((a, b) => a.ordinal - b.ordinal)
+              .map((v) => (
+                <button
+                  key={v.variant}
+                  type="button"
+                  onClick={() => setVariant(v.variant)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all"
+                  style={
+                    variant === v.variant
+                      ? { background: "var(--lucid-accent)", color: "#fff" }
+                      : { background: "var(--lucid-surface-2)", color: "var(--lucid-ink-2)", border: "1px solid var(--lucid-line-2)" }
+                  }
+                >
+                  {v.variant}
+                </button>
+              ))}
+          </div>
+          <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
+            This indicator has multiple release types. Flash and Final (etc.) are scored and compared
+            independently — pick which one this print is.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
@@ -593,7 +817,7 @@ function ManualEntryForm({
 
       <button
         onClick={() => mutation.mutate(undefined)}
-        disabled={mutation.isPending || !actual || !date}
+        disabled={mutation.isPending || !actual || !date || (variants.length > 0 && !variant)}
         className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50"
         style={{ background: mutation.isPending ? "var(--lucid-accent-bg)" : "var(--lucid-accent)", color: "#fff" }}
       >
@@ -628,12 +852,14 @@ function ManualRatePanel({
   indicatorName,
   isRateDecision,
   lastActual,
+  variants,
   onSuccess,
 }: {
   code: string;
   indicatorName: string;
   isRateDecision: boolean;
   lastActual: { value: number; observationDate: string } | null;
+  variants: IndicatorVariantOption[];
   onSuccess: (msg: string) => void;
 }) {
   const instructions = isRateDecision ? (
@@ -668,6 +894,10 @@ function ManualRatePanel({
       // Rate decisions don't use `previous` (bps delta is computed), so no
       // auto-fill or revision gate applies there — only the plain manual case.
       autoFillPrevious={isRateDecision ? null : lastActual}
+      // Rate decisions are always single-release — no indicator on the rate
+      // ladder is in the variant registry, so this is an empty array for
+      // them in practice; passed through for the non-rate manual case.
+      variants={isRateDecision ? [] : variants}
       onSuccess={onSuccess}
     />
   );
@@ -681,14 +911,21 @@ export default function EdgefinderIndicatorDetailPage() {
   const { isAdmin } = useAuth();
 
   const [banner, setBanner] = useState<{ success: boolean; message: string } | null>(null);
+  // B5: history view toggle. Only meaningful when the indicator is a
+  // straight Flash/Final pair (finalsOnlyDefault from the response) — a
+  // ladder-shaped or single-release indicator always returns every variant
+  // regardless of this flag, so the toggle only renders when it does something.
+  const [showAllVariants, setShowAllVariants] = useState(false);
+  // B4: the row currently open in the edit modal, or null when closed.
+  const [editingDataPoint, setEditingDataPoint] = useState<DataPoint | null>(null);
 
   const {
     data: latestData,
     isLoading: latestLoading,
     refetch: refetchLatest,
   } = useQuery({
-    queryKey: ["admin", "indicator-latest", code],
-    queryFn: () => getIndicatorLatest(code, 10),
+    queryKey: ["admin", "indicator-latest", code, showAllVariants],
+    queryFn: () => getIndicatorLatest(code, 10, showAllVariants),
     enabled: isAdmin,
     staleTime: 30_000,
   });
@@ -749,6 +986,10 @@ export default function EdgefinderIndicatorDetailPage() {
 
   const dataPoints: DataPoint[] = latestData?.data ?? [];
   const indicatorName = indicator?.name ?? code;
+  // Allowed release variants for this indicator (empty for single-release —
+  // every panel/selector below treats that as "no variant UI at all").
+  const variants: IndicatorVariantOption[] = latestData?.variants ?? [];
+  const finalsOnlyDefault = latestData?.finalsOnlyDefault ?? false;
   // Last stored actual = the most recent current data point (latest is
   // observationDate-desc, isCurrent). This is the same value the backend
   // auto-fills from and revision-checks against. Null when there is no prior
@@ -841,6 +1082,7 @@ export default function EdgefinderIndicatorDetailPage() {
                 code={code}
                 indicatorName={indicatorName}
                 lastActual={lastActual}
+                variants={variants}
                 onSuccess={handleSuccess}
               />
             )}
@@ -852,6 +1094,7 @@ export default function EdgefinderIndicatorDetailPage() {
                 indicatorName={indicatorName}
                 isRateDecision={pipeline === "manual_rate"}
                 lastActual={lastActual}
+                variants={variants}
                 onSuccess={handleSuccess}
               />
             )}
@@ -863,7 +1106,7 @@ export default function EdgefinderIndicatorDetailPage() {
           <div
             className="lt-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="lt-serif text-sm font-semibold" style={{ color: "var(--lucid-ink)" }}>
                   {pipeline === "cftc" ? "COT Data" : "Recent Data Points"}
@@ -872,13 +1115,32 @@ export default function EdgefinderIndicatorDetailPage() {
                   {pipeline === "cftc" ? "Last 12 COT weekly reports" : "Last 10 ingested values"}
                 </p>
               </div>
-              <button
-                onClick={() => pipeline === "cftc" ? refetchCot() : refetchLatest()}
-                style={{ color: "var(--lucid-ink-3)" }}
-                title="Refresh"
-              >
-                <RefreshCw size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* B5: only renders when it does something — a straight
+                    Flash/Final pair. Ladder-shaped (3+ variant) and
+                    single-release indicators always show every stored row. */}
+                {pipeline !== "cftc" && finalsOnlyDefault && (
+                  <button
+                    onClick={() => setShowAllVariants((v) => !v)}
+                    className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-all"
+                    style={
+                      showAllVariants
+                        ? { background: "var(--lucid-accent-bg)", color: "var(--lucid-accent)", border: "1px solid var(--lucid-accent-bd)" }
+                        : { background: "var(--lucid-surface-2)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line-2)" }
+                    }
+                    title="Scoring always uses the most recent release regardless of variant — this only controls what the history list shows."
+                  >
+                    {showAllVariants ? "Showing all variants" : "Finals only"}
+                  </button>
+                )}
+                <button
+                  onClick={() => pipeline === "cftc" ? refetchCot() : refetchLatest()}
+                  style={{ color: "var(--lucid-ink-3)" }}
+                  title="Refresh"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
             </div>
 
             {pipeline === "cftc" ? (
@@ -957,13 +1219,13 @@ export default function EdgefinderIndicatorDetailPage() {
                   {dataPoints.map((dp, idx) => (
                     <div
                       key={dp.id}
-                      className="flex items-center justify-between rounded-lg px-3 py-2"
+                      className="flex items-center justify-between rounded-lg px-3 py-2 gap-2"
                       style={{
                         background: idx === 0 ? "var(--lucid-accent-bg)" : "var(--lucid-surface-2)",
                         border: idx === 0 ? "1px solid var(--lucid-accent-bd)" : "1px solid var(--lucid-line)",
                       }}
                     >
-                      <div>
+                      <div className="min-w-0">
                         <p className="lt-num text-xs font-medium" style={{ color: "var(--lucid-ink)" }}>
                           {dp.value}
                           {dp.forecastValue != null && (
@@ -976,16 +1238,40 @@ export default function EdgefinderIndicatorDetailPage() {
                               current
                             </span>
                           )}
+                          {dp.variant && (
+                            <span className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5 capitalize" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-2)" }}>
+                              {dp.variant}
+                            </span>
+                          )}
+                          {dp.isLegacyVariant && (
+                            <span
+                              className="ml-1.5 text-[9px] rounded-full px-1.5 py-0.5"
+                              style={{ background: "var(--lucid-warn-bg)", color: "var(--lucid-warn)" }}
+                              title="Entered before this indicator had release variants — which release this was is unknown and was never guessed."
+                            >
+                              legacy / unclassified
+                            </span>
+                          )}
                         </p>
                         <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>{dp.observationDate}</p>
                       </div>
-                      <div className="text-right">
-                        {dp.dataQualityFlag && (
-                          <p className="text-[9px] mb-0.5" style={{ color: "var(--lucid-warn)" }}>{dp.dataQualityFlag}</p>
-                        )}
-                        <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
-                          {formatRelativeDate(dp.fetchedAt)}
-                        </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          {dp.dataQualityFlag && (
+                            <p className="text-[9px] mb-0.5" style={{ color: "var(--lucid-warn)" }}>{dp.dataQualityFlag}</p>
+                          )}
+                          <p className="text-[10px]" style={{ color: "var(--lucid-ink-3)" }}>
+                            {formatRelativeDate(dp.fetchedAt)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setEditingDataPoint(dp)}
+                          className="rounded-md p-1.5 transition-all"
+                          style={{ color: "var(--lucid-ink-3)" }}
+                          title="Edit this value (correction — does not create a revision)"
+                        >
+                          <Pencil size={12} />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -995,6 +1281,19 @@ export default function EdgefinderIndicatorDetailPage() {
           </div>
         </div>
       </div>
+
+      {editingDataPoint && (
+        <EditDataPointModal
+          dataPoint={editingDataPoint}
+          indicatorName={indicatorName}
+          variants={variants}
+          onClose={() => setEditingDataPoint(null)}
+          onSaved={(msg) => {
+            setEditingDataPoint(null);
+            handleSuccess(msg);
+          }}
+        />
+      )}
 
       {/* Fetch Logs */}
       <div

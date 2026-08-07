@@ -286,60 +286,17 @@ function fmt(n: number | null): string {
 export async function listIndicatorSubjectOptions() {
   const heatmap = await getHeatmap();
   const economies = Object.keys(heatmap) as OracleEconomy[];
-  // The indicator-history endpoint keys by indicator CODE. The heatmap exposes
-  // name + economy but not the raw code, so we map the well-known scored codes
-  // per economy. Names we can't map to a REAL backend code are dropped from the
-  // picker entirely (no synthesised codes → no 404 crash on selection).
+  // The indicator-history endpoint keys by indicator CODE. The heatmap payload
+  // now carries that real backend code on every row directly (see
+  // HeatmapIndicator.code), so no name-guessing or picker-side mapping table
+  // is needed — every indicator the backend returns is selectable.
   return economies.flatMap((economy) =>
-    (heatmap[economy] ?? [])
-      .map((ind): { id: string; label: string; group: string } | null => {
-        const id = heatmapIndicatorCode(economy, ind.name);
-        return id ? { id, label: `${economy} — ${ind.name}`, group: economy } : null;
-      })
-      .filter((o): o is { id: string; label: string; group: string } => o !== null),
+    (heatmap[economy] ?? []).map((ind) => ({
+      id: ind.code,
+      label: `${economy} — ${ind.name}`,
+      group: economy,
+    })),
   );
-}
-
-/**
- * Maps (economy, indicator display name) → a REAL backend indicator code.
- * Returns null when it can't map to a code the backend actually stores — the
- * caller drops those so the picker never offers a code that would 404.
- *
- * Guards against double-prefixing: US-scoped names already containing "US ISM"
- * etc. must not become `US_US_...`. The prefix is only applied to the fixed
- * code suffix below (never to the raw name), so double-prefixing cannot occur.
- */
-export function heatmapIndicatorCode(economy: OracleEconomy, name: string): string | null {
-  const n = name.toLowerCase();
-  const prefix = economy; // "US" | "EU" | "UK" | "JP" | "AU" — used ONLY on fixed suffixes
-  // US-only single-country indicators (no per-economy variant in the backend).
-  if (n.includes("nfp") || n.includes("payroll") || n.includes("non-farm") || n.includes("nonfarm")) return "US_NFP";
-  if (n.includes("jolts")) return "US_JOLTS";
-  if (n.includes("adp")) return "US_ADP";
-  if (n.includes("jobless") || n.includes("claims")) return "US_JOBLESS_CLAIMS";
-  if (n.includes("pce")) return "US_PCE_YOY";
-  // Issue 2: AU's PPI and Unemployment codes don't follow the
-  // {economy}_{SUFFIX} pattern the other four economies share — verified
-  // directly against the seed (AU_PPI_YOY, AU_UNEMPLOYMENT). Now that AU is
-  // a real heatmap economy, this function reaches AU indicators too, so
-  // these are special-cased rather than guessed.
-  if (prefix === "AU" && n.includes("ppi")) return "AU_PPI_YOY";
-  if (prefix === "AU" && n.includes("unemploy")) return "AU_UNEMPLOYMENT";
-  // Issue 5: "JP Tokyo Core CPI YoY" also contains "cpi", so the generic CPI
-  // check below previously matched it too and derived the same id as the
-  // real "JP CPI YoY" indicator ("JP_CPI_YOY") — two different real
-  // indicators colliding on one derived id, which is what produced the
-  // duplicate React key. Checked first, and by name rather than economy
-  // (Tokyo CPI only exists for JP today, but the check doesn't assume that).
-  if (n.includes("tokyo")) return "JP_TOKYO_CPI_YOY";
-  // Per-economy indicators — prefix applied to a KNOWN suffix only.
-  if (n.includes("cpi")) return `${prefix}_CPI_YOY`;
-  if (n.includes("ppi")) return `${prefix}_PPI_MOM`;
-  if (n.includes("gdp")) return `${prefix}_GDP_QOQ`;
-  if (n.includes("retail")) return `${prefix}_RETAIL_MOM`;
-  if (n.includes("unemploy")) return `${prefix}_UNEMP`;
-  // Unmappable → null (dropped from picker; never synthesised).
-  return null;
 }
 
 // ─── COT Trajectory → /api/oracle/cot-history ──────────────────────────────────

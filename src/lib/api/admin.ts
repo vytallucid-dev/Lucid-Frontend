@@ -46,6 +46,14 @@ export interface AdminIndicator {
     source: string;
     fetchedAt: string;
   } | null;
+  /**
+   * B1/B4 — true when this indicator has at least one overdue calendar
+   * event (a scheduled release >24h past with nothing entered). Always
+   * false for NIFTY indicators (tool=nifty is served by the same route via
+   * ?tool=nifty, and NIFTY has zero calendar events by construction — no
+   * special-casing needed here or on the backend).
+   */
+  overdue: boolean;
 }
 
 export interface AdminIndicatorListResponse {
@@ -57,6 +65,14 @@ export interface AdminIndicatorListResponse {
 export interface DataPoint {
   id: string;
   observationDate: string;
+  /** Release variant (Flash/Final, Advance/Second/Third, ...), or null for a single-release indicator. */
+  variant: string | null;
+  /**
+   * True only for rows that existed on this indicator before it had
+   * registered variants — never inferred which variant they actually were.
+   * Precedent: the 2025 AUD discontinuity flags. Display-only; not editable.
+   */
+  isLegacyVariant: boolean;
   value: number;
   forecastValue: number | null;
   previousValue: number | null;
@@ -66,6 +82,14 @@ export interface DataPoint {
   sourceMetadata: Record<string, unknown> | null;
   notes: string | null;
   fetchedAt: string;
+}
+
+/** One allowed release variant for a multi-variant indicator, from IndicatorVariant. */
+export interface IndicatorVariantOption {
+  variant: string;
+  ordinal: number;
+  /** Marks the ladder's terminal rung (e.g. "final") — drives the history view's default filter. */
+  isFinal: boolean;
 }
 
 export interface IndicatorLatestResponse {
@@ -81,6 +105,12 @@ export interface IndicatorLatestResponse {
     uiGroup: string | null;
     description: string | null;
   };
+  /** Empty for single-release indicators. Non-empty means the variant selector should show on new entry. */
+  variants: IndicatorVariantOption[];
+  /** True for a straight two-rung Flash/Final pair — the history view defaults to Finals-only for these. */
+  finalsOnlyDefault: boolean;
+  /** Echoes whether this response applied the finals-only filter (false) or returned every variant (true). */
+  allVariants: boolean;
   count: number;
   data: DataPoint[];
 }
@@ -140,9 +170,10 @@ export async function getAdminIndicators(
 export async function getIndicatorLatest(
   code: string,
   limit = 10,
+  allVariants = false,
 ): Promise<IndicatorLatestResponse> {
   return apiFetch<IndicatorLatestResponse>(
-    `/api/admin/indicators/${encodeURIComponent(code)}/latest?limit=${limit}`,
+    `/api/admin/indicators/${encodeURIComponent(code)}/latest?limit=${limit}&allVariants=${allVariants}`,
   );
 }
 
@@ -249,6 +280,7 @@ export interface ManualEntrySuccess {
   action: "inserted" | "revised" | "skipped";
   indicator: { code: string; name: string };
   observationDate: string;
+  variant: string | null;
   value: number;
   isRateDecision: boolean;
   metadata: Record<string, unknown>;
@@ -287,6 +319,8 @@ export async function submitEdgefinderManualInput(params: {
   previous?: number;
   notes?: string;
   confirmRevision?: boolean;
+  /** Required only where the indicator has more than one registered release type (see IndicatorVariantOption). */
+  variant?: string | null;
 }): Promise<ManualEntryResult> {
   const response = await apiFetchRaw("/api/admin/data/manual", {
     method: "POST",
@@ -316,6 +350,43 @@ export async function submitEdgefinderManualInput(params: {
   }
 
   return (await response.json()) as ManualEntrySuccess;
+}
+
+// ─── Manual Data Edit (B4) ────────────────────────────────────────────────────
+// Correcting an already-entered value in place. Separate from
+// submitEdgefinderManualInput (which logs a NEW release and can trigger the
+// revision-confirmation gate): this never creates a revision record, it
+// overwrites the named row directly. No confirmation gate — this path exists
+// specifically for typos, where the whole point is that nothing else moves.
+
+export interface EditDataPointResult {
+  success: boolean;
+  dataPointId: string;
+  indicator: { code: string; name: string };
+  observationDate: string;
+  variant: string | null;
+  value: number;
+  forecastValue: number | null;
+  previousValue: number | null;
+}
+
+export async function editDataPoint(
+  dataPointId: string,
+  edits: {
+    observationDate?: string;
+    actual?: number;
+    forecast?: number | null;
+    previous?: number | null;
+    variant?: string | null;
+  },
+): Promise<EditDataPointResult> {
+  return apiFetch<EditDataPointResult>(
+    `/api/admin/data/manual/${encodeURIComponent(dataPointId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(edits),
+    },
+  );
 }
 
 // ─── COT Data ─────────────────────────────────────────────────────────────────
