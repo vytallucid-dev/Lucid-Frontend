@@ -35,8 +35,11 @@ export function CalendarRow({
   event: CalendarEvent;
   timeZone: string;
 }) {
+  const isCompanion = !event.isPrimary;
   return (
-    <div className={`lx-row lx-cal-row ${impactClass(event.impact)}`}>
+    <div
+      className={`lx-row lx-cal-row ${impactClass(event.impact)} ${isCompanion ? "is-companion" : ""}`}
+    >
       <span aria-hidden="true" className="lx-cal-rail" />
 
       <span className="lx-value lx-cal-time">
@@ -51,6 +54,11 @@ export function CalendarRow({
           {event.indicatorName ?? event.title}
         </span>
         {event.variant && <span className="lx-cal-variant">{event.variant}</span>}
+        {isCompanion && (
+          <span className="lx-cal-companion-tag" title={`Companion release — same indicator as the primary "${event.title}" row above/below`}>
+            companion
+          </span>
+        )}
       </span>
 
       <span className="lx-num-cell">
@@ -61,7 +69,9 @@ export function CalendarRow({
         </span>
       </span>
 
-      <span className="sr-only">{event.impact} impact</span>
+      <span className="sr-only">
+        {event.impact} impact{isCompanion ? " — companion release, tracked under the primary event" : ""}
+      </span>
     </div>
   );
 }

@@ -10,6 +10,15 @@ export interface CalendarEvent {
   indicatorCode: string | null;
   indicatorName: string | null;
   variant: string | null;
+  /**
+   * Companion-event designation. false marks the SECONDARY row of a
+   * companion pair (e.g. AU_RBA_RATE's "RBA Rate Statement" alongside its
+   * primary "Cash Rate") — same indicator, same release instant, reported by
+   * Forex Factory as two calendar rows. A companion row still renders, just
+   * visibly secondary; it can never go overdue and never counts toward the
+   * badge. true for every other row, mapped or unmapped.
+   */
+  isPrimary: boolean;
   hasActual: boolean;
   /**
    * Fix 4 — Forex Factory's own forecast/previous strings, reference-only

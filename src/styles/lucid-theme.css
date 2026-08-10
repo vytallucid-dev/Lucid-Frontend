@@ -2321,6 +2321,36 @@ td.lt-eyebrow {
   padding: 2px 5px;
 }
 
+/* Companion row — same indicator as a primary row at the same instant (see
+   the COMPANION EVENTS doc in forex-factory-event-mapping.ts on the
+   backend). Recede the whole row via opacity rather than a second rail
+   colour — the impact rail already owns the leading edge, and a companion
+   isn't a new impact tier, it's a visibility tier on an existing one. */
+.lx-cal-row.is-companion {
+  opacity: 0.62;
+}
+.lx-cal-row.is-companion:hover {
+  opacity: 0.85;
+}
+/* Companion tag — same visual language as .lx-cal-variant (a qualifier on
+   the name), but never both at once in practice: a companion title has no
+   variant ladder of its own (see isPrimary in FfEventResolution — always
+   true for rung() registrations). Distinct class rather than reusing
+   .lx-cal-variant so the two facts (release rung vs companion status) stay
+   independently stylable if that changes later. */
+.lx-cal-companion-tag {
+  flex-shrink: 0;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border: 1px dashed var(--lucid-line-2);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
 /* Status — "awaiting" is the resting state and stays quiet; "actual in" is
    the state change worth seeing, so only it earns colour. */
 .lx-cal-status {
@@ -3106,6 +3136,14 @@ td.lt-eyebrow {
 .lx-hist-table tbody tr.lx-hist-row:hover {
   background: var(--lucid-hover-row);
 }
+/* Companion row — mirrors .lx-cal-row.is-companion's reasoning on the live
+   calendar: recede via opacity, never a second impact-tier colour. */
+.lx-hist-table tbody tr.lx-hist-row.is-companion {
+  opacity: 0.62;
+}
+.lx-hist-table tbody tr.lx-hist-row.is-companion:hover {
+  opacity: 0.85;
+}
 .lx-hist-table td {
   padding: 9px 12px;
   font-size: 12px;
@@ -3142,6 +3180,21 @@ td.lt-eyebrow {
   text-transform: uppercase;
   color: var(--lucid-ink-3);
   border: 1px solid var(--lucid-line-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+/* Companion tag — same visual language as .lx-hist-cell-variant, dashed
+   border to distinguish "companion of" from "release rung of" at a glance.
+   Mirrors .lx-cal-companion-tag on the live calendar. */
+.lx-hist-companion-tag {
+  margin-left: 6px;
+  font-family: var(--lucid-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lucid-ink-3);
+  border: 1px dashed var(--lucid-line-2);
   border-radius: 4px;
   padding: 1px 4px;
 }

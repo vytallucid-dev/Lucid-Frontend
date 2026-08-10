@@ -343,14 +343,23 @@ function HistoryPageInner() {
                         </tr>
                         {group.events.map((e) => {
                           const instant = new Date(e.scheduledAt);
+                          const isCompanion = !e.isPrimary;
                           return (
-                            <tr key={e.id} className="lx-hist-row">
+                            <tr key={e.id} className={`lx-hist-row ${isCompanion ? "is-companion" : ""}`}>
                               <td className="lx-hist-cell-date">{zonedDayLabel(instant, timeZone)}</td>
                               <td className="lx-hist-cell-time">{zonedTime(instant, timeZone)}</td>
                               <td>{e.country}</td>
                               <td>
                                 <span className="lx-hist-cell-name">{e.indicatorName ?? e.title}</span>
                                 {e.variant && <span className="lx-hist-cell-variant">{e.variant}</span>}
+                                {isCompanion && (
+                                  <span
+                                    className="lx-hist-companion-tag"
+                                    title={`Companion release — same indicator as the primary release at this instant`}
+                                  >
+                                    companion
+                                  </span>
+                                )}
                               </td>
                               <td>
                                 <span
