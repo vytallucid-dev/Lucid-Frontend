@@ -3221,3 +3221,83 @@ td.lt-eyebrow {
 .lx-hist-empty {
   padding: 48px 24px;
 }
+
+/* ─── Journal table ───────────────────────────────────────────────────────────
+   Interaction states for the sortable journal table. These live here rather
+   than as inline styles because :hover cannot be expressed inline, and because
+   a row-hover tint belongs to the theme, not to one component.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Row hover. Reuses the shared row tint so the journal matches every other
+   table in the app rather than inventing its own. */
+.lx-row-hover {
+  transition: background var(--lucid-dur-fast, 120ms) var(--lucid-ease-out, ease);
+}
+.lx-row-hover:hover {
+  background: var(--lucid-hover-row);
+}
+
+/* Sortable column header. The whole cell is the target, so the click area
+   matches what the eye reads as the header. */
+.lx-th-sort {
+  background: transparent;
+  transition: color var(--lucid-dur-fast, 120ms) var(--lucid-ease-out, ease);
+}
+.lx-th-sort:hover {
+  color: var(--lucid-ink-2);
+  background: var(--lucid-hover-soft);
+}
+.lx-th-sort:focus-visible {
+  outline: 1px solid var(--lucid-accent-bd);
+  outline-offset: -2px;
+}
+
+/* The neutral up/down glyph on an unsorted column: invisible until the header
+   is hovered or focused, so fourteen icons do not compete for attention while
+   still advertising that the column can be sorted. */
+.lx-th-sort:hover .lx-th-sort-idle,
+.lx-th-sort:focus-visible .lx-th-sort-idle {
+  opacity: 0.55;
+}
+
+/* A journal row whose trade fails the integrity check. The whole row reads as
+   danger, not just a badge: a trade that is silently corrupting your statistics
+   should be impossible to scroll past. The tint sits above .lx-row-hover so the
+   hover state deepens it rather than washing it out. */
+.lx-row-flagged {
+  background: var(--lucid-neg-bg);
+}
+.lx-row-hover.lx-row-flagged:hover {
+  background: var(--lucid-neg-bg);
+  box-shadow: inset 0 0 0 9999px var(--lucid-hover-soft);
+}
+
+/* Drag-to-resize strip on a column's trailing edge. Invisible until the header
+   is approached, so fourteen grab handles do not read as fourteen borders. */
+.lx-col-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background: transparent;
+  transition: background var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+th:hover > .lx-col-resize {
+  background: var(--lucid-line-2);
+}
+.lx-col-resize:hover,
+.lx-col-resize:active {
+  background: var(--lucid-accent);
+}
+
+/* Row in the column-visibility menu. */
+.lx-menu-row {
+  transition: background var(--lucid-dur-fast) var(--lucid-ease-out);
+}
+.lx-menu-row:hover:not(:disabled) {
+  background: var(--lucid-hover-soft);
+}

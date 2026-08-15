@@ -17,9 +17,12 @@ import { formatCurrency, type Trade } from "@/lib/demo-data";
 import { useTrades, useAccounts } from "@/hooks/useTrading";
 import { Skeleton, SkeletonCard } from "@/components/state/Skeleton";
 import { ErrorState } from "@/components/state/ErrorState";
+import { IntegrityNotice } from "@/components/IntegrityNotice";
 import { getPrimaryExecution, edgeOutcome, isTradeOpen } from "@/lib/trade-helpers";
 import {
   edgeStats,
+  edgeEligible,
+  flaggedCount,
   buildBalanceCurve,
   computeDrawdownWindows as sharedComputeDrawdownWindows,
   computeMaxDrawdown as sharedComputeMaxDrawdown,
@@ -420,19 +423,28 @@ export default function AnalyticsPage() {
     return applyDateFilter(t, dateRange);
   }, [allTrades, accountFilter, dateRange]);
 
-  const closed = useMemo(() => filtered.filter((t) => !isTradeOpen(t)), [filtered]);
+  // Trades that fail the integrity check leave every statistic on this page —
+  // headline, curve, drawdown and every breakdown row — because a trade whose
+  // direction is recorded wrong carries R with the wrong sign, and averaging it
+  // in is worse than not having it. `edgeEligible` reads the server-computed
+  // flag; nothing here re-derives the check. The count is surfaced below rather
+  // than the numbers silently changing.
+  const excludedCount = useMemo(() => flaggedCount(filtered), [filtered]);
+  const sound = useMemo(() => edgeEligible(filtered), [filtered]);
+
+  const closed = useMemo(() => sound.filter((t) => !isTradeOpen(t)), [sound]);
 
   // Edge headline: counts ideas, primary execution's outcome. edgeStats()
   // already computes win_rate/avg_win_r/avg_loss_r/expectancy_r/net_pnl; wins/
   // losses/be are the only extra breakdown this headline needs on top.
   const head = useMemo(
     () => ({
-      ...edgeStats(filtered),
+      ...edgeStats(sound),
       wins: closed.filter((t) => edgeOutcome(t) === "Win").length,
       losses: closed.filter((t) => edgeOutcome(t) === "Loss").length,
       be: closed.filter((t) => edgeOutcome(t) === "BE").length,
     }),
-    [filtered, closed],
+    [sound, closed],
   );
 
   // Account headline: dollar sum across every execution in view — the money
@@ -445,11 +457,11 @@ export default function AnalyticsPage() {
     [ddWindowsRaw, curve],
   );
 
-  const byPair = useMemo(() => buildRows(filtered, (t) => t.pair, PAIR_ORDER), [filtered]);
-  const byModel = useMemo(() => buildRows(filtered, (t) => (t.model?.trim() ? t.model : "Untagged")), [filtered]);
-  const byConviction = useMemo(() => buildRows(filtered, convictionTier), [filtered]);
-  const bySession = useMemo(() => buildRows(filtered, (t) => t.session), [filtered]);
-  const byHold = useMemo(() => buildRows(filtered, holdBucket, HOLD_ORDER), [filtered]);
+  const byPair = useMemo(() => buildRows(sound, (t) => t.pair, PAIR_ORDER), [sound]);
+  const byModel = useMemo(() => buildRows(sound, (t) => (t.model?.trim() ? t.model : "Untagged")), [sound]);
+  const byConviction = useMemo(() => buildRows(sound, convictionTier), [sound]);
+  const bySession = useMemo(() => buildRows(sound, (t) => t.session), [sound]);
+  const byHold = useMemo(() => buildRows(sound, holdBucket, HOLD_ORDER), [sound]);
 
   // Rule-violation split (works off the Mistakes field; empty state if absent).
   // Dollar impact sums every execution — an account-family total, like Net P&L.
@@ -546,6 +558,11 @@ export default function AnalyticsPage() {
           ))}
         </select>
       </div>
+
+      {/* Every figure below is computed without the flagged trades. Saying so
+          here, next to the numbers, is the point — a win rate that quietly
+          changed is worse than one that is wrong out loud. */}
+      <IntegrityNotice count={excludedCount} total={filtered.length} />
 
       {/* ── 1. HEADLINE STATS ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

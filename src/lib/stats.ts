@@ -21,6 +21,45 @@ import type { Trade, Execution } from './demo-data';
 import { getPrimaryExecution, isExecutionOpen, isTradeOpen } from './trade-helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// INTEGRITY GATE — the one place edge statistics decide what counts.
+//
+// The check itself is NOT implemented here. It is computed server-side on every
+// read and arrives on the DTO as `trade.integrity`; this module only reads that
+// answer. Nothing client-side re-derives it, so the journal's flag, the filter,
+// the drawer and every statistic below can never disagree about which trades
+// are sound.
+//
+// The concrete reason this exists: two logged USDJPY trades are labelled Buy
+// but are structurally Sells, so their stored R carries the wrong sign. Their
+// dollar P&L is hand-entered and correct, but every R-denominated statistic —
+// avg win R, avg loss R, expectancy — is being computed from a number with the
+// wrong sign. A flagged trade therefore leaves the NUMERATOR AND THE DENOMINATOR
+// of every edge statistic, rather than being counted as a loss or a zero.
+//
+// It stays fully visible in the journal. Excluded from the maths, never hidden.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** True when this trade needs attention and must not feed any edge statistic. */
+export function isTradeFlagged(t: Trade): boolean {
+  return !t.integrity.ok;
+}
+
+/** The trades an edge statistic is allowed to see. */
+export function edgeEligible(trades: Trade[]): Trade[] {
+  return trades.filter((t) => !isTradeFlagged(t));
+}
+
+/** How many of `trades` are flagged — for surfacing the exclusion, never
+ * inferred by a caller counting things itself. */
+export function flaggedCount(trades: Trade[]): number {
+  return trades.filter(isTradeFlagged).length;
+}
+
+export function flaggedTrades(trades: Trade[]): Trade[] {
+  return trades.filter(isTradeFlagged);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EDGE — one row per idea, decided by the primary execution.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -39,8 +78,8 @@ function primaryRr(t: Trade): number {
 /** Win rate across ideas: WR = wins / (wins + losses). BE excluded from the
  * denominator, exactly as before — only now one idea is one sample no matter
  * how many accounts it was executed in. */
-export function edgeWinRate(trades: Trade[]): number | null {
-  const closed = trades.filter(isEdgeClosed);
+export function edgeWinRate(all: Trade[]): number | null {
+  const closed = edgeEligible(all).filter(isEdgeClosed);
   const wins = closed.filter((t) => primaryPnl(t) > 0).length;
   const losses = closed.filter((t) => primaryPnl(t) < 0).length;
   if (wins + losses === 0) return null;
@@ -49,15 +88,15 @@ export function edgeWinRate(trades: Trade[]): number | null {
 
 /** Average R of winning ideas (primary execution's blended_rr). R, not
  * dollars — R is comparable across accounts of different sizes. */
-export function edgeAvgWinR(trades: Trade[]): number | null {
-  const wins = trades.filter(isEdgeClosed).filter((t) => primaryPnl(t) > 0);
+export function edgeAvgWinR(all: Trade[]): number | null {
+  const wins = edgeEligible(all).filter(isEdgeClosed).filter((t) => primaryPnl(t) > 0);
   if (wins.length === 0) return null;
   return wins.reduce((s, t) => s + primaryRr(t), 0) / wins.length;
 }
 
 /** Average |R| of losing ideas. */
-export function edgeAvgLossR(trades: Trade[]): number | null {
-  const losses = trades.filter(isEdgeClosed).filter((t) => primaryPnl(t) < 0);
+export function edgeAvgLossR(all: Trade[]): number | null {
+  const losses = edgeEligible(all).filter(isEdgeClosed).filter((t) => primaryPnl(t) < 0);
   if (losses.length === 0) return null;
   return Math.abs(losses.reduce((s, t) => s + primaryRr(t), 0) / losses.length);
 }
@@ -76,11 +115,11 @@ export function edgeExpectancyR(trades: Trade[]): number | null {
 /** Number of ideas (Trade rows) — NOT executions. Logging one idea to two
  * accounts must raise this by one, not two. */
 export function edgeIdeaCount(trades: Trade[]): number {
-  return trades.length;
+  return edgeEligible(trades).length;
 }
 
 export function edgeClosedIdeaCount(trades: Trade[]): number {
-  return trades.filter(isEdgeClosed).length;
+  return edgeEligible(trades).filter(isEdgeClosed).length;
 }
 
 /** Win / Loss / BE / Live for one idea — re-exported here for convenience
@@ -92,8 +131,8 @@ export type { EdgeOutcome } from './trade-helpers';
  * recent first, and the win rate across them. Replaces the dashboard's old
  * "last 20 trade rows" — which, pre-split, could let one idea logged to
  * three accounts occupy three of the twenty slots. */
-export function edgeRollingWinRate(trades: Trade[], n: number): { winRate: number | null; count: number } {
-  const closed = trades
+export function edgeRollingWinRate(all: Trade[], n: number): { winRate: number | null; count: number } {
+  const closed = edgeEligible(all)
     .filter(isEdgeClosed)
     .slice()
     .sort((a, b) => {
@@ -121,8 +160,10 @@ export interface EdgeBreakdownStats {
 /** The core breakdown engine. Callers pre-filter `trades` to whatever group
  * they want (a model, a pair, a session, a conviction tier, a hold-time
  * bucket, a date range) — this function only ever counts ideas. */
-export function edgeStats(trades: Trade[]): EdgeBreakdownStats {
+export function edgeStats(all: Trade[]): EdgeBreakdownStats {
+  const trades = edgeEligible(all);
   const closed = trades.filter(isEdgeClosed);
+  // Already gated above; these re-gate idempotently.
   const winRate = edgeWinRate(trades);
   const avgWinR = edgeAvgWinR(trades);
   const avgLossR = edgeAvgLossR(trades);
@@ -140,7 +181,7 @@ export function edgeStats(trades: Trade[]): EdgeBreakdownStats {
 
 function netPnlByKey(trades: Trade[], keyFn: (t: Trade) => string): Map<string, number> {
   const map = new Map<string, number>();
-  for (const t of trades.filter(isEdgeClosed)) {
+  for (const t of edgeEligible(trades).filter(isEdgeClosed)) {
     const k = keyFn(t);
     const pnl = t.executions.reduce((s, e) => s + e.blended_pnl, 0);
     map.set(k, (map.get(k) ?? 0) + pnl);

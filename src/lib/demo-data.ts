@@ -17,6 +17,36 @@ export type CashFlowType = 'deposit' | 'withdrawal' | 'payout';
 export type ModelName = string;
 export type Pair = string;
 export type PlannedStatus = 'Watching' | 'Ready' | 'Invalidated' | 'Cancelled';
+// How a trade's Oracle entry score came to be stored. See Trade below.
+export type OracleScoreSource = 'snapshot' | 'legacy' | 'manual';
+
+// ── Integrity ────────────────────────────────────────────────────────────────
+//
+// Whether a stored trade is internally consistent. Computed server-side on
+// every read from the row itself and never stored, so there is no state to go
+// stale and no "resolve" action: correcting the offending field makes the next
+// read come back clean.
+//
+// 'blocking' failures cannot be written on any path; 'advisory' failures refuse
+// a create but are allowed through on an edit or an import, so an already-wrong
+// trade can be corrected incrementally instead of being locked.
+export type ProblemSeverity = 'blocking' | 'advisory';
+
+export interface IntegrityProblem {
+  /** snake_case field path, matching the API body shape. */
+  field: string;
+  message: string;
+  severity: ProblemSeverity;
+  /** The execution this failure belongs to, or null when it is idea-level. */
+  execution_id: string | null;
+}
+
+export interface TradeIntegrity {
+  /** False ⇒ needs attention: flagged in the journal, excluded from every
+   * edge statistic (numerator and denominator both), never hidden. */
+  ok: boolean;
+  problems: IntegrityProblem[];
+}
 
 // Execution = the fill, per account: its own account, risk %, lot size,
 // actual entry, exit, P&L and R. A Trade (the idea) always has at least one.
@@ -32,10 +62,18 @@ export interface Execution {
   partial_exit_lot_pct: number | null;
   main_exit_price: number;
   total_pips: number;
-  blended_pnl: number;
+  blended_pnl: number; // entered by hand, stored verbatim — never derived from prices
+  // Realised R for this fill: pips achieved / pips risked against the idea's
+  // stop. Lot size and pip value cancel, so it compares across account sizes.
   blended_rr: number;
   exit_type: ExitType;
   date_closed: string; // ISO, or "" if this execution is still open
+  // Oracle score for the trade's pair ON this fill's exit date, frozen when the
+  // fill closed. Exit lives per-execution because two accounts can close the
+  // same idea on different days. Null when no score exists for that date.
+  oracle_score_at_exit: number | null;
+  oracle_score_exit_date: string | null; // YYYY-MM-DD (UTC) the score addresses
+  oracle_score_exit_captured_at: string | null;
 }
 
 // Trade = the idea: one setup, one pair, one direction, one entry rationale.
@@ -54,7 +92,22 @@ export interface Trade {
   conviction: Conviction;
   date_opened: string; // ISO
   session: Session;
-  fundamental_score: number | null; // 1-10, null if not logged
+  // Oracle score for this pair ON the entry date, frozen at write time — never
+  // a live read, so a later revision to the Oracle's history cannot rewrite
+  // what a past trade was taken against. `source` says how much weight it
+  // carries: 'snapshot' is a real dated read, 'legacy' was carried across from
+  // the pre-snapshot era and is addressed to no date, 'manual' the user typed.
+  oracle_score_at_entry: number | null;
+  oracle_score_entry_date: string | null; // YYYY-MM-DD (UTC), null when legacy/manual
+  oracle_score_entry_captured_at: string | null;
+  oracle_score_entry_source: OracleScoreSource | null;
+  // R the plan aimed at: planned reward / planned risk. Derived server-side on
+  // every read from the planned prices, so it can never go stale against them.
+  // Null when the plan has no target, or no risk to divide by.
+  expected_rr: number | null;
+  // Recomputed server-side on every read. THE one implementation — no surface
+  // re-derives it. See TradeIntegrity above.
+  integrity: TradeIntegrity;
   screenshots: string[]; // URL placeholders
   psychology: string;
   notes: string;

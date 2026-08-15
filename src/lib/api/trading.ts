@@ -81,7 +81,12 @@ export interface CreateTradePayload {
   planned_first_tp?: number | null;
   planned_main_tp: number;
   conviction: Conviction;
-  fundamental_score?: number | null;
+  // Manual override of the Oracle entry snapshot. OMIT this key and the server
+  // snapshots the score for the pair on the entry date; send a number and it is
+  // stored verbatim as a manual value; send null to clear the score entirely.
+  // Sending null when you merely have nothing to say would suppress the
+  // snapshot — so callers omit rather than null when they have no override.
+  oracle_score_at_entry?: number | null;
   psychology?: string | null;
   notes?: string | null;
   screenshots?: string[];

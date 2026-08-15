@@ -1,9 +1,122 @@
 "use client";
 
-import { Pencil, Trash2, Star } from "lucide-react";
+import { Pencil, Trash2, Star, AlertTriangle } from "lucide-react";
 import { type Trade, type Execution, pairs, formatCurrency, formatDate, formatTime } from "@/lib/demo-data";
 import { getPrimaryExecution, isExecutionOpen } from "@/lib/trade-helpers";
 import { ScreenshotGallery } from "@/components/ScreenshotUploader";
+import { isTradeFlagged } from "@/lib/stats";
+import {
+  formatOracleScore,
+  formatRr,
+  oracleEntryTitle,
+  oracleExitTitle,
+  oracleSourceTag,
+  realisedRr,
+} from "@/lib/journal-format";
+
+// ── Needs-attention panel ────────────────────────────────────────────────────
+//
+// What is wrong, anchored to the field that fixes it, in the same wording the
+// add-trade form uses. `trade.integrity` is computed server-side on every read;
+// this panel renders that answer and decides nothing.
+//
+// There is no "resolve" or "dismiss" action, deliberately: the flag is derived,
+// so correcting the field is what clears it. A button to acknowledge a problem
+// without fixing it would create exactly the drifting state this avoids.
+
+const FIELD_LABELS: Record<string, string> = {
+  planned_entry: "Entry Price",
+  planned_sl: "Stop Loss",
+  planned_first_tp: "First TP",
+  planned_main_tp: "Main TP",
+  date_opened: "Date Opened",
+  risk_pct: "Risk %",
+  lot_size: "Lot Size",
+  entry_price: "Entry Price",
+  main_exit_price: "Main Exit Price",
+  partial_exit_price: "Partial Exit Price",
+  partial_exit_lot_pct: "Partial Lot %",
+  date_closed: "Date Closed",
+};
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
+function IntegrityPanel({
+  trade,
+  accountNames,
+  onEdit,
+}: {
+  trade: Trade;
+  accountNames?: Map<string, string>;
+  onEdit?: () => void;
+}) {
+  if (!isTradeFlagged(trade)) return null;
+  const problems = trade.integrity.problems;
+  return (
+    <div
+      className="rounded-lg"
+      style={{
+        background: "var(--lucid-neg-bg)",
+        border: "1px solid var(--lucid-neg-bd)",
+        padding: 14,
+        marginBottom: 16,
+      }}
+    >
+      <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+        <AlertTriangle size={14} style={{ color: "var(--lucid-neg)", flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--lucid-neg)" }}>
+          Needs attention — {problems.length} {problems.length === 1 ? "issue" : "issues"}
+        </span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--lucid-ink-2)", margin: "0 0 12px", lineHeight: 1.55 }}>
+        This trade is excluded from every edge statistic — win rate, R, expectancy and the equity curve — until
+        {" "}{problems.length === 1 ? "this is" : "these are"} fixed. It stays in the journal either way. Fixing the
+        {" "}{problems.length === 1 ? "field" : "fields"} below clears the flag on its own; there is nothing else to press.
+      </p>
+      <div className="flex flex-col" style={{ gap: 10 }}>
+        {problems.map((pr, i) => {
+          const account = pr.execution_id
+            ? accountNames?.get(trade.executions.find((e) => e.id === pr.execution_id)?.account_id ?? "")
+            : undefined;
+          return (
+            <div
+              key={`${pr.field}-${pr.execution_id ?? "trade"}-${i}`}
+              style={{ borderLeft: "2px solid var(--lucid-neg-bd)", paddingLeft: 10 }}
+            >
+              <div className="flex items-center gap-1.5" style={{ marginBottom: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--lucid-ink)", letterSpacing: "0.02em" }}>
+                  {fieldLabel(pr.field)}
+                </span>
+                {account && (
+                  <span className="pill" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)", fontSize: 10 }}>
+                    {account}
+                  </span>
+                )}
+                {pr.severity === "blocking" && (
+                  <span className="pill" style={{ background: "var(--lucid-neg-bg)", color: "var(--lucid-neg)", border: "1px solid var(--lucid-neg-bd)", fontSize: 10 }}>
+                    blocking
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: 12, color: "var(--lucid-ink-2)", margin: 0, lineHeight: 1.5 }}>{pr.message}</p>
+            </div>
+          );
+        })}
+      </div>
+      {onEdit && (
+        <button
+          onClick={onEdit}
+          className="lx-btn lx-btn-secondary"
+          style={{ height: 30, paddingInline: 12, fontSize: 12, marginTop: 12 }}
+        >
+          <Pencil size={12} /> Fix this trade
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ── Reusable pill/helpers ─────────────────────────────────────────────────────
 function ModelPill({ model }: { model: string }) {
@@ -156,8 +269,17 @@ function ExecutionCard({ trade, execution, accountName }: { trade: Trade; execut
         {kv("Risk", `${execution.risk_pct}%`)}
         {kv("Lot Size", execution.lot_size)}
         {!isLive && kv("Pips", `${execution.total_pips > 0 ? "+" : ""}${execution.total_pips}`)}
-        {!isLive && kv("R", <span style={{ color: rrColor }}>{execution.blended_rr}R</span>)}
+        {!isLive && kv("Realised R", <span style={{ color: rrColor }}>{formatRr(realisedRr(execution))}</span>)}
         {!isLive && kv("Exit Type", execution.exit_type)}
+        {/* The Oracle score for the pair on the day THIS account exited —
+            frozen then, not read now, and per-fill because two accounts can
+            close the same idea on different days. */}
+        {!isLive && kv(
+          "Oracle at Exit",
+          <span title={oracleExitTitle(trade, execution)} style={{ color: "var(--lucid-ink)" }}>
+            {formatOracleScore(execution.oracle_score_at_exit)}
+          </span>,
+        )}
         {kv("Closed", isLive ? <span style={{ color: "var(--lucid-pos)" }}>Running</span> : `${formatDate(execution.date_closed)} · ${formatTime(execution.date_closed)}`)}
         {kv("Held", heldDuration(trade.date_opened, execution.date_closed))}
       </div>
@@ -202,6 +324,9 @@ export function TradeDrawerContent({
 
   return (
     <div className="flex flex-col">
+
+      {/* What is wrong, before anything else in the drawer. */}
+      <IntegrityPanel trade={trade} accountNames={accountNames} onEdit={onEdit} />
 
       {/* Edit / Delete actions */}
       {(onEdit || onDelete) && (
@@ -318,9 +443,24 @@ export function TradeDrawerContent({
       <Section>
         <SectionTitle>Context</SectionTitle>
         <div className="lx-rows">
-          {kv("Lucid Score",
-            <span className="lx-metric-sm" style={{ fontSize: 16, color: "var(--lucid-ink)" }}>
-              {trade.fundamental_score ?? "—"}
+          {kv("Oracle at Entry",
+            <span
+              className="lx-metric-sm"
+              title={oracleEntryTitle(trade)}
+              style={{ fontSize: 16, color: "var(--lucid-ink)", display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {formatOracleScore(trade.oracle_score_at_entry)}
+              {oracleSourceTag(trade.oracle_score_entry_source) && (
+                <span className="pill" style={{ background: "var(--lucid-surface-3)", color: "var(--lucid-ink-3)", border: "1px solid var(--lucid-line)", fontSize: 10 }}>
+                  {oracleSourceTag(trade.oracle_score_entry_source)}
+                </span>
+              )}
+            </span>
+          )}
+          {kv("Expected R",
+            <span className="lx-metric-sm" style={{ fontSize: 16, color: "var(--lucid-ink)" }}
+              title="Planned reward divided by planned risk, from the idea's entry, stop and main target.">
+              {formatRr(trade.expected_rr)}
             </span>
           )}
           {kv("Psychology",

@@ -6,7 +6,8 @@ import {
   formatCurrency,
   type Trade,
 } from "@/lib/demo-data";
-import { edgeOutcome } from "@/lib/stats";
+import { edgeOutcome, isTradeFlagged, flaggedCount } from "@/lib/stats";
+import { IntegrityChip } from "@/components/IntegrityNotice";
 import { useTrades, useAccounts, useTradingModels, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { AnimatedNumber } from "@/components/motion";
 import { ErrorState } from "@/components/state/ErrorState";
@@ -14,12 +15,12 @@ import { SkeletonTable, SkeletonCard } from "@/components/state/Skeleton";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/toast";
-import { JournalTable } from "./JournalTable";
+import { JournalTable, ColumnMenu, JOURNAL_TABLE_SKELETON_COLUMNS, JOURNAL_TABLE_MIN_WIDTH } from "./JournalTable";
 import { JournalGallery } from "./JournalGallery";
 import { AddTradeModal } from "./AddTradeModal";
 import { TradeDrawerContent } from "./TradeDrawerContent";
 
-type FilterCategory = "Pair" | "Model" | "Direction" | "Outcome" | "Session" | "Conviction";
+type FilterCategory = "Pair" | "Model" | "Direction" | "Outcome" | "Session" | "Conviction" | "Integrity";
 
 interface ActiveFilter {
   id: string;
@@ -92,7 +93,7 @@ function FilterPopover({
                   color: already ? "var(--lucid-ink-3)" : "var(--lucid-ink)",
                   cursor: already ? "default" : "pointer",
                 }}
-                onMouseEnter={e => { if (!already) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseEnter={e => { if (!already) (e.currentTarget as HTMLButtonElement).style.background = "var(--lucid-hover-soft)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
                 onClick={() => { if (!already) { onAdd(selectedCat, val); onClose(); } }}
               >
@@ -142,6 +143,9 @@ export default function JournalPage() {
     Outcome: ["Win", "Loss", "BE"],
     Session: ["Asian", "London", "London-NY Overlap", "New York"],
     Conviction: ["High", "Medium", "Low"],
+    // Reads trade.integrity, computed server-side — the same answer the flag
+    // badge and every statistic read. Nothing is re-derived here.
+    Integrity: ["Needs attention", "Sound"],
   }), [pairsQuery.data, modelsQuery.data]);
 
   const sortedTrades = useMemo(
@@ -174,6 +178,7 @@ export default function JournalPage() {
           case "Outcome": return vals.includes(getOutcome(trade));
           case "Session": return vals.includes(trade.session);
           case "Conviction": return vals.includes(trade.conviction);
+          case "Integrity": return vals.includes(isTradeFlagged(trade) ? "Needs attention" : "Sound");
           default: return true;
         }
       })
@@ -181,6 +186,22 @@ export default function JournalPage() {
   }, [sortedTrades, selectedAccount, activeFilters]);
 
   const { count, net } = calcSummary(filteredTrades);
+  // Counted over everything loaded, not the current filter — the point of the
+  // header count is that it is visible without hunting, including when a
+  // filter is hiding the flagged rows.
+  const needsAttention = useMemo(() => flaggedCount(sortedTrades), [sortedTrades]);
+  const showOnlyFlagged = activeFilters.some(
+    (f) => f.category === "Integrity" && f.value === "Needs attention",
+  );
+
+  /** One click from the header chip to just the flagged rows, and back. */
+  const toggleFlaggedFilter = useCallback(() => {
+    setActiveFilters((prev) => {
+      const without = prev.filter((f) => f.category !== "Integrity");
+      if (without.length !== prev.length) return without;
+      return [...without, { id: `Integrity-flagged-${Date.now()}`, category: "Integrity" as FilterCategory, value: "Needs attention" }];
+    });
+  }, []);
 
   const addFilter = useCallback((cat: FilterCategory, val: string) => {
     setActiveFilters(prev => [...prev, { id: `${cat}-${val}-${Date.now()}`, category: cat, value: val }]);
@@ -205,8 +226,10 @@ export default function JournalPage() {
             Every live trade. Every decision. Every outcome.
           </p>
         </div>
+        <div className="flex items-center gap-2 self-start flex-wrap">
+        <IntegrityChip count={needsAttention} onClick={toggleFlaggedFilter} />
         <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm self-start"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm"
           style={{ background: "var(--lucid-grad-surface-2)", border: "1px solid var(--lucid-line)", color: "var(--lucid-ink-2)", boxShadow: "var(--lucid-elev-1)" }}
         >
           <span className="font-medium lt-num">
@@ -216,6 +239,7 @@ export default function JournalPage() {
           <span className="font-semibold lt-num" style={{ color: net >= 0 ? "var(--lucid-pos)" : "var(--lucid-neg)" }}>
             <AnimatedNumber value={net} format={formatCurrency} /> net
           </span>
+        </div>
         </div>
       </div>
 
@@ -244,6 +268,11 @@ export default function JournalPage() {
             <option value="all">All Accounts</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
           </select>
+          {showOnlyFlagged && (
+            <span className="text-xs" style={{ color: "var(--lucid-neg)" }}>
+              Showing only trades that need attention — these are excluded from every edge statistic until fixed
+            </span>
+          )}
           {selectedAccount !== "all" && (
             <span className="text-xs" style={{ color: "var(--lucid-ink-3)" }}>
               Showing {accounts.find(a => a.id === selectedAccount)?.account_name ?? "this account"}&apos;s executions, not the idea&apos;s primary
@@ -281,6 +310,10 @@ export default function JournalPage() {
               <FilterPopover activeFilters={activeFilters} filterOptions={filterOptions} onAdd={addFilter} onClose={() => setFilterOpen(false)} />
             )}
           </div>
+          {/* Which columns are on screen sits beside which rows are — both are
+              "what am I looking at", and both belong in the controls bar
+              rather than buried in the table chrome. */}
+          <ColumnMenu />
         </div>
 
         {/* Right: view toggle */}
@@ -301,13 +334,14 @@ export default function JournalPage() {
       {/* Content */}
       <div className="lt-rise lt-stagger-3 flex-1 px-4 sm:px-6 py-4">
         {tradesQuery.isLoading ? (
-          // Column widths are the JournalTable colgroup, verbatim, so the real
-          // rows land on exactly the grid the skeleton drew.
+          // Column widths come from the JournalTable colgroup itself, so the real
+          // rows land on exactly the grid the skeleton drew and the two cannot
+          // drift apart when a column is added.
           view === "table" ? (
             <SkeletonTable
-              columns={[4, 100, 110, 120, 80, 90, 90, 80, 60, 70, 110, 120, 95]}
+              columns={JOURNAL_TABLE_SKELETON_COLUMNS}
               rows={9}
-              minWidth={1020}
+              minWidth={JOURNAL_TABLE_MIN_WIDTH}
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -325,7 +359,7 @@ export default function JournalPage() {
             onAdd={() => setAddOpen(true)}
           />
         ) : view === "table" ? (
-          <JournalTable trades={filteredTrades} onRowClick={setSelectedTrade} />
+          <JournalTable trades={filteredTrades} onRowClick={setSelectedTrade} accountNames={accountNames} />
         ) : (
           <JournalGallery trades={filteredTrades} onCardClick={setSelectedTrade} />
         )}

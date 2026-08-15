@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/demo-data";
 import { getPrimaryExecution, isExecutionOpen } from "@/lib/trade-helpers";
+import { formatOracleScore, formatRr } from "@/lib/journal-format";
 import { useTrades, useAccounts, useTradingPairs, useDeleteTrade } from "@/hooks/useTrading";
 import { DetailPageLayout } from "@/components/DetailPageLayout";
 import { LoadingState } from "@/components/state/LoadingState";
@@ -204,7 +205,8 @@ export default function TradeDetailPage() {
               ["Accounts", trade.executions.map(e => accountNames.get(e.account_id) ?? e.account_id).join(", ")],
               ["Model", trade.model],
               ["Session", trade.session],
-              ["Lucid Score", trade.fundamental_score != null ? String(trade.fundamental_score) : "—"],
+              ["Oracle at Entry", formatOracleScore(trade.oracle_score_at_entry)],
+              ["Expected R", formatRr(trade.expected_rr)],
               ["Psychology", trade.psychology || "—"],
             ].map(([label, value]) => (
               <div

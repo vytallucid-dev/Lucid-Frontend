@@ -36,3 +36,15 @@ export function evaluationCapital(accounts: Account[]): number {
 export function isLifecycleClosed(account: Account): boolean {
   return account.status !== "Active";
 }
+
+/**
+ * An account you can still take a NEW trade in. Derived from the status field —
+ * the inverse of isLifecycleClosed — rather than a list of excluded statuses,
+ * so a status added later (an archived tier, say) is handled without an edit
+ * here. Only the add-trade selector filters on this: filters, analytics,
+ * account management and editing an already-logged trade must keep showing
+ * every account, or a past trade on a closed account becomes unreachable.
+ */
+export function isAccountActive(account: Account): boolean {
+  return !isLifecycleClosed(account);
+}
