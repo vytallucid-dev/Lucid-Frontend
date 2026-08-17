@@ -26,19 +26,19 @@ import {
 
 // Scoring rules per indicator, keyed by backend indicator code.
 const SCORING_RULES: Record<string, string> = {
-  IND_NIFTY_01_PMI_MFG: "India PMI Manufacturing: Score +1 if PMI ≥ 52 (expansion); Score 0 if 48 ≤ PMI < 52 (contraction zone watch); Score −1 if PMI < 48 (contraction). Cadence: Monthly.",
-  IND_NIFTY_02_PMI_SVC: "India PMI Services: Score +1 if PMI ≥ 52 (expansion); Score 0 if 48 ≤ PMI < 52 (contraction zone watch); Score −1 if PMI < 48 (contraction). Cadence: Monthly.",
-  IND_NIFTY_03_CPI: "India CPI YoY: Two-component rule. Threshold (current value): Score +1 if CPI ≤ 5.0%; Score 0 if 5.0% < CPI ≤ 6.0%; Score −1 if CPI > 6.0%. Trajectory (3-month average): adjusts score by +/−1 if trend opposes threshold reading. Cadence: Monthly.",
-  IND_NIFTY_04_RBI_RATE: "RBI Repo Rate Direction: Cycle-regime scoring. Score +1 if cutting / paused-after-hikes (easing bias); Score 0 if neutral hold; Score −1 if hawkish-hold / hiking (tightening bias). Cadence: Event-driven (RBI MPC meetings, every 2 months).",
-  IND_NIFTY_05_IIP: "India Industrial Production YoY: Score +1 if IIP ≥ 4.0%; Score 0 if 0% ≤ IIP < 4.0%; Score −1 if IIP < 0%. Cadence: Monthly.",
-  IND_NIFTY_06_FII_FLOW: "FII 10-day Rolling Cash Flow (₹ Cr): Tiered scoring on 10-day rolling sum. Score +2 if ≥ +₹15,000 Cr; +1 if +₹5,000 to +₹15,000 Cr; 0 if −₹5,000 to +₹5,000 Cr; −1 if −₹5,000 to −₹15,000 Cr; −2 if ≤ −₹15,000 Cr. Cadence: Daily.",
-  IND_NIFTY_07_DII_ABSORPTION: "DII Absorption Ratio: Rolling ratio of DII buys to FII sells over 5 sessions, excluding zero-FII days. Score +1 if ratio ≥ 1.0 (DII fully absorbing FII outflows); Score 0 if 0.5 ≤ ratio < 1.0 (partial absorption); Score −1 if ratio < 0.5 (DII not absorbing). Cadence: Daily.",
-  IND_NIFTY_08_VIX: "India VIX: Value-in-band with contrarian flag. Score +1 if VIX < 13 (complacency — bearish setup); Score 0 if 13 ≤ VIX ≤ 20 (normal); Score −1 if VIX > 20 (elevated fear — short-term bullish setup at extremes). Cadence: Daily.",
-  IND_NIFTY_09_USD_WEAKNESS: "USD Weakness (NIFTY-facing): Derived from EdgeFinder's USD raw composite (range −14 to +14). 5-tier scoring: Score +2 if raw ≤ −7 (USD very weak); +1 if −7 < raw ≤ −3; 0 if −3 < raw ≤ +3; −1 if +3 < raw ≤ +7; −2 if raw > +7 (USD very strong). Cadence: Daily (derived).",
-  IND_NIFTY_10_DXY: "DXY 10-day Direction: Score +1 if 10-day % change ≤ −1% (DXY weakening — bullish NIFTY); Score 0 if −1% < change < +1%; Score −1 if change ≥ +1% (DXY strengthening — bearish NIFTY). Cadence: Daily.",
-  IND_NIFTY_11_BRENT: "Brent Crude 10-day Direction: Score +1 if 10-day % change ≤ −3% (oil falling — bullish NIFTY via reduced import burden); Score 0 if −3% < change < +3%; Score −1 if change ≥ +3% (oil rising). Cadence: Daily.",
-  IND_NIFTY_12_USDINR: "USD/INR 10-day Direction: 5-tier scoring on 10-day % change. Score +2 if ≤ −1% (INR strengthening sharply); +1 if −1% to −0.3%; 0 if −0.3% to +0.3%; −1 if +0.3% to +1%; −2 if ≥ +1% (INR weakening sharply). Cadence: Daily.",
-  IND_NIFTY_13_FII_LS_RATIO: "FII Long/Short Ratio (Index Futures): Multi-band lookup on FII long share of total positions. Score +2 if long share ≥ 65%; +1 if 55% to 65%; 0 if 45% to 55%; −1 if 35% to 45%; −2 if long share < 35%. Cadence: Daily.",
+  IND_NIFTY_01_PMI_MFG: "India PMI Manufacturing: Compared against a single reference point rather than a banded range — a reading above the reference reads as expansion and scores bullish, below it reads as contraction and scores bearish, with no neutral zone in between. Cadence: Monthly.",
+  IND_NIFTY_02_PMI_SVC: "India PMI Services: Same single-reference mechanism as PMI Manufacturing — a reading above the reference reads as expansion and scores bullish, below it reads as contraction and scores bearish, with no neutral zone in between. Cadence: Monthly.",
+  IND_NIFTY_03_CPI: "India CPI YoY: Two-component rule. The level component scores the current reading bullish when inflation sits comfortably low, neutral while it sits within the central bank's tolerance band, and bearish once it runs above that band. The trajectory component separately compares the reading against its own recent trend and can adjust the level score when the trend is running the opposite way. Cadence: Monthly.",
+  IND_NIFTY_04_RBI_RATE: "RBI Repo Rate Direction: Scored by the central bank's current policy stance rather than the rate level itself, and stances group together rather than form a ladder — an easing stance (cutting, or paused after a hiking cycle) scores bullish, a hiking stance scores bearish, and a hold, whether cautious or neutral, scores neutral. The score persists from one policy decision until the next is announced. Cadence: Event-driven (RBI MPC meetings).",
+  IND_NIFTY_05_IIP: "India Industrial Production YoY: Compared against a single reference point rather than a banded range — a reading above the reference scores bullish and below it scores bearish, with no neutral zone in between. Cadence: Monthly.",
+  IND_NIFTY_06_FII_FLOW: "FII Rolling Cash Flow (₹ Cr): Multi-tier scale on the rolling net FII cash flow over a trailing window — sustained inflows earn the most bullish tier, sustained outflows the most bearish tier, with graduated tiers in between and a neutral band around roughly flat flow. Cadence: Daily.",
+  IND_NIFTY_07_DII_ABSORPTION: "DII Absorption Ratio: Rolling ratio of DII buying against FII selling over a trailing window, calculated on days FII are net sellers — strong absorption scores bullish, partial absorption scores neutral, and DII themselves selling into FII selling scores the most bearish tier. On days FII are net buyers there is nothing to absorb, so that regime is scored separately rather than folded into the ratio. Cadence: Daily.",
+  IND_NIFTY_08_VIX: "India VIX: Multi-band scale on the index level — low volatility scores bullish, a middle band scores neutral, and elevated volatility scores bearish. The highest band additionally raises a CONTRARIAN_WATCH flag, since extreme fear readings have historically preceded reversals rather than confirmed the bearish score. Cadence: Daily.",
+  IND_NIFTY_09_USD_WEAKNESS: "USD Weakness (NIFTY-facing): Multi-tier scale on a composite of US dollar strength indicators whose level is currently maintained manually rather than computed live. A weak-dollar reading scores bullish for NIFTY, a strong-dollar reading scores bearish, with graduated tiers between the extremes, sign-flipped from the underlying dollar-strength convention to the NIFTY-facing convention. Cadence: Daily.",
+  IND_NIFTY_10_DXY: "DXY 10-day Slope: Fits a trendline across the 10 most recent daily closes and expresses the implied move as a percentage, then scores it against DXY's own trailing volatility (σ) rather than a fixed threshold — a falling trend scores bullish for NIFTY (DXY weakening), a rising trend scores bearish, and a trend that's small relative to DXY's own recent volatility scores neutral. Cadence: Daily.",
+  IND_NIFTY_11_BRENT: "Brent Crude 10-day Slope: Same mechanism as DXY — a 10-day trendline scored against Brent's own trailing volatility rather than a fixed percentage. A falling trend (lighter import bill) scores bullish for NIFTY; a rising trend scores bearish. Cadence: Daily.",
+  IND_NIFTY_12_USDINR: "USD/INR 10-day Slope: Same σ-scaled trendline mechanism as DXY/Brent, with a finer multi-tier reading — the further the slope sits from zero relative to USD/INR's own volatility, the stronger the score. INR strengthening (USD/INR falling) scores bullish for NIFTY. Cadence: Daily.",
+  IND_NIFTY_13_FII_LS_RATIO: "FII Long/Short Ratio (Index Futures): Tracked standalone — does not contribute to Domestic, External, or Net. Scored by ranking the current long-share reading against the indicator's own history, rather than against fixed levels: a reading low in its own historical range scores bullish, high in its range scores bearish, mid-range scores neutral. A contrarian watch flag fires when the reading sits at the extreme low end of its own history. Scoring begins only once enough history has accumulated; until then it returns zero. Cadence: Daily.",
 };
 
 function getRelatedPatterns(indId: number) {
@@ -254,7 +254,7 @@ function ScorecardPageInner() {
         const groups: { key: string; label: string; sub: string; accent: string; items: typeof sc.indicators }[] = [
           { key: "dom", label: "Domestic", sub: "The structural floor", accent: "var(--lucid-accent)", items: domestic },
           { key: "ext", label: "External", sub: "The trade-relevant cycle", accent: "var(--lucid-cool)", items: external },
-          { key: "std", label: "Futures Positioning", sub: "Standalone — scored outside the composites", accent: "var(--lucid-ink-2)", items: standalone },
+          { key: "std", label: "Futures Positioning", sub: "Tracked, not scored into Domestic, External, or Net", accent: "var(--lucid-ink-2)", items: standalone },
         ];
         return (
           <div className="space-y-5">
@@ -375,10 +375,33 @@ function ScorecardPageInner() {
                           </div>
                         )}
 
-                        {/* Ind 13 special */}
+                        {/* Ind 13 special — standalone, percentile-scored (raw %, percentile
+                            and observation count already surface generically via ind.value
+                            and the score_basis block above). */}
                         {ind.id === 13 && (
-                          <div className="text-xs mt-1.5 italic" style={{ color: "var(--lucid-ink-3)" }}>
-                            Live tracking — no historical backfill
+                          <div className="mt-1.5">
+                            {ind.flags.includes("CONTRARIAN_WATCH") && (
+                              <div
+                                className="text-xs font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded"
+                                style={{
+                                  background: "color-mix(in srgb, var(--lucid-warn) 15%, transparent)",
+                                  color: "var(--lucid-warn)",
+                                  border: "1px solid color-mix(in srgb, var(--lucid-warn) 30%, transparent)",
+                                }}
+                              >
+                                ⚠ CONTRARIAN WATCH — below 5th percentile
+                              </div>
+                            )}
+                            {ind.flags.includes("INSUFFICIENT_HISTORY") && (
+                              <div className="text-xs italic mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
+                                Insufficient history — score held at 0 until 60 observations
+                              </div>
+                            )}
+                            {ind.flags.includes("HISTORICAL_DEFAULT_NO_DATA") && (
+                              <div className="text-xs italic mt-0.5" style={{ color: "var(--lucid-ink-3)" }}>
+                                Live tracking — no historical backfill
+                              </div>
+                            )}
                           </div>
                         )}
 

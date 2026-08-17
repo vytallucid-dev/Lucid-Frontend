@@ -62,6 +62,9 @@ export interface PublicScorecard {
   net_score: number;
   band: PublicBand;
   ind9_raw_composite: number | null;
+  /** IND_NIFTY_13_FII_LS_RATIO's score. Standalone — not part of
+   *  domestic_composite / external_composite / net_score. */
+  ind13_score: number | null;
   ind9_sub_indicators: Record<string, PublicIndicatorScore>;
   composition_flag: PublicCompositionFlag;
   peak_score_active: boolean;
@@ -85,6 +88,7 @@ export interface PublicScorecardLite {
   composition_flag: PublicCompositionFlag;
   peak_score_active: boolean;
   ind9_raw_composite: number | null;
+  ind13_score: number | null;
 }
 
 export type PublicPatternTier = 'CONFIRMED' | 'OBSERVED' | 'HYPOTHESIS';
